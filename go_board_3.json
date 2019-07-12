@@ -1,0 +1,23 @@
+{
+    "CANNY_APERTURE": 3,
+    "CANNY_MAXVAL": 100,
+    "CANNY_MINVAL": 50,
+    "HC_MASK": 4,
+    "HC_MAXRADIUS": 20,
+    "HC_MINDIST": 1,
+    "HC_SENSITIVITY": 10,
+    "HL_RHO": 1,
+    "HL_RHO2": 1,
+    "HL_THETA": 5,
+    "HL_THETA2": 5,
+    "HL_THRESHOLD": 100,
+    "HL_THRESHOLD2": 22,
+    "STONES_DILATE_B": 0,
+    "STONES_DILATE_W": 0,
+    "STONES_ERODE_B": 0,
+    "STONES_ERODE_W": 0,
+    "STONES_MAXVAL_B": 255,
+    "STONES_MAXVAL_W": 255,
+    "STONES_THRESHOLD_B": 27,
+    "STONES_THRESHOLD_W": 250
+}
