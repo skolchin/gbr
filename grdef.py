@@ -1,5 +1,5 @@
 #-------------------------------------------------------------------------------
-# Name:        Go board parsing project
+# Name:        Go board recognition project
 # Purpose:     Global definitions and constants
 #
 # Author:      skolchin

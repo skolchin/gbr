@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------------------
-# Name:        Go board parsing project
-# Purpose:     Main function and interfaces functions
+# Name:        Go board recognition project
+# Purpose:     Main and interfaces functions
 #
 # Author:      skolchin
 #
@@ -25,243 +25,248 @@ from pathlib import Path
 PADX = 5
 PADY = 5
 
-# Global variables
-origImg = None                # originally loaded image
-origImgName = None            # name of original image file
-window = None                 # root window
-origImgPanel = None           # panel to display original image
-glImgPanel = None             # generated image panel
-boardInfo = None              # board info panel
-stoneInfo = None              # stone information panel
-tkVars = dict()               # list of trackbard linked to board recog params
-dbgFrame = None               # Frame to hold list of debug images
-canvas = None                 # Canvas around debug image
-grParams = None               # list of board recog parameters
-grRes = None                  # Board recognition results
-
-# Callback functions
-# Callback for mouse events on generated board image
-def gen_img_mouse_callback(event):
-
-    # Convert from widget coordinates to image coordinates
-    w = event.widget.winfo_width()
-    h = event.widget.winfo_height()
-    x = event.x
-    y = event.y
-
-    if grRes is None or origImg is None:
-       return
-
-    x = x - int((w - origImg.shape[0]) / 2)
-    y = y - int((h - origImg.shape[1]) / 2)
-    print('{}, {}'.format(x, y))
-
-    f = "Black"
-    p = gr.find_coord(x, y, grRes[grdef.GR_STONES_B])
-    if (p[0] == -1):
-       f = "White"
-       p = gr.find_coord(x, y, grRes[grdef.GR_STONES_W])
-    if (p[0] >= 0):
-       ct = "{f} {a}{b} at ({x},{y})".format(
-          f = f,
-          a = ss.ascii_uppercase[p[2]-1],
-          b = p[3],
-          x = round(p[0],0),
-          y = round(p[1],0))
-       print(ct)
-       stoneInfo.set(ct)
-
-# Callback for mouse events on original image
-def orig_img_mouse_callback(event):
-    load_img_callback()
-
-# Load image button callback
-def load_img_callback():
-    global origImg
-    global origImgName
-
-    fn = filedialog.askopenfilename(title = "Select file",
-       filetypes = (("PNG files","*.png"),("JPEG files","*.jpg"),("All files","*.*")))
-    if (fn != ""):
-       # Load the image
-       origImg = cv2.imread(fn)
-       imgtk = grutils.img_to_imgtk(origImg)
-       origImgPanel.configure(image = imgtk)
-       origImgPanel.image = imgtk
-       origImgName = fn
-
-       # Load JSON with image recog parameters
-       ftitle = ""
-       fnj = Path(origImgName).with_suffix('.json')
-       if fnj.is_file():
-          p = json.load(open(fnj))
-          ftitle = " (with params)"
-          for key in grParams.keys():
-              if p.get(key) is not None:
-                 grParams[key] = p[key]
-                 if tkVars.get(key) is not None:
-                    tkVars[key].set(grParams[key])
-
-       # Process image
-       update_board()
-
-       stoneInfo.set("File loaded{ft}: {fn}".format(ft = ftitle, fn = str(origImgName)))
-
-# Save JSON button callback
-def save_json_callback():
-    # Save json with current parsing parameters
-    if origImgName is None or origImgName == "":
-       # Nothing to do!
-       return
-
-    fn = Path(origImgName).with_suffix('.json')
-    with open(fn, "w", encoding="utf-8", newline='\r\n') as f:
-         json.dump(grParams, f, indent=4, sort_keys=True, ensure_ascii=False)
-
-    stoneInfo.set("Params saved to: " + str(fn))
-
-# Apply button callback
-def apply_callback():
-    for key in tkVars.keys():
-        grParams[key] = tkVars[key].get()
-    update_board()
-
-# Apply button callback
-def apply_def_callback():
-    global grParams
-
-    grParams = grdef.DEF_GR_PARAMS.copy()
-    for key in tkVars.keys():
-        tkVars[key].set(grParams[key])
-
-    update_board()
-
-# Callback for canvas configuration
-def on_configure(event):
-    # update scrollregion after starting 'mainloop'
-    # when all widgets are in canvas
-    canvas.configure(scrollregion=canvas.bbox('all'))
-
-# Add switches with board recog parameters
-def add_switches(root, nrow = 0):
-    n = 1
-    ncol = 0
-    frame = None
-    for key in grParams.keys():
-        if grdef.GR_PARAMS_PROP[key][2]:
-            if (n == 3 or frame is None):
-               frame = tk.Frame(root)
-               frame.grid(row = nrow, column = ncol, padx = 3, pady = 3)
-               n = 0
-               ncol = ncol + 1
-
-            # Add a switch
-            panel = tk.Label(frame, text = key)
-            panel.grid(row = n, column = 0, padx = 2, pady = 2, sticky = "s")
-
-            v = tk.IntVar()
-            v.set(grParams[key])
-            panel = tk.Scale(frame, from_ = grdef.GR_PARAMS_PROP[key][0],
-                                    to = grdef.GR_PARAMS_PROP[key][1],
-                                    orient = tk.HORIZONTAL,
-                                    variable = v)
-            panel.grid(row = n, column = 1, padx = 2, pady = 2)
-            tkVars[key] = v
-
-            n = n + 1
-
-# Add analysis resul images
-def add_debug_info(root, shape):
-    if grRes is None:
-       return
-
-    nrow = 0
-    ncol = 0
-    sx = int(shape[0] / 2) - 5
-    sy = sx
-
-    # Remove all previously added controls
-    for c in root.winfo_children():
-        c.destroy()
-
-    # Add analysis images
-    for key in grRes.keys():
-        if key.find("IMG_") >= 0:
-           frame = tk.Frame(root)
-           frame.grid(row = nrow, column = ncol, padx = 2, pady = 2, sticky = "nswe")
-
-           img = cv2.resize(grRes[key], (sx, sy))
-
-           imgtk = ImageTk.PhotoImage(image=Image.fromarray(img))
-           panel = tk.Label(frame, image = imgtk)
-           panel.image = imgtk
-           panel.grid(row = 0, column = 0)
-
-           panel = tk.Label(frame, text = key)
-           panel.grid(row = 1, column = 0, sticky = "nswe")
-
-           ncol = ncol + 1
-           if ncol > 1:
-              nrow = nrow + 1
-              ncol = 0
-
-    # Add text information
-    frame = tk.Frame(root)
-    frame.grid(row = nrow, column = ncol, padx = 2, pady = 2, sticky = "nswe")
-
-    lbox = tk.Listbox(frame)
-    lbox.grid(row = 0, column = 0, sticky = "nswe")
-    lbox.config(width = int(sx / 8))
-
-    edges = grRes[grdef.GR_EDGES]
-    spacing = grRes[grdef.GR_SPACING]
-    hcross = grRes[grdef.GR_NUM_CROSS_H]
-    vcross = grRes[grdef.GR_NUM_CROSS_W]
-    size = grRes[grdef.GR_BOARD_SIZE]
-
-    lbox.insert(tk.END, "Edges: ({},{}) : ({},{})".format(edges[0][0], edges[0][1], edges[1][0], edges[1][1]))
-    lbox.insert(tk.END, "Net: {},{}".format(round(spacing[0],2), round(spacing[1],2)))
-    lbox.insert(tk.END, "Cross: {},{}".format(hcross, vcross))
-    lbox.insert(tk.END, "Size: {}".format(size))
-
-    panel = tk.Label(frame, text = "TEXT_INFO")
-    panel.grid(row = 1, column = 0, sticky = "nswe")
-
-
-# Update board
-def update_board():
-    global grRes
-
-    # Process original image
-    grRes = gr.process_img(origImg, grParams)
-
-    # Generate board using analysis results
-    gen_img = gr.generate_board(shape = origImg.shape, res = grRes)
-    imgtk = grutils.img_to_imgtk(gen_img)
-    glImgPanel.configure(image = imgtk)
-    glImgPanel.image = imgtk
-
-    black_stones = grRes[grdef.GR_STONES_B]
-    white_stones = grRes[grdef.GR_STONES_W]
-    boardInfo.set("Stones found: {} black, {} white".format(black_stones.shape[0], white_stones.shape[0]))
-
-    # Update debug info
-    add_debug_info(dbgFrame, origImg.shape)
-
 # Main function
 def main():
-    global origImg
-    global window
-    global origImgPanel
-    global glImgPanel
-    global dbgFrame
-    global boardInfo
-    global stoneInfo
-    global tkVars
-    global grParams
-    global canvas
 
-    # Default grParams
+    # Common variables
+    origImg = None                # originally loaded image
+    origImgName = None            # name of original image file
+    window = None                 # root window
+    origImgPanel = None           # panel to display original image
+    genImgPanel = None            # generated image panel
+    boardInfo = None              # board info panel
+    stoneInfo = None              # stone information panel
+    tkVars = None                 # list of trackbard linked to board recog params
+    dbgFrame = None               # Frame to hold list of debug images
+    canvas = None                 # Canvas around debug image
+    grParams = None               # list of board recog parameters
+    grRes = None                  # Board recognition results
+
+    # Callback functions
+    # Callback for mouse events on generated board image
+    def gen_img_mouse_callback(event):
+        global grRes
+        global origImg
+
+        # Convert from widget coordinates to image coordinates
+        w = event.widget.winfo_width()
+        h = event.widget.winfo_height()
+        x = event.x
+        y = event.y
+
+        if grRes is None or origImg is None:
+           return
+
+        x = x - int((w - origImg.shape[0]) / 2)
+        y = y - int((h - origImg.shape[1]) / 2)
+        print('{}, {}'.format(x, y))
+
+        f = "Black"
+        p = gr.find_coord(x, y, grRes[grdef.GR_STONES_B])
+        if (p[0] == -1):
+           f = "White"
+           p = gr.find_coord(x, y, grRes[grdef.GR_STONES_W])
+        if (p[0] >= 0):
+           ct = "{f} {a}{b} at ({x},{y})".format(
+              f = f,
+              a = ss.ascii_uppercase[p[2]-1],
+              b = p[3],
+              x = round(p[0],0),
+              y = round(p[1],0))
+           print(ct)
+           stoneInfo.set(ct)
+
+    # Callback for mouse events on original image
+    def orig_img_mouse_callback(event):
+        load_img_callback()
+
+    # Load image button callback
+    def load_img_callback():
+        global origImg
+        global origImgName
+
+        fn = filedialog.askopenfilename(title = "Select file",
+           filetypes = (("PNG files","*.png"),("JPEG files","*.jpg"),("All files","*.*")))
+        if (fn != ""):
+           # Load the image
+           origImg = cv2.imread(fn)
+           imgtk = grutils.img_to_imgtk(origImg)
+           origImgPanel.configure(image = imgtk)
+           origImgPanel.image = imgtk
+           origImgName = fn
+
+           # Load JSON with image recog parameters
+           ftitle = ""
+           fnj = Path(origImgName).with_suffix('.json')
+           if fnj.is_file():
+              p = json.load(open(fnj))
+              ftitle = " (with params)"
+              for key in grParams.keys():
+                  if p.get(key) is not None:
+                     grParams[key] = p[key]
+                     if tkVars.get(key) is not None:
+                        tkVars[key].set(grParams[key])
+
+           # Process image
+           update_board()
+
+           # Update status
+           stoneInfo.set("File loaded{ft}: {fn}".format(ft = ftitle, fn = str(origImgName)))
+
+    # Save params button callback
+    def save_json_callback():
+        global origImgName
+
+        # Save json with current parsing parameters
+        if origImgName is None or origImgName == "":
+           # Nothing to do!
+           return
+
+        fn = Path(origImgName).with_suffix('.json')
+        with open(fn, "w", encoding="utf-8", newline='\r\n') as f:
+             json.dump(grParams, f, indent=4, sort_keys=True, ensure_ascii=False)
+
+        stoneInfo.set("Params saved to: " + str(fn))
+
+    # Apply button callback
+    def apply_callback():
+        for key in tkVars.keys():
+            grParams[key] = tkVars[key].get()
+        update_board()
+
+    # Apply defaults button callback
+    def apply_def_callback():
+        global grParams
+
+        grParams = grdef.DEF_GR_PARAMS.copy()
+        for key in tkVars.keys():
+            tkVars[key].set(grParams[key])
+
+        update_board()
+
+    # Callback for canvas configuration
+    def on_configure(event):
+        # update scrollregion after starting 'mainloop'
+        # when all widgets are in canvas
+        canvas.configure(scrollregion=canvas.bbox('all'))
+
+    # Add Scale widgets with board recognition parameters
+    def add_switches(root, params, nrow = 0):
+        n = 1
+        ncol = 0
+        frame = None
+        vars = dict()
+
+        for key in params.keys():
+            if grdef.GR_PARAMS_PROP[key][2]:
+                if (n == 3 or frame is None):
+                   frame = tk.Frame(root)
+                   frame.grid(row = nrow, column = ncol, padx = 3, pady = 3)
+                   n = 0
+                   ncol = ncol + 1
+
+                # Add a switch
+                panel = tk.Label(frame, text = key)
+                panel.grid(row = n, column = 0, padx = 2, pady = 2, sticky = "s")
+
+                v = tk.IntVar()
+                v.set(params[key])
+                panel = tk.Scale(frame, from_ = grdef.GR_PARAMS_PROP[key][0],
+                                        to = grdef.GR_PARAMS_PROP[key][1],
+                                        orient = tk.HORIZONTAL,
+                                        variable = v)
+                panel.grid(row = n, column = 1, padx = 2, pady = 2)
+                vars[key] = v
+
+                n = n + 1
+        return vars
+
+
+    # Add analysis results info
+    def add_debug_info(root, shape, res):
+        if res is None:
+           return
+
+        nrow = 0
+        ncol = 0
+        sx = int(shape[0] / 2) - 5
+        sy = sx
+
+        # Remove all previously added controls
+        for c in root.winfo_children():
+            c.destroy()
+
+        # Add analysis result images
+        for key in res.keys():
+            if key.find("IMG_") >= 0:
+               frame = tk.Frame(root)
+               frame.grid(row = nrow, column = ncol, padx = 2, pady = 2, sticky = "nswe")
+
+               img = cv2.resize(res[key], (sx, sy))
+
+               imgtk = ImageTk.PhotoImage(image=Image.fromarray(img))
+               panel = tk.Label(frame, image = imgtk)
+               panel.image = imgtk
+               panel.grid(row = 0, column = 0)
+
+               panel = tk.Label(frame, text = key)
+               panel.grid(row = 1, column = 0, sticky = "nswe")
+
+               ncol = ncol + 1
+               if ncol > 1:
+                  nrow = nrow + 1
+                  ncol = 0
+
+        # Add text information
+        frame = tk.Frame(root)
+        frame.grid(row = nrow, column = ncol, padx = 2, pady = 2, sticky = "nswe")
+
+        lbox = tk.Listbox(frame)
+        lbox.grid(row = 0, column = 0, sticky = "nswe")
+        lbox.config(width = int(sx / 8))
+
+        edges = res[grdef.GR_EDGES]
+        spacing = res[grdef.GR_SPACING]
+        hcross = res[grdef.GR_NUM_CROSS_H]
+        vcross = res[grdef.GR_NUM_CROSS_W]
+        size = res[grdef.GR_BOARD_SIZE]
+
+        lbox.insert(tk.END, "Edges: ({},{}) : ({},{})".format(edges[0][0], edges[0][1], edges[1][0], edges[1][1]))
+        lbox.insert(tk.END, "Net: {},{}".format(round(spacing[0],2), round(spacing[1],2)))
+        lbox.insert(tk.END, "Cross: {},{}".format(hcross, vcross))
+        lbox.insert(tk.END, "Size: {}".format(size))
+
+        panel = tk.Label(frame, text = "TEXT_INFO")
+        panel.grid(row = 1, column = 0, sticky = "nswe")
+
+    # Update board
+    def update_board():
+        global grRes
+        #global grParams
+        global origImg
+
+        # Process original image
+        grRes = gr.process_img(origImg, grParams)
+
+        # Generate board using analysis results
+        gen_img = gr.generate_board(shape = origImg.shape, res = grRes)
+        imgtk = grutils.img_to_imgtk(gen_img)
+        genImgPanel.configure(image = imgtk)
+        genImgPanel.image = imgtk
+
+        black_stones = grRes[grdef.GR_STONES_B]
+        white_stones = grRes[grdef.GR_STONES_W]
+        boardInfo.set("Stones found: {} black, {} white".format(black_stones.shape[0], white_stones.shape[0]))
+
+        # Update debug info
+        add_debug_info(dbgFrame, origImg.shape, grRes)
+
+
+    # ===
+    # Main code
+    # ===
+
+    # Defaults params
     grParams = grdef.DEF_GR_PARAMS.copy()
 
     # Make default board image
@@ -289,10 +294,10 @@ def main():
     panel = tk.Label(imgFrame, text = "Generated")
     panel.grid(row = 0, column = 1, sticky = "nswe")
 
-    glImgPanel = tk.Label(imgFrame, image = imgtk)
-    glImgPanel.image = imgtk
-    glImgPanel.bind('<Button-1>', gen_img_mouse_callback)
-    glImgPanel.grid(row = 1, column = 1, sticky = "nswe", padx = PADX)
+    genImgPanel = tk.Label(imgFrame, image = imgtk)
+    genImgPanel.image = imgtk
+    genImgPanel.bind('<Button-1>', gen_img_mouse_callback)
+    genImgPanel.grid(row = 1, column = 1, sticky = "nswe", padx = PADX)
 
     # Image panel: analysis images
     panel = tk.Label(imgFrame, text = "Analysis")
@@ -323,7 +328,7 @@ def main():
     panel = tk.Button(buttonFrame, text = "Load image", command = load_img_callback)
     panel.grid(row = 0, column = 0, padx = PADX, pady = PADY)
 
-    panel = tk.Button(buttonFrame, text = "Save JSON", command = save_json_callback)
+    panel = tk.Button(buttonFrame, text = "Save params", command = save_json_callback)
     panel.grid(row = 0, column = 1, padx = PADX, pady = PADY)
 
     panel = tk.Button(buttonFrame, text = "Apply", command = apply_callback)
@@ -341,7 +346,7 @@ def main():
     # Info frame: switches
     switchFrame = tk.Frame(infoFrame, bd = 1, relief = tk.RAISED)
     switchFrame.grid(row = 1, column = 1, sticky = "nswe")
-    add_switches(switchFrame)
+    tkVars = add_switches(switchFrame, grParams)
 
     # Status bar
     statusFrame = tk.Frame(window, width = 200, bd = 1, relief = tk.SUNKEN)

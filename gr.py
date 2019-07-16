@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------------------
-# Name:        Go board parsing project
-# Purpose:     Go board parsing functions
+# Name:        Go board recognition project
+# Purpose:     Go board processing functions
 #
 # Author:      skolchin
 #
@@ -14,8 +14,12 @@ import cv2
 import numpy as np
 
 # Find stones on a board
-# Makes array of stones in form of (X, Y, R) in image coordinates
-# The array is stored in results list and returned
+# Takes an image, recognition param dictionary, results dictionary and
+# kind of stones been processed ('B' or 'W')
+# Recognized stones are saved in a list in form of (X, Y, R),
+# where X,Y are image coordinates, R - radius in pixels
+# Several analysis parameters are also stored in the results dict
+# The array is stored in the results dictionary and returned
 def find_stones(img, params, res, f_bw):
 
     # Make a thresholded image
@@ -59,6 +63,13 @@ def find_stones(img, params, res, f_bw):
          return stones[0]
 
 # Find board edges, spacing and size
+# Takes an image, recognition param dictionary and results dictionary
+# Finds:
+#   board edges: a tuple ((xmin,ymin),(xmax,ymax)) in image coords
+#   board size: single value
+#   board net spacing: a tuple (sx, sy) in image coordinates
+# Some other analysis parameters are also stored in the results dict
+# Returns board edges
 def find_board(img, params, res):
     # Find edges
     n_minval = params['CANNY_MINVAL']
@@ -197,8 +208,9 @@ def find_board(img, params, res):
                           round(space_x,2), round(space_y,2)))
     return brd_edges
 
-# Converts X,Y to stone positions
-# Returns an array containg stones positions for given set of coordinates
+# Converts stone coordinates to stone positions
+# Takes an array of coordinates created by find_stones and results dictionary
+# Returns an array containg stones positions as well as board coordinates
 # Board coordinates are stores as first two array items, board position - as 3,4
 def convert_xy(coord, res):
     if (coord is None):
@@ -236,7 +248,8 @@ def convert_xy(coord, res):
 
         return stones
 
-# Find a stone for given coordinates
+# Find a stone for given image coordinates
+# Takes X and Y in image coordinates and a list of stones created by convert_xy
 def find_coord(x, y, coord):
     for i in coord:
         min_x = i[0] - 7
@@ -295,8 +308,8 @@ def process_img(img, params):
 
     return res
 
-# Creates a board image with default parameters
-# If black or white stones are provided, plot them to the board
+# Creates a board image for given image shape and board size
+# If recognition results are provided, plot them on the board
 def generate_board(shape = grdef.DEF_IMG_SIZE, board_size = None, res = None):
 
     # Prepare params
@@ -355,45 +368,3 @@ def generate_board(shape = grdef.DEF_IMG_SIZE, board_size = None, res = None):
 
     return img
 
-# Create a debug information image of given shape
-##def generate_debug_img(shape):
-##    global glDebugImg
-##
-##    keys = (
-##         'THRESH_B',
-##         'STONES_B',
-##         'THRESH_W',
-##         'STONES_W'
-##    )
-##
-##    sx = int(shape[0] / 2 - 2)
-##    sy = int(shape[1] / 2 - 2)
-##
-##    ret_img = np.zeros((shape[0], shape[1], 3), dtype=np.uint8)
-##    ret_img[:] = (127,127,127)
-##    if glDebugImg is None:
-##       return ret_img
-##
-##    x = 1
-##    y = 1
-##    nc = 0
-##    for key in keys:
-##        img = glDebugImg.get(key)
-##        if (img is not None):
-##           img = cv2.resize(img, (sx, sy))
-##
-##           img2 = np.empty((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-##           img2[:,:,0] = img
-##           img2[:,:,1] = img
-##           img2[:,:,2] = img
-##
-##           ret_img[x:x+sx, y:y+sy] = img2
-##
-##           x = x + sx + 1
-##           nc = nc + 1
-##           if nc > 1:
-##              x = 1
-##              nc = 0
-##              y = y + sy + 1
-##
-##    return ret_img
