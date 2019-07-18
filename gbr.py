@@ -26,6 +26,11 @@ from pathlib import Path
 PADX = 5
 PADY = 5
 
+class NLabel(tk.Label):
+      def __init__(self, master, tag=None, *args, **kwargs):
+          tk.Label.__init__(self, master, *args, **kwargs)
+          self.master, self.tag = master, tag
+
 # Main function
 def main():
 
@@ -80,6 +85,15 @@ def main():
     # Callback for mouse events on original image
     def orig_img_mouse_callback(event):
         load_img_callback()
+
+    # Callback for mouse event on debug image
+    def dbg_img_mouse_callback(event):
+        global grRes
+
+        w = event.widget
+        k = w.tag
+        grutils.show(k, grRes[k])
+
 
     # Load image button callback
     def load_img_callback():
@@ -223,9 +237,10 @@ def main():
                img = cv2.resize(res[key], (sx, sy))
 
                imgtk = ImageTk.PhotoImage(image=Image.fromarray(img))
-               panel = tk.Label(frame, image = imgtk)
+               panel = NLabel(frame, image = imgtk, tag = key)
                panel.image = imgtk
                panel.grid(row = 0, column = 0)
+               panel.bind('<Button-1>', dbg_img_mouse_callback)
 
                panel = tk.Label(frame, text = key)
                panel.grid(row = 1, column = 0, sticky = "nswe")
