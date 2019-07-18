@@ -24,25 +24,26 @@ The algorithm per se is the following:
   
 3. Find stones (black and white):
 
-  3.1. Threshold image to keep only stone-related pixels (for white stone images - also invert it)
+  * Threshold image to keep only stone-related pixels (for white stone images - also invert it)
   
-  3.2. Morph the image (dilate, erode). Add a blur to remove noise
+  * Morph the image (dilate, erode). Add a blur to remove noise
   
-  3.3. Run HoughCircles to detect circles which are going to be the stones
+  * Run HoughCircles to detect circles which are going to be the stones
   
 4. Convert X, Y stone coordinates to board positions
 
 There are parameters for each of the steps which have to be tuned for each particular board. After the tuning, it performs quite well on a computer-generated boards. However, it couldn't properly process images with extensive glare on the stones.
 
 TODO:
-1. Add stone reconcilation (detection of stones occupying the same position)
 
-2. Adopt the algorithm to the photos of real boards. This might require image transformations (skew, rotation etc) and background removal.
+[x] Add stone reconcilation (detection of stones occupying the same position)
 
-3. Add stones removal/adding/color changing
+[x] Adopt the algorithm to the photos of real boards. This might require image transformations (skew, rotation etc) and background removal.
 
-4. Add SGF file creation
+[x] Add stones removal/adding/color changing
 
-5. Add deep network to make it universal
+[x] Add SGF file creation
 
-6. Create a mobile app
+[x] Add deep network to make it universal
+
+[x] Create a mobile app
