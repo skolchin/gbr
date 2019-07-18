@@ -8,7 +8,7 @@ The algorithm per se is the following:
 
 1. Make a gray image from the source image
 
-2. Detect board pararameters (edges, board size):
+1. Detect board pararameters (edges, board size):
 
   2.1. Run HoughLinesP lines detection which would return multiple line segments
   
