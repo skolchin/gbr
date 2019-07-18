@@ -36,14 +36,14 @@ There are parameters for each of the steps which have to be tuned for each parti
 
 TODO:
 
-[x] Add stone reconcilation (detection of stones occupying the same position)
+- [ ] Add stone reconcilation (detection of stones occupying the same position)
 
-[x] Adopt the algorithm to the photos of real boards. This might require image transformations (skew, rotation etc) and background removal.
+- [ ] Adopt the algorithm to the photos of real boards. This might require image transformations (skew, rotation etc) and background removal.
 
-[x] Add stones removal/adding/color changing
+- [ ] Add stones removal/adding/color changing
 
-[x] Add SGF file creation
+- [ ] Add SGF file creation
 
-[x] Add deep network to make it universal
+- [ ] Add deep network to make it universal
 
-[x] Create a mobile app
+- [ ] Create a mobile app
