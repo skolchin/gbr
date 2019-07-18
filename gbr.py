@@ -15,8 +15,9 @@ import grutils
 import numpy as np
 import cv2
 import tkinter as tk
-from PIL import Image, ImageTk
 from tkinter import filedialog
+from tkinter import ttk
+from PIL import Image, ImageTk
 import string as ss
 import json
 from pathlib import Path
@@ -157,28 +158,45 @@ def main():
         frame = None
         vars = dict()
 
-        for key in params.keys():
-            if grdef.GR_PARAMS_PROP[key][2]:
-                if (n == 3 or frame is None):
-                   frame = tk.Frame(root)
-                   frame.grid(row = nrow, column = ncol, padx = 3, pady = 3)
-                   n = 0
-                   ncol = ncol + 1
+        # Add a tabbed notebook
+        nb = ttk.Notebook(root)
+        nb.grid(row = nrow, column = 0, sticky = "nswe", padx = PADX, pady = PADY)
 
-                # Add a switch
-                panel = tk.Label(frame, text = key)
-                panel.grid(row = n, column = 0, padx = 2, pady = 2, sticky = "s")
+        # Get unique tabs
+        tabs = set([e[2] for e in grdef.GR_PARAMS_PROP.values() if e[2]])
 
-                v = tk.IntVar()
-                v.set(params[key])
-                panel = tk.Scale(frame, from_ = grdef.GR_PARAMS_PROP[key][0],
-                                        to = grdef.GR_PARAMS_PROP[key][1],
-                                        orient = tk.HORIZONTAL,
-                                        variable = v)
-                panel.grid(row = n, column = 1, padx = 2, pady = 2)
-                vars[key] = v
+        # Add switches to notebook tabs
+        for tab in tabs:
+            # Add a tab frame
+            nbFrame = tk.Frame(nb, width = 400)
+            nb.add(nbFrame, text = tab)
+            frame = None
+            n = 0
+            ncol = 0
 
-                n = n + 1
+            # Iterate through the params processing only ones belonging to current tab
+            for key in params.keys():
+                if grdef.GR_PARAMS_PROP[key][2] == tab:
+                    if (n == 3 or frame is None):
+                       frame = tk.Frame(nbFrame, width = 400)
+                       frame.grid(row = 0, column = ncol, padx = 3, pady = 3)
+                       n = 0
+                       ncol = ncol + 1
+
+                    # Add a switch
+                    panel = tk.Label(frame, text = key)
+                    panel.grid(row = n, column = 0, padx = 2, pady = 2, sticky = "s")
+
+                    v = tk.IntVar()
+                    v.set(params[key])
+                    panel = tk.Scale(frame, from_ = grdef.GR_PARAMS_PROP[key][0],
+                                            to = grdef.GR_PARAMS_PROP[key][1],
+                                            orient = tk.HORIZONTAL,
+                                            variable = v)
+                    panel.grid(row = n, column = 1, padx = 2, pady = 2)
+                    vars[key] = v
+
+                    n = n + 1
         return vars
 
 
@@ -242,7 +260,6 @@ def main():
     # Update board
     def update_board():
         global grRes
-        #global grParams
         global origImg
 
         # Process original image
@@ -318,12 +335,14 @@ def main():
     canvas.create_window((0,0), window=dbgFrame, anchor='nw')
 
     # Info frame
-    infoFrame = tk.Frame(window)
-    infoFrame.grid(row = 1, column = 0, padx = PADX, pady = PADY)
+    infoFrame = tk.Frame(window, width = origImg.shape[0]*2, height = 300)
+    infoFrame.grid(row = 1, column = 0, padx = PADX, pady = PADY, sticky = "nswe")
+    #infoFrame.grid_propagate(0)
 
     # Info frame: buttons
-    buttonFrame = tk.Frame(infoFrame, width = 200, bd = 1, relief = tk.RAISED)
-    buttonFrame.grid(row = 0, column = 1, sticky = "nswe")
+    buttonFrame = tk.Frame(infoFrame, bd = 1, relief = tk.RAISED, width = origImg.shape[0]*2+PADX*2, height = 50)
+    buttonFrame.grid(row = 0, column = 0, sticky = "nswe")
+    buttonFrame.grid_propagate(0)
 
     panel = tk.Button(buttonFrame, text = "Load image", command = load_img_callback)
     panel.grid(row = 0, column = 0, padx = PADX, pady = PADY)
@@ -345,7 +364,7 @@ def main():
 
     # Info frame: switches
     switchFrame = tk.Frame(infoFrame, bd = 1, relief = tk.RAISED)
-    switchFrame.grid(row = 1, column = 1, sticky = "nswe")
+    switchFrame.grid(row = 1, column = 0, sticky = "nswe")
     tkVars = add_switches(switchFrame, grParams)
 
     # Status bar

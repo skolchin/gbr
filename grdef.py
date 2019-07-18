@@ -47,31 +47,35 @@ DEF_GR_PARAMS = {
 
 # Parameter properties: min, max, change, block
 GR_PARAMS_PROP = {
-    "CANNY_MINVAL": (1, 255, False, "CANNY"),
-    "CANNY_MAXVAL": (1, 255, False, "CANNY"),
-    "CANNY_APERTURE": (3, 7, False, "CANNY"),
-    "HL_RHO": (1, 5, True, "HL"),
-    "HL_THETA": (1, 90, True, "HL"),
-    "HL_THRESHOLD": (1, 255, True, "HL"),
-    "HL_RHO2": (1, 5, True, "HL"),
-    "HL_THETA2": (1, 90, True, "HL"),
-    "HL_THRESHOLD2": (1, 255, True, "HL"),
-    "HC_MINDIST": (1, 30, False, "HC"),
-    "HC_MAXRADIUS": (1, 40, False, "HC"),
-    "HC_SENSITIVITY_B": (1, 40, True),
-    "HC_MASK_B": (1, 10, True, "BLACK"),
-    "BLUR_MASK_B": (2, 10, True, "BLACK"),
-    "STONES_THRESHOLD_B": (1, 255, True, "BLACK"),
-    "STONES_DILATE_B": (0, 10, True, "BLACK"),
-    "STONES_ERODE_B": (0, 10, True, "BLACK"),
-    "STONES_MAXVAL_B": (1, 255, False, "WHITE"),
-    "BLUR_MASK_W": (2, 10, True, "WHITE"),
-    "HC_MASK_W": (1, 10, True, "WHITE"),
-    "HC_SENSITIVITY_W": (1, 40, True, "WHITE"),
-    "STONES_THRESHOLD_W": (1, 255, True, "WHITE"),
-    "STONES_MAXVAL_W": (1, 255, False, "WHITE"),
-    "STONES_DILATE_W": (0, 10, True, "WHITE"),
-    "STONES_ERODE_W": (0, 10, True, "WHITE")
+    "CANNY_MINVAL": (1, 255, None),
+    "CANNY_MAXVAL": (1, 255, None),
+    "CANNY_APERTURE": (3, 7, None),
+
+    "HL_RHO": (1, 5, "Lines detection"),
+    "HL_THETA": (1, 90, "Lines detection"),
+    "HL_THRESHOLD": (1, 255, "Lines detection"),
+    "HL_RHO2": (1, 5, "Lines detection"),
+    "HL_THETA2": (1, 90, "Lines detection"),
+    "HL_THRESHOLD2": (1, 255, "Lines detection"),
+
+    "HC_MINDIST": (1, 30, None),
+    "HC_MAXRADIUS": (1, 40, None),
+
+    "HC_SENSITIVITY_B": (1, 40, "Black stones detection"),
+    "HC_MASK_B": (1, 10, "Black stones detection"),
+    "BLUR_MASK_B": (2, 10, "Black stones detection"),
+    "STONES_THRESHOLD_B": (1, 255, "Black stones detection"),
+    "STONES_DILATE_B": (0, 10, "Black stones detection"),
+    "STONES_ERODE_B": (0, 10, "Black stones detection"),
+    "STONES_MAXVAL_B": (1, 255, None),
+
+    "BLUR_MASK_W": (2, 10, "White stones detection"),
+    "HC_MASK_W": (1, 10, "White stones detection"),
+    "HC_SENSITIVITY_W": (1, 40, "White stones detection"),
+    "STONES_THRESHOLD_W": (1, 255, "White stones detection"),
+    "STONES_DILATE_W": (0, 10, "White stones detection"),
+    "STONES_ERODE_W": (0, 10, "White stones detection"),
+    "STONES_MAXVAL_W": (1, 255, None)
 }
 
 # Constants for analysis results
