@@ -2,7 +2,7 @@
 
 This is my project aiming to create a program which would be able to analyse a Go board image in order to determine board parameters and stone placement. 
 
-The project is build on wonderfull OpenCV library.
+The project is build on wonderfull [OpenCV](https://opencv.org/) library.
 
 The algorithm per se is the following:
 
