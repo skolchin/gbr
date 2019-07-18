@@ -28,15 +28,15 @@ def find_stones(img, params, res, f_bw):
     n_iter_d = params['STONES_DILATE_' + f_bw]
     n_iter_e = params['STONES_ERODE_' + f_bw]
     n_mindist = params['HC_MINDIST']
-    n_param2 = params['HC_SENSITIVITY']
     n_maxrad = params['HC_MAXRADIUS']
-    n_mask = params['HC_MASK']
+    n_param2 = params['HC_SENSITIVITY_' + f_bw]
+    n_mask = params['HC_MASK_' + f_bw]
+    n_blur = params['BLUR_MASK_' + f_bw]
 
     ret, thresh = cv2.threshold(img, n_thresh, n_maxval, cv2.THRESH_BINARY)
-    kernel = np.ones((3,3),np.uint8)
-
     if (f_bw == 'W'):
-        thresh = cv2.bitwise_not(thresh)
+       #ret, thresh = cv2.threshold(cv2.bitwise_not(img), n_thresh, n_maxval, cv2.THRESH_BINARY)
+       thresh = cv2.bitwise_not(thresh)
 
     res['IMG_THRESH_' + f_bw] = thresh
 
@@ -44,12 +44,17 @@ def find_stones(img, params, res, f_bw):
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(n_mask,n_mask))
     stones_img = thresh
     if n_iter_d > 0:
-       stones_img = cv2.dilate(stones_img, kernel, iterations=n_iter_d)
+       stones_img = cv2.dilate(stones_img, kernel, iterations=n_iter_d,
+                                           borderType = cv2.BORDER_CONSTANT,
+                                           borderValue = grdef.COLOR_BLACK)
     if n_iter_e > 0:
        stones_img = cv2.erode(stones_img, kernel, iterations=n_iter_e)
 
+    # Filter the image to reduce noise
+    stones_img = cv2.blur(stones_img, (n_blur, n_blur))
     res['IMG_MORPH_' + f_bw] = stones_img
 
+    # Find stones
     stones = cv2.HoughCircles(stones_img, cv2.HOUGH_GRADIENT,
                                           1,
                                           minDist = n_mindist,
@@ -261,24 +266,6 @@ def find_coord(x, y, coord):
 
     return (-1, -1, -1, -1)
 
-# Resize an image to minimium allowed size
-def preprocess_img(img):
-    # Check image size and resize if needed
-##    print("Image size:", img.shape)
-##    MIN_SIZE = 400
-##    f_resize = (img.shape[0] < MIN_SIZE or img.shape[1] < MIN_SIZE)
-##    if (f_resize):
-##       img = cv2.resize(img,
-##           (int(float(MIN_SIZE) / img.shape[1] * img.shape[0]),
-##           int(float(MIN_SIZE) / img.shape[0] * img.shape[1])),
-##           interpolation = cv2.INTER_CUBIC)
-##       kernel = np.array([[-1,-1,-1],
-##                   [-1, 9,-1],
-##                   [-1,-1,-1]])
-##       img = cv2.filter2D(img, -1, kernel)
-##       if (_DEBUG_):
-##          show('After resizing', img)
-    return img
 
 # Board image processing main function
 # Takes board image and recognition params

@@ -18,10 +18,6 @@ DEF_AVAIL_SIZES = [9, 13, 19]
 
 # Default parameter values
 DEF_GR_PARAMS = {
-    "HC_MINDIST": 1,
-    "HC_SENSITIVITY": 10,
-    "HC_MAXRADIUS": 20,
-    "HC_MASK": 4,
     "CANNY_MINVAL": 50,
     "CANNY_MAXVAL": 100,
     "CANNY_APERTURE": 3,
@@ -31,7 +27,14 @@ DEF_GR_PARAMS = {
     "HL_RHO2": 1,
     "HL_THETA2": 5,
     "HL_THRESHOLD2": 6,
-    #"HL_DILATE": 0,
+    "HC_MINDIST": 1,
+    "HC_MAXRADIUS": 20,
+    "HC_SENSITIVITY_B": 10,
+    "HC_MASK_B": 4,
+    "HC_SENSITIVITY_W": 10,
+    "HC_MASK_W": 4,
+    "BLUR_MASK_B": 4,
+    "BLUR_MASK_W": 4,
     "STONES_THRESHOLD_B": 83,
     "STONES_THRESHOLD_W": 218,
     "STONES_MAXVAL_B": 255,
@@ -40,34 +43,35 @@ DEF_GR_PARAMS = {
     "STONES_DILATE_W": 0,
     "STONES_ERODE_B": 0,
     "STONES_ERODE_W": 0
-#    "BOARD_SIZE": DEF_BOARD_SIZE
 }
 
-# Parameter properties: min, max, change, title
+# Parameter properties: min, max, change, block
 GR_PARAMS_PROP = {
-    "HC_MINDIST": (1, 30, True),
-    "HC_SENSITIVITY": (1, 40, True),
-    "HC_MAXRADIUS": (1, 40, True),
-    "HC_MASK": (1, 6, True),
-    "CANNY_MINVAL": (1, 255, False),
-    "CANNY_MAXVAL": (1, 255, False),
-    "CANNY_APERTURE": (3, 7, False),
-    "HL_RHO": (1, 5, True),
-    "HL_THETA": (1, 90, True),
-    "HL_THRESHOLD": (1, 255, True),
-    "HL_RHO2": (1, 5, True),
-    "HL_THETA2": (1, 90, True),
-    "HL_THRESHOLD2": (1, 255, True),
-    #"HL_DILATE": (0, 10, True),
-    "STONES_THRESHOLD_B": (1, 255, True),
-    "STONES_THRESHOLD_W": (1, 255, True),
-    "STONES_MAXVAL_B": (1, 255, False),
-    "STONES_MAXVAL_W": (1, 255, False),
-    "STONES_DILATE_B": (0, 10, True),
-    "STONES_DILATE_W": (0, 10, True),
-    "STONES_ERODE_B": (0, 10, True),
-    "STONES_ERODE_W": (0, 10, True)
-    #"BOARD_SIZE": (9, 21, True)
+    "CANNY_MINVAL": (1, 255, False, "CANNY"),
+    "CANNY_MAXVAL": (1, 255, False, "CANNY"),
+    "CANNY_APERTURE": (3, 7, False, "CANNY"),
+    "HL_RHO": (1, 5, True, "HL"),
+    "HL_THETA": (1, 90, True, "HL"),
+    "HL_THRESHOLD": (1, 255, True, "HL"),
+    "HL_RHO2": (1, 5, True, "HL"),
+    "HL_THETA2": (1, 90, True, "HL"),
+    "HL_THRESHOLD2": (1, 255, True, "HL"),
+    "HC_MINDIST": (1, 30, False, "HC"),
+    "HC_MAXRADIUS": (1, 40, False, "HC"),
+    "HC_SENSITIVITY_B": (1, 40, True),
+    "HC_MASK_B": (1, 10, True, "BLACK"),
+    "BLUR_MASK_B": (2, 10, True, "BLACK"),
+    "STONES_THRESHOLD_B": (1, 255, True, "BLACK"),
+    "STONES_DILATE_B": (0, 10, True, "BLACK"),
+    "STONES_ERODE_B": (0, 10, True, "BLACK"),
+    "STONES_MAXVAL_B": (1, 255, False, "WHITE"),
+    "BLUR_MASK_W": (2, 10, True, "WHITE"),
+    "HC_MASK_W": (1, 10, True, "WHITE"),
+    "HC_SENSITIVITY_W": (1, 40, True, "WHITE"),
+    "STONES_THRESHOLD_W": (1, 255, True, "WHITE"),
+    "STONES_MAXVAL_W": (1, 255, False, "WHITE"),
+    "STONES_DILATE_W": (0, 10, True, "WHITE"),
+    "STONES_ERODE_W": (0, 10, True, "WHITE")
 }
 
 # Constants for analysis results
