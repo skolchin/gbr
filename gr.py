@@ -33,33 +33,43 @@ def find_stones(img, params, res, f_bw):
     n_mask = params['HC_MASK_' + f_bw]
     n_blur = params['BLUR_MASK_' + f_bw]
 
-    ret, thresh = cv2.threshold(img, n_thresh, n_maxval, cv2.THRESH_BINARY)
+    thresh = None
     if (f_bw == 'W'):
-       #ret, thresh = cv2.threshold(cv2.bitwise_not(img), n_thresh, n_maxval, cv2.THRESH_BINARY)
-       thresh = cv2.bitwise_not(thresh)
+       ret, thresh = cv2.threshold(img, n_thresh, n_maxval, cv2.THRESH_BINARY_INV)
+    else:
+       ret, thresh = cv2.threshold(img, n_thresh, n_maxval, cv2.THRESH_BINARY)
 
     res['IMG_THRESH_' + f_bw] = thresh
 
     # Dilate and erode
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(n_mask,n_mask))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(100,100))
+    kernel = cv2.resize(kernel, (n_mask, n_mask))
+
     stones_img = thresh
     if n_iter_d > 0:
-       stones_img = cv2.dilate(stones_img, kernel, iterations=n_iter_d,
+       stones_img = cv2.dilate(stones_img, kernel,
+                                           iterations=n_iter_d,
                                            borderType = cv2.BORDER_CONSTANT,
                                            borderValue = grdef.COLOR_BLACK)
     if n_iter_e > 0:
-       stones_img = cv2.erode(stones_img, kernel, iterations=n_iter_e)
+       stones_img = cv2.erode(stones_img, kernel,
+                                          iterations=n_iter_e,
+                                          borderType = cv2.BORDER_CONSTANT,
+                                          borderValue = grdef.COLOR_BLACK)
 
-    # Filter the image to reduce noise
-    stones_img = cv2.blur(stones_img, (n_blur, n_blur))
+    # Add some blur and sharpen the image to smooth the edges
+    if n_blur > 0:
+       stones_img = cv2.blur(stones_img, (n_blur, n_blur))
+
     res['IMG_MORPH_' + f_bw] = stones_img
 
     # Find stones
     stones = cv2.HoughCircles(stones_img, cv2.HOUGH_GRADIENT,
                                           1,
                                           minDist = n_mindist,
-                                          param1 = n_maxval,
+                                          param1 = 100,
                                           param2 = n_param2,
+                                          #minRadius = 3,
                                           maxRadius = n_maxrad)
 
     if (stones is None):

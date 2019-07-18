@@ -39,6 +39,9 @@ def make_stones_img(shape, points, color = grdef.COLOR_BLACK, img = None):
 # The function creates a new image with the same shape and draw the stones there
 # If f_show = TRUE, image is been shown
 def show_stones(title, shape, points, img = None):
+    if points is None:
+       return
+
     img = make_stones_img(shape, points, img)
     show(title, img)
 

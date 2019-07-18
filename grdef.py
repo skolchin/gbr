@@ -39,9 +39,9 @@ DEF_GR_PARAMS = {
     "STONES_THRESHOLD_W": 218,
     "STONES_MAXVAL_B": 255,
     "STONES_MAXVAL_W": 255,
-    "STONES_DILATE_B": 2,
+    "STONES_DILATE_B": 1,
     "STONES_DILATE_W": 0,
-    "STONES_ERODE_B": 0,
+    "STONES_ERODE_B": 1,
     "STONES_ERODE_W": 0
 }
 
@@ -63,13 +63,13 @@ GR_PARAMS_PROP = {
 
     "HC_SENSITIVITY_B": (1, 40, "Black stones detection"),
     "HC_MASK_B": (1, 10, "Black stones detection"),
-    "BLUR_MASK_B": (2, 10, "Black stones detection"),
+    "BLUR_MASK_B": (0, 10, "Black stones detection"),
     "STONES_THRESHOLD_B": (1, 255, "Black stones detection"),
     "STONES_DILATE_B": (0, 10, "Black stones detection"),
     "STONES_ERODE_B": (0, 10, "Black stones detection"),
     "STONES_MAXVAL_B": (1, 255, None),
 
-    "BLUR_MASK_W": (2, 10, "White stones detection"),
+    "BLUR_MASK_W": (0, 10, "White stones detection"),
     "HC_MASK_W": (1, 10, "White stones detection"),
     "HC_SENSITIVITY_W": (1, 40, "White stones detection"),
     "STONES_THRESHOLD_W": (1, 255, "White stones detection"),
