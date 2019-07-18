@@ -10,7 +10,7 @@ The algorithm per se is the following:
 
 1. Detect board pararameters (edges, board size):
 
-  2.1. Run HoughLinesP lines detection which would return multiple line segments
+  1. Run HoughLinesP lines detection which would return multiple line segments
   
   2.2. Remove lines which are too close to image borders
   
