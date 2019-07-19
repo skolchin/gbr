@@ -206,7 +206,7 @@ def main():
         tabs = set([e[2] for e in grdef.GR_PARAMS_PROP.values() if e[2]])
 
         # Add switches to notebook tabs
-        for tab in tabs:
+        for tab in sorted(tabs):
             # Add a tab frame
             nbFrame = tk.Frame(nb, width = 400)
             nb.add(nbFrame, text = tab)
