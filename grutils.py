@@ -27,8 +27,8 @@ def make_stones_img(shape, points, color = grdef.COLOR_BLACK, img = None):
        img = np.full(shape, grdef.COLOR_WHITE[0], dtype=np.uint8)
 
     for i in points:
-        x1 = i[0]
-        y1 = i[1]
+        x1 = i[grdef.GR_X]
+        y1 = i[grdef.GR_Y]
         r = 7
         cv2.circle(img, (x1,y1), r, color, -1)
 
@@ -52,10 +52,10 @@ def make_lines_img(shape, lines, width = 1, img = None):
     if (img is None):
        img = np.full(shape, grdef.COLOR_WHITE[0], dtype=np.uint8)
     for i in lines:
-        x1 = i[0][0]
-        y1 = i[0][1]
-        x2 = i[1][0]
-        y2 = i[1][1]
+        x1 = i[grdef.GR_FROM][grdef.GR_X]
+        y1 = i[grdef.GR_FROM][grdef.GR_Y]
+        x2 = i[grdef.GR_TO][grdef.GR_X]
+        y2 = i[grdef.GR_TO][grdef.GR_Y]
         cv2.line(img, (x1,y1), (x2,y2), grdef.COLOR_BLACK, width)
 
     return img
@@ -128,9 +128,9 @@ def img1_to_img3(img):
 
 # Check horizontal and vertical lines are intersecting
 def has_intersection(lh, lv):
-    min_y = min(lv[0][1], lv[1][1])
-    max_y = max(lv[0][1], lv[1][1])
-    y = lh[0][1]
+    min_y = min(lv[grdef.GR_FROM][grdef.GR_Y], lv[grdef.GR_TO][grdef.GR_Y])
+    max_y = max(lv[grdef.GR_FROM][grdef.GR_Y], lv[grdef.GR_TO][grdef.GR_Y])
+    y = lh[grdef.GR_FROM][grdef.GR_Y]
     f = min_y <= y and max_y >= y
     return f
 
@@ -138,11 +138,14 @@ def has_intersection(lh, lv):
 def clear_lines(shape, lines, delta = 3):
     res = []
     for i in lines:
-        x1 = i[0][0]
-        y1 = i[0][1]
-        x2 = i[1][0]
-        y2 = i[1][1]
-        if (x1 > delta and y1 > delta and x2 < shape[0] - delta and y2 < shape[1] - delta):
+        x1 = i[grdef.GR_FROM][grdef.GR_X]
+        y1 = i[grdef.GR_FROM][grdef.GR_Y]
+        x2 = i[grdef.GR_TO][grdef.GR_X]
+        y2 = i[grdef.GR_TO][grdef.GR_Y]
+        if (x1 > delta
+           and y1 > delta
+           and x2 < shape[grdef.CV_WIDTH] - delta
+           and y2 < shape[grdef.CV_HEIGTH] - delta):
            res.append(i)
 
     return res

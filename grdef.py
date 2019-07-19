@@ -15,6 +15,13 @@ DEF_IMG_SIZE = (500, 500)
 DEF_IMG_COLOR = (80, 145, 210)
 DEF_BOARD_SIZE = 19
 DEF_AVAIL_SIZES = [9, 13, 19]
+CV_HEIGTH = 0
+CV_WIDTH = 1
+CV_CHANNEL = 2
+GR_X = 0
+GR_Y = 1
+GR_FROM = 0
+GR_TO = 1
 
 # Default parameter values
 DEF_GR_PARAMS = {
@@ -30,11 +37,11 @@ DEF_GR_PARAMS = {
     "HC_MINDIST": 1,
     "HC_MAXRADIUS": 20,
     "HC_SENSITIVITY_B": 10,
-    "HC_MASK_B": 4,
+    "HC_MASK_B": 3,
     "HC_SENSITIVITY_W": 10,
-    "HC_MASK_W": 4,
-    "BLUR_MASK_B": 4,
-    "BLUR_MASK_W": 4,
+    "HC_MASK_W": 3,
+    "BLUR_MASK_B": 0,
+    "BLUR_MASK_W": 0,
     "STONES_THRESHOLD_B": 83,
     "STONES_THRESHOLD_W": 218,
     "STONES_MAXVAL_B": 255,
@@ -84,6 +91,7 @@ GR_STONES_W = "WS"                  # white stones
 GR_BOARD_SIZE = "BOARD_SIZE"        # board size
 GR_IMG_GRAY = "IMG_GRAY"            # grayed out image
 GR_IMG_BLUE = "IMG_CHANNEL_B"       # blue channel of the image
+GR_IMG_RED = "IMG_CHANNEL_R"        # red channel of the image
 GR_IMG_THRESH_B = "IMG_THRESH_B"    # thresholded black stones image
 GR_IMG_THRESH_W = "IMG_THRESH_W"    # thresholded white stones image
 GR_IMG_MORPH_B = "IMG_MORPH_B"      # morthed black stones image

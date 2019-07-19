@@ -121,10 +121,10 @@ def find_board(img, params, res):
     ymax = -1
 
     for i in lines:
-        x1 = i[0][0]
-        y1 = i[0][1]
-        x2 = i[1][0]
-        y2 = i[1][1]
+        x1 = i[grdef.GR_FROM][grdef.GR_X]
+        y1 = i[grdef.GR_FROM][grdef.GR_Y]
+        x2 = i[grdef.GR_TO][grdef.GR_X]
+        y2 = i[grdef.GR_TO][grdef.GR_Y]
 
         if (abs(x1 - x2) < 3 or abs(y1 - y2) < 3):
            # Vertical or horizontal line
@@ -289,12 +289,13 @@ def process_img(img, params):
     res[grdef.GR_IMG_GRAY] = gray
     b,g,r = cv2.split(img)
     res[grdef.GR_IMG_BLUE] = b
+    res[grdef.GR_IMG_RED] = r
 
     # Find board edges, spacing, size
     board_edges = find_board(gray, params, res)
 
     # Find black stones
-    black_stones_xy = find_stones(gray, params, res, 'B')
+    black_stones_xy = find_stones(r, params, res, 'B')
 
     # Find white stones
     white_stones_xy = find_stones(b, params, res, 'W')
@@ -322,9 +323,9 @@ def generate_board(shape = grdef.DEF_IMG_SIZE, board_size = None, res = None):
     space_x = None
     space_y = None
     if res is None:
-       edges = ((14,14),(shape[0]-14, shape[1]-14))
-       space_x = (edges[1][0] - edges[0][0]) / (board_size - 1)
-       space_y = (edges[1][1] - edges[0][1]) / (board_size - 1)
+       edges = ((14,14),(shape[grdef.CV_WIDTH]-14, shape[grdef.CV_HEIGTH]-14))
+       space_x = (edges[grdef.GR_TO][grdef.GR_X] - edges[grdef.GR_FROM][grdef.GR_X]) / (board_size - 1)
+       space_y = (edges[grdef.GR_TO][grdef.GR_Y] - edges[grdef.GR_FROM][grdef.GR_Y]) / (board_size - 1)
     else:
        edges = res[grdef.GR_EDGES]
        space_x, space_y = res[grdef.GR_SPACING]
@@ -335,16 +336,16 @@ def generate_board(shape = grdef.DEF_IMG_SIZE, board_size = None, res = None):
 
     # Draw the lines
     for i in range(board_size):
-        x1 = int(edges[0][0] + (i * space_x))
-        y1 = int(edges[0][1])
+        x1 = int(edges[grdef.GR_FROM][grdef.GR_X] + (i * space_x))
+        y1 = int(edges[grdef.GR_FROM][grdef.GR_Y])
         x2 = x1
-        y2 = int(edges[1][1])
+        y2 = int(edges[grdef.GR_TO][grdef.GR_Y])
         cv2.line(img,(x1,y1),(x2,y2),grdef.COLOR_BLACK,1)
 
     for i in range(board_size):
-        x1 = int(edges[0][0])
-        y1 = int(edges[0][1] + (i * space_y))
-        x2 = int(edges[1][0])
+        x1 = int(edges[grdef.GR_FROM][grdef.GR_X])
+        y1 = int(edges[grdef.GR_FROM][grdef.GR_Y] + (i * space_y))
+        x2 = int(edges[grdef.GR_TO][grdef.GR_X])
         y2 = y1
         cv2.line(img, (x1,y1), (x2,y2), grdef.COLOR_BLACK, 1)
 
@@ -356,14 +357,14 @@ def generate_board(shape = grdef.DEF_IMG_SIZE, board_size = None, res = None):
 
        if black_stones is not None:
           for i in black_stones:
-              x1 = int(edges[0][0] + ((i[2]-1) * space_x))
-              y1 = int(edges[0][1] + ((i[3]-1) * space_y))
+              x1 = int(edges[grdef.GR_FROM][grdef.GR_X] + ((i[2]-1) * space_x))
+              y1 = int(edges[grdef.GR_FROM][grdef.GR_Y] + ((i[3]-1) * space_y))
               cv2.circle(img, (x1,y1), r, grdef.COLOR_BLACK, -1)
 
        if white_stones is not None:
           for i in white_stones:
-              x1 = int(edges[0][0] + ((i[2]-1) * space_x))
-              y1 = int(edges[0][1] + ((i[3]-1) * space_y))
+              x1 = int(edges[grdef.GR_FROM][grdef.GR_X] + ((i[2]-1) * space_x))
+              y1 = int(edges[grdef.GR_FROM][grdef.GR_Y] + ((i[3]-1) * space_y))
               cv2.circle(img, (x1,y1), r, grdef.COLOR_BLACK, 1)
               cv2.circle(img, (x1,y1), r-1, grdef.COLOR_WHITE, -1)
 
