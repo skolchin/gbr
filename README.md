@@ -38,7 +38,7 @@ However, it was not tested on real board photos and I suppose it will require ad
 
 TODO:
 
-- [X] Find some ways to deal with glare on the stones
+- [x] Find some ways to deal with glare on the stones
 
 - [ ] Add stone reconcilation (detection of stones occupying the same position)
 
