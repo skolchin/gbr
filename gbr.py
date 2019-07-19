@@ -124,6 +124,8 @@ def main():
                         tkVars[key].set(grParams[key])
 
            # Process image
+           showBlack = True
+           showWhite = True
            update_board()
 
            # Update status
@@ -318,7 +320,8 @@ def main():
 
         black_stones = grRes[grdef.GR_STONES_B]
         white_stones = grRes[grdef.GR_STONES_W]
-        boardInfo.set("Stones found: {} black, {} white".format(black_stones.shape[0], white_stones.shape[0]))
+        board_size = grRes[grdef.GR_BOARD_SIZE]
+        boardInfo.set("Board size: {}, black stones: {}, white stones: {}".format(board_size, black_stones.shape[0], white_stones.shape[0]))
 
         # Update debug info
         add_debug_info(dbgFrame, origImg.shape, grRes)
