@@ -6,7 +6,7 @@ The project is build on wonderfull [OpenCV](https://opencv.org/) library.
 
 The algorithm per se is the following:
 
-1. Make a gray image from the source image
+1. Make a gray image from the source image and extract a blue channel from it. Gray image will be used for lines black stones detection, while blue channel - for white stones detection.
 
 1. Detect board pararameters (edges, board size):
 
@@ -32,11 +32,13 @@ The algorithm per se is the following:
 
 4. Convert X, Y stone coordinates to board positions
 
-There are some tuning parameters for each of the steps and they are to be adjusted for each particular board. After the tuning, the program performs quite well on a computer-generated boards. However, currently it couldn't properly process images with extensive glare on the stones. Also it was not tested on real board photos and I suppose it will require additional tuning to handle them.
+There are some tuning parameters for each of the steps and they are to be adjusted for each particular board. After the tuning, the program performs quite well on a computer-generated boards.
+
+However, it was not tested on real board photos and I suppose it will require additional tuning to handle them.
 
 TODO:
 
-- [ ] Find some ways to deal with glare on the stones
+- [X] Find some ways to deal with glare on the stones
 
 - [ ] Add stone reconcilation (detection of stones occupying the same position)
 

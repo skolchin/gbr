@@ -34,10 +34,10 @@ def find_stones(img, params, res, f_bw):
     n_blur = params['BLUR_MASK_' + f_bw]
 
     thresh = None
-    if (f_bw == 'W'):
-       ret, thresh = cv2.threshold(img, n_thresh, n_maxval, cv2.THRESH_BINARY_INV)
-    else:
+    if (f_bw == 'B'):
        ret, thresh = cv2.threshold(img, n_thresh, n_maxval, cv2.THRESH_BINARY)
+    else:
+       ret, thresh = cv2.threshold(img, n_thresh, n_maxval, cv2.THRESH_BINARY_INV)
 
     res['IMG_THRESH_' + f_bw] = thresh
 
@@ -287,6 +287,8 @@ def process_img(img, params):
     # Graying out
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     res[grdef.GR_IMG_GRAY] = gray
+    b,g,r = cv2.split(img)
+    res[grdef.GR_IMG_BLUE] = b
 
     # Find board edges, spacing, size
     board_edges = find_board(gray, params, res)
@@ -295,7 +297,7 @@ def process_img(img, params):
     black_stones_xy = find_stones(gray, params, res, 'B')
 
     # Find white stones
-    white_stones_xy = find_stones(gray, params, res, 'W')
+    white_stones_xy = find_stones(b, params, res, 'W')
 
     # Convert X-Y coordinates to stone positions
     black_stones = convert_xy(black_stones_xy, res)

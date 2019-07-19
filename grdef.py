@@ -83,6 +83,7 @@ GR_STONES_B = "BS"                  # black stones
 GR_STONES_W = "WS"                  # white stones
 GR_BOARD_SIZE = "BOARD_SIZE"        # board size
 GR_IMG_GRAY = "IMG_GRAY"            # grayed out image
+GR_IMG_BLUE = "IMG_CHANNEL_B"       # blue channel of the image
 GR_IMG_THRESH_B = "IMG_THRESH_B"    # thresholded black stones image
 GR_IMG_THRESH_W = "IMG_THRESH_W"    # thresholded white stones image
 GR_IMG_MORPH_B = "IMG_MORPH_B"      # morthed black stones image
