@@ -26,6 +26,7 @@ from pathlib import Path
 PADX = 5
 PADY = 5
 
+# Image frame with additional tag - for debug info
 class NLabel(tk.Label):
       def __init__(self, master, tag=None, *args, **kwargs):
           tk.Label.__init__(self, master, *args, **kwargs)
@@ -64,8 +65,8 @@ def main():
         if grRes is None or origImg is None:
            return
 
-        x = x - int((w - origImg.shape[0]) / 2)
-        y = y - int((h - origImg.shape[1]) / 2)
+        x = x - int((w - origImg.shape[grdef.CV_WIDTH]) / 2)
+        y = y - int((h - origImg.shape[grdef.CV_HEIGTH]) / 2)
         print('{}, {}'.format(x, y))
 
         f = "Black"
@@ -246,7 +247,7 @@ def main():
 
         nrow = 0
         ncol = 0
-        sx = int(shape[0] / 2) - 5
+        sx = int(shape[grdef.CV_WIDTH] / 2) - 5
         sy = sx
 
         # Remove all previously added controls
@@ -383,12 +384,12 @@ def main():
     canvas.create_window((0,0), window=dbgFrame, anchor='nw')
 
     # Info frame
-    infoFrame = tk.Frame(window, width = origImg.shape[0]*2, height = 300)
+    infoFrame = tk.Frame(window, width = origImg.shape[grdef.CV_WIDTH]*2, height = 300)
     infoFrame.grid(row = 1, column = 0, padx = PADX, pady = PADY, sticky = "nswe")
     #infoFrame.grid_propagate(0)
 
     # Info frame: buttons
-    buttonFrame = tk.Frame(infoFrame, bd = 1, relief = tk.RAISED, width = origImg.shape[0]*2+PADX*2, height = 50)
+    buttonFrame = tk.Frame(infoFrame, bd = 1, relief = tk.RAISED, width = origImg.shape[grdef.CV_WIDTH]*2+PADX*2, height = 50)
     buttonFrame.grid(row = 0, column = 0, sticky = "nswe")
     buttonFrame.grid_propagate(0)
 
