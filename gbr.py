@@ -31,24 +31,25 @@ class NLabel(tk.Label):
           tk.Label.__init__(self, master, *args, **kwargs)
           self.master, self.tag = master, tag
 
+# Global variables
+origImg = None                # originally loaded image
+origImgName = None            # name of original image file
+window = None                 # root window
+origImgPanel = None           # panel to display original image
+genImgPanel = None            # generated image panel
+boardInfo = None              # board info panel
+stoneInfo = None              # stone information panel
+tkVars = None                 # list of trackbard linked to board recog params
+dbgFrame = None               # Frame to hold list of debug images
+canvas = None                 # Canvas around debug image
+grParams = None               # list of board recog parameters
+grRes = None                  # Board recognition results
+showBlack = True             # Show/hide black stones
+showWhite = True             # Show/hide white stones
+
 # Main function
 def main():
-
-    # Common variables
-    origImg = None                # originally loaded image
-    origImgName = None            # name of original image file
-    window = None                 # root window
-    origImgPanel = None           # panel to display original image
-    genImgPanel = None            # generated image panel
-    boardInfo = None              # board info panel
-    stoneInfo = None              # stone information panel
-    tkVars = None                 # list of trackbard linked to board recog params
-    dbgFrame = None               # Frame to hold list of debug images
-    canvas = None                 # Canvas around debug image
-    grParams = None               # list of board recog parameters
-    grRes = None                  # Board recognition results
-
-    # Callback functions
+     # Callback functions
     # Callback for mouse events on generated board image
     def gen_img_mouse_callback(event):
         global grRes
@@ -165,6 +166,28 @@ def main():
         # when all widgets are in canvas
         canvas.configure(scrollregion=canvas.bbox('all'))
 
+    # Callback for "Show black stones"
+    def show_black_callback():
+        global showBlack
+        global origImg
+
+        if origImg is None:
+           return
+
+        showBlack = not showBlack
+        update_board(reprocess= False)
+
+    # Callback for "Show white stones"
+    def show_white_callback():
+        global showWhite
+        global origImg
+
+        if origImg is None:
+           return
+
+        showWhite = not showWhite
+        update_board(reprocess= False)
+
     # Add Scale widgets with board recognition parameters
     def add_switches(root, params, nrow = 0):
         n = 1
@@ -273,15 +296,22 @@ def main():
         panel.grid(row = 1, column = 0, sticky = "nswe")
 
     # Update board
-    def update_board():
+    def update_board(reprocess = True):
         global grRes
         global origImg
 
         # Process original image
-        grRes = gr.process_img(origImg, grParams)
+        if grRes is None or reprocess:
+           grRes = gr.process_img(origImg, grParams)
 
         # Generate board using analysis results
-        gen_img = gr.generate_board(shape = origImg.shape, res = grRes)
+        r = grRes.copy()
+        if not showBlack:
+           del r[grdef.GR_STONES_B]
+        if not showWhite:
+           del r[grdef.GR_STONES_W]
+
+        gen_img = gr.generate_board(shape = origImg.shape, res = r)
         imgtk = grutils.img_to_imgtk(gen_img)
         genImgPanel.configure(image = imgtk)
         genImgPanel.image = imgtk
@@ -371,11 +401,17 @@ def main():
     panel = tk.Button(buttonFrame, text = "Defaults", command = apply_def_callback)
     panel.grid(row = 0, column = 3, padx = PADX, pady = PADY)
 
+    panel = tk.Button(buttonFrame, text = "Black", command = show_black_callback)
+    panel.grid(row = 0, column = 4, padx = PADX, pady = PADY)
+
+    panel = tk.Button(buttonFrame, text = "White", command = show_white_callback)
+    panel.grid(row = 0, column = 5, padx = PADX, pady = PADY)
+
     # Info frame: stones info
     boardInfo = tk.StringVar()
     boardInfo.set("No stones found")
     panel = tk.Label(buttonFrame, textvariable = boardInfo)
-    panel.grid(row = 0, column = 4, sticky = "nwse", padx = PADX)
+    panel.grid(row = 0, column = 6, sticky = "nwse", padx = PADX)
 
     # Info frame: switches
     switchFrame = tk.Frame(infoFrame, bd = 1, relief = tk.RAISED)

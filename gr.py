@@ -350,20 +350,22 @@ def generate_board(shape = grdef.DEF_IMG_SIZE, board_size = None, res = None):
 
     # Draw the stones
     if res is not None:
-        black_stones = res[grdef.GR_STONES_B]
-        white_stones = res[grdef.GR_STONES_W]
-        r = max(int(min(space_x, space_y) / 2) - 1, 5)
+       black_stones = res.get(grdef.GR_STONES_B)
+       white_stones = res.get(grdef.GR_STONES_W)
+       r = max(int(min(space_x, space_y) / 2) - 1, 5)
 
-        for i in black_stones:
-            x1 = int(edges[0][0] + ((i[2]-1) * space_x))
-            y1 = int(edges[0][1] + ((i[3]-1) * space_y))
-            cv2.circle(img, (x1,y1), r, grdef.COLOR_BLACK, -1)
+       if black_stones is not None:
+          for i in black_stones:
+              x1 = int(edges[0][0] + ((i[2]-1) * space_x))
+              y1 = int(edges[0][1] + ((i[3]-1) * space_y))
+              cv2.circle(img, (x1,y1), r, grdef.COLOR_BLACK, -1)
 
-        for i in white_stones:
-            x1 = int(edges[0][0] + ((i[2]-1) * space_x))
-            y1 = int(edges[0][1] + ((i[3]-1) * space_y))
-            cv2.circle(img, (x1,y1), r, grdef.COLOR_BLACK, 1)
-            cv2.circle(img, (x1,y1), r-1, grdef.COLOR_WHITE, -1)
+       if white_stones is not None:
+          for i in white_stones:
+              x1 = int(edges[0][0] + ((i[2]-1) * space_x))
+              y1 = int(edges[0][1] + ((i[3]-1) * space_y))
+              cv2.circle(img, (x1,y1), r, grdef.COLOR_BLACK, 1)
+              cv2.circle(img, (x1,y1), r-1, grdef.COLOR_WHITE, -1)
 
     return img
 
