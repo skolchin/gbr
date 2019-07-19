@@ -6,7 +6,7 @@ The project is build on wonderfull [OpenCV](https://opencv.org/) library.
 
 The algorithm per se is the following:
 
-1. Make a gray image from the source image and extract a blue channel from it. Gray image will be used for lines black stones detection, while blue channel - for white stones detection.
+1. Make a gray image from the source image and extract a blue channel. Gray image will be used for lines and black stones detection, while blue channel - for white stones detection.
 
 1. Detect board pararameters (edges, board size):
 
