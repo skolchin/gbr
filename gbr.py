@@ -18,7 +18,6 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import ttk
 from PIL import Image, ImageTk
-import string as ss
 import json
 from pathlib import Path
 
@@ -77,10 +76,10 @@ def main():
         if (p[0] >= 0):
            ct = "{f} {a}{b} at ({x},{y})".format(
               f = f,
-              a = ss.ascii_uppercase[p[2]-1],
-              b = p[3],
-              x = round(p[0],0),
-              y = round(p[1],0))
+              a = grutils.stone_pos(p, grdef.GR_A),
+              b = grutils.stone_pos(p, grdef.GR_B),
+              x = round(p[grdef.GR_X],0),
+              y = round(p[grdef.GR_Y],0))
            print(ct)
            stoneInfo.set(ct)
 
@@ -146,6 +145,22 @@ def main():
              json.dump(grParams, f, indent=4, sort_keys=True, ensure_ascii=False)
 
         stoneInfo.set("Params saved to: " + str(fn))
+
+    # Save stones button callback
+    def save_jgf_callback():
+        global origImgName
+
+        # Save json with current parsing parameters
+        if origImgName is None or origImgName == "":
+           # Nothing to do!
+           return
+
+        jgf = grutils.gres_to_jgf(grRes)
+        fn = Path(origImgName).with_suffix('.jgf')
+        with open(fn, "w", encoding="utf-8", newline='\r\n') as f:
+             json.dump(jgf, f, indent=4, sort_keys=True, ensure_ascii=False)
+
+        stoneInfo.set("Stones saved to: " + str(fn))
 
     # Apply button callback
     def apply_callback():
@@ -399,23 +414,26 @@ def main():
     panel = tk.Button(buttonFrame, text = "Save params", command = save_json_callback)
     panel.grid(row = 0, column = 1, padx = PADX, pady = PADY)
 
-    panel = tk.Button(buttonFrame, text = "Apply", command = apply_callback)
+    panel = tk.Button(buttonFrame, text = "Save stones", command = save_jgf_callback)
     panel.grid(row = 0, column = 2, padx = PADX, pady = PADY)
 
-    panel = tk.Button(buttonFrame, text = "Defaults", command = apply_def_callback)
+    panel = tk.Button(buttonFrame, text = "Apply", command = apply_callback)
     panel.grid(row = 0, column = 3, padx = PADX, pady = PADY)
 
-    panel = tk.Button(buttonFrame, text = "Black", command = show_black_callback)
+    panel = tk.Button(buttonFrame, text = "Defaults", command = apply_def_callback)
     panel.grid(row = 0, column = 4, padx = PADX, pady = PADY)
 
-    panel = tk.Button(buttonFrame, text = "White", command = show_white_callback)
+    panel = tk.Button(buttonFrame, text = "Black", command = show_black_callback)
     panel.grid(row = 0, column = 5, padx = PADX, pady = PADY)
+
+    panel = tk.Button(buttonFrame, text = "White", command = show_white_callback)
+    panel.grid(row = 0, column = 6, padx = PADX, pady = PADY)
 
     # Info frame: stones info
     boardInfo = tk.StringVar()
     boardInfo.set("No stones found")
     panel = tk.Label(buttonFrame, textvariable = boardInfo)
-    panel.grid(row = 0, column = 6, sticky = "nwse", padx = PADX)
+    panel.grid(row = 0, column = 7, sticky = "nwse", padx = PADX)
 
     # Info frame: switches
     switchFrame = tk.Frame(infoFrame, bd = 1, relief = tk.RAISED)

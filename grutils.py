@@ -12,6 +12,7 @@ import grdef
 import cv2
 import numpy as np
 from PIL import Image, ImageTk
+import string as ss
 
 # Show image
 # Simple wrapper on cv2.imshow
@@ -183,3 +184,32 @@ def hough_to_lines(lines, shape):
         res.append(((x1,y1),(x2,y2)))
 
     return res
+
+def stone_pos(stone, axis = None):
+    if axis is None:
+         return ss.ascii_uppercase[stone[grdef.GR_A]-1] + str(stone[grdef.GR_B])
+    elif axis == grdef.GR_A:
+         return ss.ascii_uppercase[stone[grdef.GR_A]-1]
+    else:
+         return str(stone[axis])
+
+# Convert GR results to JGF dictionary
+# JGF dictionary stucture:
+#     board_size: <board_size>
+#     black: {<array of black stone postions>} in form of XY,
+#            where X - X position as a letter starting from A,
+#                  Y - Y position as a number starting from 1
+#     white: {<array of white stone positions>}
+def gres_to_jgf(res):
+
+    def sp(stones):
+        p = []
+        for stone in stones:
+            p.append(stone_pos(stone))
+        return p
+
+    jgf = dict()
+    jgf['board_size'] = res[grdef.GR_BOARD_SIZE]
+    jgf['black'] = sp(res[grdef.GR_STONES_B])
+    jgf['white'] = sp(res[grdef.GR_STONES_W])
+    return jgf
