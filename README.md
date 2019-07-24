@@ -32,13 +32,23 @@ The algorithm per se is the following:
 
 4. Convert X, Y stone coordinates to board positions
 
-There are some tuning parameters for each of the steps and they are to be adjusted for each particular board. After the tuning, the program performs quite well on a computer-generated boards.
+There are some tuning parameters for each of the steps and they are to be adjusted for each particular board. After the tuning, it performs quite well on a computer-generated boards.
 
-However, it was not tested on real board photos and I suppose it will require additional tuning to handle them.
+Also supported:
+
+* Saving adjusted parameters to JSON file, which is automatically loaded with the image
+
+* Saving recognized stone positions to JSON file (JGF extension)
+
+Changelog:
+
+24/07/2019: GUI rewritten: all code moved from main() to GbrGUI class
 
 TODO:
 
 - [x] Find some ways to deal with glare on the stones
+
+- [x] Allow to save recognized stone positions
 
 - [ ] Add stone reconcilation (detection of stones occupying the same position)
 
