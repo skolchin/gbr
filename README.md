@@ -42,7 +42,11 @@ Also supported:
 
 Changelog:
 
-24/07/2019: GUI rewritten: all code moved from main() to GbrGUI class
+24/07/2019:
+
+* GUI rewritten: all code moved from main() to GbrGUI class
+
+* Extra info on board save
 
 TODO:
 

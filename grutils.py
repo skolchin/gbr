@@ -190,26 +190,30 @@ def stone_pos(stone, axis = None):
          return ss.ascii_uppercase[stone[grdef.GR_A]-1] + str(stone[grdef.GR_B])
     elif axis == grdef.GR_A:
          return ss.ascii_uppercase[stone[grdef.GR_A]-1]
-    else:
+    elif axis == grdef.GR_B:
          return str(stone[axis])
+    else:
+         return int(round(stone[axis],0))
 
 # Convert GR results to JGF dictionary
-# JGF dictionary stucture:
-#     board_size: <board_size>
-#     black: {<array of black stone postions>} in form of XY,
-#            where X - X position as a letter starting from A,
-#                  Y - Y position as a number starting from 1
-#     white: {<array of white stone positions>}
 def gres_to_jgf(res):
 
     def sp(stones):
-        p = []
+        p = dict()
         for stone in stones:
-            p.append(stone_pos(stone))
+            key = stone_pos(stone)
+            p[key] = dict()
+            p[key]['X'] = stone_pos(stone, grdef.GR_X)
+            p[key]['Y'] = stone_pos(stone, grdef.GR_Y)
         return p
 
     jgf = dict()
     jgf['board_size'] = res[grdef.GR_BOARD_SIZE]
+    jgf['edges'] = dict()
+    jgf['edges']['0'] = res[grdef.GR_EDGES][0]
+    jgf['edges']['1'] = res[grdef.GR_EDGES][1]
+    jgf['spacing'] = res[grdef.GR_SPACING]
+    jgf['num_stones'] = (len(res[grdef.GR_STONES_B]), len(res[grdef.GR_STONES_W]))
     jgf['black'] = sp(res[grdef.GR_STONES_B])
     jgf['white'] = sp(res[grdef.GR_STONES_W])
     return jgf

@@ -137,7 +137,7 @@ def find_board(img, params, res):
            if (y2 > ymax or ymax == -1):
               ymax = y2
 
-    brd_edges = ((xmin, ymin), (xmax, ymax))
+    brd_edges = ((int(xmin), int(ymin)), (int(xmax), int(ymax)))
     res[grdef.GR_EDGES] = brd_edges
 
     # Detecting board size

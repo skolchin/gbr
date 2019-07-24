@@ -260,7 +260,7 @@ class GbrGUI:
         with open(fn, "w", encoding="utf-8", newline='\r\n') as f:
              json.dump(jgf, f, indent=4, sort_keys=True, ensure_ascii=False)
 
-        self.stoneInfo.set("Stones saved to: " + str(fn))
+        self.stoneInfo.set("Board saved to: " + str(fn))
 
       # Apply button callback
       def apply_callback(self):
