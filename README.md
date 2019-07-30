@@ -32,15 +32,23 @@ The algorithm per se is the following:
 
 4. Convert X, Y stone coordinates to board positions
 
-There are some tuning parameters for each of the steps and they are to be adjusted for each particular board. After the tuning, it performs quite well on a computer-generated boards.
+There are some tuning parameters for each of the steps and they are to be adjusted for each particular board. After the tuning, the program performs quite well on a computer-generated and in most cases on real boards.
 
-Also supported:
+Examples of source and generated images:
 
-* Saving adjusted parameters to JSON file, which is automatically loaded with the image
+| Source | Generated |
+| ---    | ---       |
+| ![1]() | ![1]() |
+| ![2]() | ![2]() |
+| ![3]() | ![3]() |
 
-* Saving recognized stone positions to JSON file (JGF extension)
 
-Changelog:
+## Changelog:
+
+30/07/2019:
+
+* Added Python 2.7 support
+
 
 24/07/2019:
 
@@ -48,7 +56,7 @@ Changelog:
 
 * Extra info on board save
 
-TODO:
+## TODO:
 
 - [x] Find some ways to deal with glare on the stones
 
