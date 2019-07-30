@@ -38,9 +38,9 @@ Examples of source and generated images:
 
 | Source | Generated |
 | ---    | ---       |
-| ![1](../../tree/master/img/go_board_13.png) | ![1](../../tree/master/img/go_board_13_gen.png) |
-| ![2]() | ![2]() |
-| ![3]() | ![3]() |
+| ![1](../../tree/master/img/go_board_1.png?raw=true) | ![1](../../tree/master/img/go_board_1_gen.jpg?raw=true) |
+| ![2](../../tree/master/img/go_board_13.png?raw=true) | ![2](../../tree/master/img/go_board_13_gen.png?raw=true) |
+| ![3](../../tree/master/img/go_board_8a.png?raw=true) | ![3](../../tree/master/img/go_board_8a.jpg?raw=true) |
 
 
 ## Changelog:
