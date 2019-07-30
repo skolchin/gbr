@@ -70,6 +70,8 @@ Examples of source and generated images:
 
 - [ ] Add SGF file creation
 
+- [ ] Make a web interface and deploy to cloud
+
 - [ ] Add deep network to make it universal
 
 - [ ] Create a mobile app

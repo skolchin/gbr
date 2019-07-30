@@ -14,12 +14,21 @@ import grutils
 
 import numpy as np
 import cv2
-import tkinter as tk
-from tkinter import filedialog
-from tkinter import ttk
+import sys
+
 from PIL import Image, ImageTk
 import json
 from pathlib import Path
+
+if sys.version_info[0] < 3:
+    import Tkinter as tk
+    import tkFileDialog  as filedialog
+    import ttk
+else:
+    import tkinter as tk
+    from tkinter import filedialog
+    from tkinter import ttk
+
 
 # Constants
 PADX = 5
@@ -219,7 +228,7 @@ class GbrGUI:
            ftitle = ""
            fnj = Path(self.origImgName).with_suffix('.json')
            if fnj.is_file():
-              p = json.load(open(fnj))
+              p = json.load(open(str(fnj)))
               ftitle = " (with params)"
               for key in self.grParams.keys():
                   if p.get(key) is not None:
@@ -243,7 +252,7 @@ class GbrGUI:
            return
 
         fn = Path(self.origImgName).with_suffix('.json')
-        with open(fn, "w", encoding="utf-8", newline='\r\n') as f:
+        with open(str(fn), "w", encoding="utf-8", newline='\r\n') as f:
              json.dump(self.grParams, f, indent=4, sort_keys=True, ensure_ascii=False)
 
         self.stoneInfo.set("Params saved to: " + str(fn))
