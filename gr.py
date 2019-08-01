@@ -240,29 +240,30 @@ def convert_xy(coord, res):
         space_x, space_y = res[grdef.GR_SPACING]
 
         # Loop through, converting board coordinates to integer positions
+        # Radius is stored in dictiotary to retrieve later
+        # This is kinda dumb way but I cannot find other one
+        rd = dict()
         for i in range(len(coord)):
             x = coord[i,0] - edges[0][0]
             y = coord[i,1] - edges[0][1]
 
             stones[i,0] = int(round(x / space_x, 0)) + 1
             stones[i,1] = int(round(y / space_y, 0)) + 1
-
-            print("{}: ({}, {}) -> {}, {}".format(i,
-                       coord[i,0], coord[i,1], stones[i,0], stones[i,1]))
+            rd[str(stones[i,0]) + "_" + str(stones[i,1])] = coord[i,2]
 
         # Remove duplicates
         stones_u = grutils.unique_rows(stones)
 
         # Calculate coordinates for stones left in the list
         stones = np.zeros((len(stones_u), 5), dtype = np.uint16)
-        r = max(int(min(space_x, space_y) / 2) - 1, 5)
 
         for i in range(len(stones_u)):
             stones[i,grdef.GR_X] = (stones_u[i, 0]-1) * space_x + edges[0][0]
             stones[i,grdef.GR_Y] = (stones_u[i, 1]-1) * space_y + edges[0][1]
             stones[i,grdef.GR_A] = stones_u[i, 0]
             stones[i,grdef.GR_B] = stones_u[i, 1]
-            stones[i,grdef.GR_R] = r
+            stones[i,grdef.GR_R] = rd[str(stones_u[i,0]) + "_" + str(stones_u[i,1])]
+
         return stones
 
 # Find a stone for given image coordinates

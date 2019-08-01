@@ -84,39 +84,63 @@ def unique_rows(a):
 
 # Remove values too close to each other
 def remove_nearest(a, axis1 = 0, axis2 = None, delta = 5):
+
+    # Subfunction for tuples
+    def remove_nearest_t(a, axis1, axis2, delta):
+        b = None
+        if axis2 is None: b = sorted(a, key = lambda x: x[axis1])
+        else:             b = sorted(a, key = lambda x: x[axis1][axis2])
+        r = []
+        vp = None
+        for i in b:
+            v = None
+            if axis2 is None: v = i[axis1]
+            else:             v = i[axis1][axis2]
+            if vp is None or abs(v - vp) > delta: r.append(i)
+            vp = v
+        return r
+
+    # Subfunction for ndarrays
+    def remove_nearest_a(a, axis1, axis2, delta):
+        b = np.sort(a, axis1)
+        r = []
+        vp = [None, None]
+        vf = np.vectorize(lambda t: t > delta)
+
+        for i in b:
+            v = None
+            if axis2 is None:
+               v = [i[axis1], None]
+            else:
+               v = [i[axis1], i[axis2]]
+            if vp[0] is None: r.append(i)
+            else:
+                t = np.abs(np.subtract(v, vp))
+                ft = vf(t)
+                if ft.any(): r.append(i)
+
+            vp = v
+        return np.asarray(r)
+
+    # Subfunction for other types
+    def remove_nearest_r(a, axis1, axis2, delta):
+        b = sorted(a)
+        r = []
+        vp = None
+        for i in b:
+            v = i
+            if vp is None or abs(v - vp) > delta: r.append(i)
+            vp = v
+        return r
+
     if a is None or len(a) == 0:
        return a
-
-    # Sort the array
-    b = None
-    if type(a[0]) is not tuple:
-       b = sorted(a)
+    elif type(a[0]) is tuple:
+       return remove_nearest_t(a, axis1, axis2, delta)
+    elif type(a) is np.ndarray:
+       return remove_nearest_a(a, axis1, axis2, delta)
     else:
-       if axis2 is None:
-          b = sorted(a, key = lambda x: x[axis1])
-       else:
-          b = sorted(a, key = lambda x: x[axis1][axis2])
-
-    def get_v(x):
-        if type(x) is not tuple:
-           return x
-        else:
-            if axis2 is None:
-                return x[axis1]
-            else:
-                return x[axis1][axis2]
-
-
-    # Find values not too close and add to returning array
-    r = []
-    vp = None
-    for i in b:
-        v = get_v(i)
-        if vp is None or abs(v - vp) > delta:
-           r.append(i)
-        vp = v
-
-    return r
+       return remove_nearest_r(a, axis1, axis2, delta)
 
 # Convert 1-channel image to 3-channel
 def img1_to_img3(img):
@@ -205,6 +229,9 @@ def gres_to_jgf(res):
             p[key] = dict()
             p[key]['X'] = stone_pos(stone, grdef.GR_X)
             p[key]['Y'] = stone_pos(stone, grdef.GR_Y)
+            p[key]['R'] = stone_pos(stone, grdef.GR_R)
+            p[key]['A'] = stone_pos(stone, grdef.GR_A)
+            p[key]['B'] = stone_pos(stone, grdef.GR_B)
         return p
 
     jgf = dict()

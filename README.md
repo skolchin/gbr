@@ -54,7 +54,8 @@ Python 2.7/3.5, packages: numpy, opencv2, tkinter, pathlib
 
 01/08/2019:
 
-* Added support for large images
+* Added: support for large images
+* Added: stone radius saving in JGF file
 
 30/07/2019:
 
