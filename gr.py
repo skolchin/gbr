@@ -254,23 +254,25 @@ def convert_xy(coord, res):
         stones_u = grutils.unique_rows(stones)
 
         # Calculate coordinates for stones left in the list
-        stones = np.zeros((len(stones_u), 4), dtype = np.uint16)
-        for i in range(len(stones_u)):
-            stones[i,0] = (stones_u[i, 0]-1) * space_x + edges[0][0]
-            stones[i,1] = (stones_u[i, 1]-1) * space_y + edges[0][1]
-            stones[i,2] = stones_u[i, 0]
-            stones[i,3] = stones_u[i, 1]
+        stones = np.zeros((len(stones_u), 5), dtype = np.uint16)
+        r = max(int(min(space_x, space_y) / 2) - 1, 5)
 
+        for i in range(len(stones_u)):
+            stones[i,grdef.GR_X] = (stones_u[i, 0]-1) * space_x + edges[0][0]
+            stones[i,grdef.GR_Y] = (stones_u[i, 1]-1) * space_y + edges[0][1]
+            stones[i,grdef.GR_A] = stones_u[i, 0]
+            stones[i,grdef.GR_B] = stones_u[i, 1]
+            stones[i,grdef.GR_R] = r
         return stones
 
 # Find a stone for given image coordinates
 # Takes X and Y in image coordinates and a list of stones created by convert_xy
 def find_coord(x, y, coord):
     for i in coord:
-        min_x = i[0] - 7
-        min_y = i[1] - 7
-        max_x = i[0] + 7
-        max_y = i[1] + 7
+        min_x = i[grdef.GR_X] - i[grdef.GR_R]
+        min_y = i[grdef.GR_Y] - i[grdef.GR_R]
+        max_x = i[grdef.GR_X] + i[grdef.GR_R]
+        max_y = i[grdef.GR_Y] + i[grdef.GR_R]
         if (x >= min_x and x <= max_x and y >= min_y and y <= max_y):
            return i
 

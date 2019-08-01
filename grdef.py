@@ -22,6 +22,7 @@ GR_X = 0
 GR_Y = 1
 GR_A = 2
 GR_B = 3
+GR_R = 4
 GR_FROM = 0
 GR_TO = 1
 

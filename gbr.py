@@ -43,6 +43,9 @@ class NLabel(tk.Label):
 
 # GUI class
 class GbrGUI:
+      MAX_IMG_SIZE = 550
+      MAX_DBG_IMG_SIZE = 200
+
       def __init__(self, root):
           self.root = root
 
@@ -55,9 +58,9 @@ class GbrGUI:
           # Default board image and generated image
           self.origImg = gr.generate_board()
           self.origImgName = None
-          self.origImgTk = grutils.img_to_imgtk(self.origImg)
+          self.origImgTk, self.zoom = self.make_imgtk(self.origImg)
           self.genImg = self.origImg
-          self.genImgTk = grutils.img_to_imgtk(self.genImg)
+          self.genImgTk, _ = self.make_imgtk(self.genImg)
 
           # Images panel (original + generated + analysis)
           self.imgFrame = tk.Frame(self.root)
@@ -112,10 +115,10 @@ class GbrGUI:
 
           self.dbgFrameCanvas = tk.Canvas(self.dbgFrameRoot)
           self.dbgFrameCanvas.pack(side = tk.LEFT)
-          self.dbgFrameScroll= tk.Scrollbar(self.dbgFrameRoot, command=self.dbgFrameCanvas.yview)
-          self.dbgFrameScroll.pack(side=tk.LEFT, fill='y')
+          self.dbgFrameScrollY = tk.Scrollbar(self.dbgFrameRoot, command=self.dbgFrameCanvas.yview)
+          self.dbgFrameScrollY.pack(side=tk.LEFT, fill='y')
 
-          self.dbgFrameCanvas.configure(yscrollcommand = self.dbgFrameScroll.set)
+          self.dbgFrameCanvas.configure(yscrollcommand = self.dbgFrameScrollY.set)
           self.dbgFrameCanvas.bind('<Configure>', self.on_scroll_configure)
 
           self.dbgFrame = tk.Frame(self.dbgFrameCanvas)
@@ -180,12 +183,14 @@ class GbrGUI:
           h = event.widget.winfo_height()
           x = event.x
           y = event.y
+          zx = self.zoom[grdef.GR_X]
+          zy = self.zoom[grdef.GR_Y]
 
           if self.origImgName is None:
             return
 
-          x = x - int((w - self.origImg.shape[grdef.CV_WIDTH]) / 2)
-          y = y - int((h - self.origImg.shape[grdef.CV_HEIGTH]) / 2)
+          x = int((x - (w - self.origImg.shape[grdef.CV_WIDTH] * zx) / 2) / zx)
+          y = int((y - (h - self.origImg.shape[grdef.CV_HEIGTH] * zy) / 2) / zy)
           print('{}, {}'.format(x, y))
 
           f = "Black"
@@ -220,7 +225,7 @@ class GbrGUI:
         if (fn != ""):
            # Load the image
            self.origImg = cv2.imread(fn)
-           self.origImgTk = grutils.img_to_imgtk(self.origImg)
+           self.origImgTk, self.zoom = self.make_imgtk(self.origImg)
            self.origImgPanel.configure(image = self.origImgTk)
            self.origImgName = fn
 
@@ -356,7 +361,6 @@ class GbrGUI:
                     n = n + 1
         return vars
 
-
       # Add analysis results info
       def add_debug_info(self, root, shape, res):
         if res is None:
@@ -365,7 +369,8 @@ class GbrGUI:
         nrow = 0
         ncol = 0
         sx = int(shape[grdef.CV_WIDTH] / 2) - 5
-        sy = sx
+        if sx > self.MAX_DBG_IMG_SIZE: sx = self.MAX_DBG_IMG_SIZE
+        sy = int(float(sx) / float(shape[grdef.CV_WIDTH]) * shape[grdef.CV_HEIGTH])
 
         # Remove all previously added controls
         for c in root.winfo_children():
@@ -429,7 +434,7 @@ class GbrGUI:
            del r[grdef.GR_STONES_W]
 
         self.genImg = gr.generate_board(shape = self.origImg.shape, res = r)
-        self.genImgTk = grutils.img_to_imgtk(self.genImg)
+        self.genImgTk, _ = self.make_imgtk(self.genImg)
         self.genImgPanel.configure(image = self.genImgTk)
 
         black_stones = self.grRes[grdef.GR_STONES_B]
@@ -441,6 +446,31 @@ class GbrGUI:
         # Update debug info
         self.add_debug_info(self.dbgFrame, self.origImg.shape, self.grRes)
 
+      # Convert origImg to ImageTk
+      # If image size greater than maximim one, resize it to proper level and store zoom factor
+      def make_imgtk(self, img):
+          z = [1.0, 1.0]
+          w = img.shape[grdef.CV_WIDTH]
+          h = img.shape[grdef.CV_HEIGTH]
+          if (w > self.MAX_IMG_SIZE and h > self.MAX_IMG_SIZE):
+             if w >= h:
+                z[grdef.GR_X] = float(self.MAX_IMG_SIZE) / float(w)
+                z[grdef.GR_Y] = z[grdef.GR_X]
+             else:
+                z[grdef.GR_Y] = float(self.MAX_IMG_SIZE) / float(h)
+                z[grdef.GR_X] = z[grdef.GR_Y]
+          elif (w > self.MAX_IMG_SIZE):
+             z[grdef.GR_X] = float(self.MAX_IMG_SIZE) / float(w)
+             z[grdef.GR_Y] = z[grdef.GR_X]
+          elif (h > self.MAX_IMG_SIZE):
+             z[grdef.GR_Y] = float(self.MAX_IMG_SIZE) / float(h)
+             z[grdef.GR_X] = z[grdef.GR_Y]
+
+          img2 = cv2.resize(img, None, fx = z[grdef.GR_X],
+                                       fy = z[grdef.GR_Y])
+          imgtk = grutils.img_to_imgtk(img2)
+
+          return imgtk, z
 
 # Main function
 def main():

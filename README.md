@@ -32,7 +32,9 @@ The algorithm per se is the following:
 
 4. Convert X, Y stone coordinates to board positions
 
-There are some tuning parameters for each of the steps and they are to be adjusted for each particular board. After the tuning, the program performs quite well on a computer-generated and in most cases on real boards.
+There are some tuning parameters for each of the steps and they are to be adjusted for each particular board. After the tuning, the program performs quite well on a computer-generated boards.
+
+As for real board images, they have to be manually adjusted to have all edges to be equal to abount 90 degree and board lines - to be horizontal/vertical. After that, they are processed satisfactory, but more tuning on parameters might be required.
 
 Examples of source and generated images:
 
@@ -44,6 +46,10 @@ Examples of source and generated images:
 
 
 ## Changelog:
+
+01/08/2019:
+
+* Added support for large images
 
 30/07/2019:
 
