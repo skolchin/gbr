@@ -45,7 +45,12 @@ Examples of source and generated images:
 | ![3](../master/img/go_board_8a.png) | ![3](../master/img/go_board_8a_gen.jpg) |
 
 
-## Changelog:
+## Requirements
+
+Python 2.7/3.5, packages: numpy, opencv2, tkinter, pathlib
+
+
+## Changelog
 
 01/08/2019:
 
@@ -62,7 +67,7 @@ Examples of source and generated images:
 
 * Extra info on board save
 
-## TODO:
+## TODO
 
 - [x] Find some ways to deal with glare on the stones
 
