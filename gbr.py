@@ -270,6 +270,8 @@ class GbrGUI:
            return
 
         jgf = grutils.gres_to_jgf(self.grRes)
+        jgf['image_file'] = self.origImgName
+
         fn = Path(self.origImgName).with_suffix('.jgf')
         with open(fn, "w", encoding="utf-8", newline='\r\n') as f:
              json.dump(jgf, f, indent=4, sort_keys=True, ensure_ascii=False)
