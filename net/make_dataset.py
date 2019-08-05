@@ -71,7 +71,7 @@ def make_anno(meta_file, image_file, jgf):
 
 def main():
 
-    root_path = "./ds"
+    root_path = "./gbr"
     src_path = "../img"
     meta_path = root_path + "/data/Annotations"
     img_path = root_path + "/data/Images"
@@ -104,8 +104,8 @@ def main():
            # If the image file is PNG - copy it to Images dataset
            # Otherwise try to convert to PNG
            img_file = Path(image_file)
+           png_file = Path(img_path).joinpath(img_file.name)
            if img_file.suffix == '.png':
-              png_file = Path(img_path).joinpath(img_file.name)
               print("  {} -> {}".format(image_file, png_file))
               shutil.copy(image_file, png_file)
            else:
@@ -116,7 +116,7 @@ def main():
 
            # Make annotation file
            meta_file = Path(meta_path).joinpath(img_file.with_suffix('.xml').name)
-           make_anno(str(meta_file), image_file, jgf)
+           make_anno(str(meta_file), str(png_file), jgf)
 
     # Save train.txt
     with open(sets_path + "/train.txt", "w+") as f:
