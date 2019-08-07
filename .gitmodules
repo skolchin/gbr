@@ -2,3 +2,5 @@
 
 path = py-faster-rcnn
 url = https://github.com/rbgirshick/caffe-fast-rcnn
+
+branch = fast-rcnn
