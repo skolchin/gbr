@@ -12,7 +12,9 @@ import os
 from pathlib import Path
 import cv2
 import json
-import shutil
+import numpy as np
+
+MAX_SIZE = 300
 
 def annotate_stones(f, jgf, cls):
     stones = jgf[cls]
@@ -71,26 +73,17 @@ def make_anno(meta_file, image_file, jgf = None):
     f.close()
 
 def resize(img, max_size):
-    h, w = img.shape[:2]
-    z = [1.0, 1.0]
-    if (w > max_size):
-        z[0] = float(max_size) / float(w)
-        z[1] = z[0]
-    elif (h > max_size):
-        z[1] = float(max_size) / float(h)
-        z[0] = z[1]
-    else:
-        if w >= h:
-            z[0] = float(max_size) / float(w)
-            z[1] = z[0]
-        else:
-            z[1] = float(max_size) / float(h)
-            z[0] = z[1]
-    img2 = cv2.resize(img, dsize = None, fx = z[0], fy = z[1])
+    im_size_max = np.max(img.shape[0:2])
+    im_size_min = np.min(img.shape[0:2])
+    im_scale = float(max_size) / float(im_size_min)
+
+    if np.round(im_scale * im_size_max) > max_size:
+        im_scale = float(max_size) / float(im_size_max)
+
+    img2 = cv2.resize(img, dsize = None, fx = im_scale, fy = im_scale)
     return img2
 
 def main():
-
     root_path = Path(__file__).with_name('').joinpath('..').resolve()
     ds_path = root_path.joinpath("net", "gbr_ds")
     if not ds_path.exists(): ds_path.mkdir(parents = True)
@@ -137,7 +130,8 @@ def main():
                 png_file = png_file.with_suffix('.png')
 
             img = cv2.imread(str(img_file))
-            cv2.imwrite(str(png_file), img)
+            img2 = resize(img, MAX_SIZE)
+            cv2.imwrite(str(png_file), img2)
             print("  {} -> {}".format(image_file, png_file))
 
             # Make annotation file
@@ -160,7 +154,7 @@ def main():
                 png_file = png_file.with_suffix('.png')
 
             img = cv2.imread(str(src_file))
-            img2 = resize(img, 300)
+            img2 = resize(img, MAX_SIZE)
             cv2.imwrite(str(png_file), img2)
             print("  {} -> {}".format(src_file, png_file))
 

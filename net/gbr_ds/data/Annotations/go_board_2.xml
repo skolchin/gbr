@@ -6,8 +6,8 @@
 		<database>Source</database>
 	</source>
 	<size>
-		<width>441</width>
-		<height>441</height>
+		<width>300</width>
+		<height>300</height>
 		<depth>3</depth>
 	</size>
 	<segmented>Unspecified</segmented>

@@ -109,3 +109,5 @@ venv.bak/
 # Test file
 t.py
 
+# Net results
+net/gbr_ds/results/
