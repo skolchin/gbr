@@ -1,3 +1,4 @@
 [submodule "py-faster-rcnn"]
-	path = py-faster-rcnn
-	url = https://github.com/rbgirshick/caffe-fast-rcnn.git
+
+path = py-faster-rcnn
+url = https://github.com/rbgirshick/caffe-fast-rcnn
