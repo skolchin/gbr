@@ -52,6 +52,12 @@ Python 2.7/3.5, packages: numpy, opencv2, tkinter, pathlib
 
 ## Changelog
 
+07/08/2019:
+
+* Changed: net/make_dataset.py now creates both test and training DS in PASCAL VOC format
+* Changed: net/test_net.py uses Caffe to run network (not OpenCV.dnn)
+* Added: py-faster-rcnn submodule cloned from ![Python Faster-RCNN](https://github.com/rbgirshick/py-faster-rcnn). Original code was modified to make it running on Windows in my particular configuration. Also, this submodule contain GBR models derived from PASCAL VOC ZF models.
+
 01/08/2019:
 
 * Added: support for large images
