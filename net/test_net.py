@@ -41,7 +41,7 @@ root_path = Path(__file__).with_name('').joinpath('..').resolve()
 rcnn_path = root_path.joinpath('py-faster-rcnn')
 
 model_file = str(rcnn_path.joinpath("models\\gbr\\test.prototxt"))
-weigth_file = str(rcnn_path.joinpath("output\\faster_rcnn_end2end\\train\\gf_zf_faster_rcnn_iter_100.caffemodel"))
+weigth_file = str(rcnn_path.joinpath("output\\faster_rcnn_end2end\\train\\gbr_zf_iter_1000.caffemodel"))
 img_file = str(root_path.joinpath("img\\go_board_13_gen.png"))
 
 sys.path.append(str(rcnn_path.joinpath('lib')))
@@ -60,9 +60,6 @@ for name, layer in zip(net._layer_names, net.layers):
 print("== Blobs:")
 for name, blob in net.blobs.iteritems():
     print("{:<5}:  {}".format(name, blob.data.shape))
-
-print("== Inputs:")
-print(net.inputs)
 
 img = caffe.io.load_image(img_file)
 

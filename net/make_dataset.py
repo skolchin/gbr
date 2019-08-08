@@ -130,8 +130,8 @@ def main():
                 png_file = png_file.with_suffix('.png')
 
             img = cv2.imread(str(img_file))
-            img2 = resize(img, MAX_SIZE)
-            cv2.imwrite(str(png_file), img2)
+            #img2 = resize(img, MAX_SIZE)
+            cv2.imwrite(str(png_file), img)
             print("  {} -> {}".format(image_file, png_file))
 
             # Make annotation file
