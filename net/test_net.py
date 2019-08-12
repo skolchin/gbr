@@ -38,18 +38,25 @@ MAX_CONF = 0.5
 #detections = net.forward()
 
 root_path = Path(__file__).with_name('').joinpath('..').resolve()
-rcnn_path = root_path.joinpath('py-faster-rcnn')
+print("Root path is {}".format(root_path))
+rcnn_path = root_path.joinpath('..','py-faster-rcnn').resolve()
+print("RCNN path is {}".format(rcnn_path))
 
-model_file = str(rcnn_path.joinpath("models\\gbr\\test.prototxt"))
-weigth_file = str(rcnn_path.joinpath("output\\faster_rcnn_end2end\\train\\gbr_zf_iter_1000.caffemodel"))
-img_file = str(root_path.joinpath("img\\go_board_13_gen.png"))
+model_file = str(root_path.joinpath("net", "models","test.prototxt"))
+print("Model file is {}".format(model_file))
+weigth_file = str(root_path.joinpath("net", "models","out", "gbr_zf", "train", "gbr_zf_iter_20000.caffemodel"))
+print("Using weights {}".format(weigth_file))
+cfg_file = str(root_path.joinpath("net", "models","gbr_rcnn.yml"))
+print("Config file is {}".format(cfg_file))
+img_file = str(root_path.joinpath("img","go_board_13_gen.png"))
+print("Image(s) {}".format(img_file))
 
 sys.path.append(str(rcnn_path.joinpath('lib')))
 
 import fast_rcnn.config as cfg
-cfg.cfg_from_file(str(rcnn_path.joinpath("models\\gbr\\faster_rcnn_end2end.yml")))
+cfg.cfg_from_file(cfg_file)
 
-caffe.set_mode_cpu()
+caffe.set_mode_gpu()
 
 net = caffe.Net(model_file, weigth_file, caffe.TEST)
 
