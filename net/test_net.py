@@ -16,10 +16,46 @@ import cv2
 import caffe
 import numpy as np
 from matplotlib import pyplot as plt
+from fast_rcnn.config import cfg
+from fast_rcnn.test import im_detect
+from fast_rcnn.nms_wrapper import nms
 
-CLASSES = ["black", "white"]
-COLORS = [(0,0,0),(255,255,255)]
-MAX_CONF = 0.5
+def vis_detections(im, class_name, dets, thresh=0.5):
+    """Draw detected bounding boxes."""
+    inds = np.where(dets[:, -1] >= thresh)[0]
+    if len(inds) == 0:
+        print("No predictions for class {}".format(class_name))
+        return
+
+    im = im[:, :, (2, 1, 0)]
+    fig, ax = plt.subplots(figsize=(12, 12))
+    ax.imshow(im, aspect='equal')
+    for i in inds:
+        bbox = dets[i, :4]
+        score = dets[i, -1]
+
+        ax.add_patch(
+            plt.Rectangle((bbox[0], bbox[1]),
+                          bbox[2] - bbox[0],
+                          bbox[3] - bbox[1], fill=False,
+                          edgecolor='red', linewidth=3.5)
+            )
+        ax.text(bbox[0], bbox[1] - 2,
+                '{:s} {:.3f}'.format(class_name, score),
+                bbox=dict(facecolor='blue', alpha=0.5),
+                fontsize=14, color='white')
+
+    ax.set_title(('{} detections with '
+                  'p({} | box) >= {:.1f}').format(class_name, class_name,
+                                                  thresh),
+                  fontsize=14)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.draw()
+
+
+
+CLASSES = ["_back_", "white", "black"]
 
 #net = dnn.readNetFromCaffe(ROOT + "\\net\\gbr.prototxt", ROOT + "\\net\\gbr.caffemodel")
 
@@ -46,16 +82,10 @@ model_file = str(root_path.joinpath("net", "models","test.prototxt"))
 print("Model file is {}".format(model_file))
 weigth_file = str(root_path.joinpath("net", "models","out", "gbr_zf", "train", "gbr_zf_iter_20000.caffemodel"))
 print("Using weights {}".format(weigth_file))
-cfg_file = str(root_path.joinpath("net", "models","gbr_rcnn.yml"))
-print("Config file is {}".format(cfg_file))
-img_file = str(root_path.joinpath("img","go_board_13_gen.png"))
-print("Image(s) {}".format(img_file))
+img_file = str(root_path.joinpath("img","go_board_5.jpg"))
+print("Image {}".format(img_file))
 
-sys.path.append(str(rcnn_path.joinpath('lib')))
-
-import fast_rcnn.config as cfg
-cfg.cfg_from_file(cfg_file)
-
+cfg.TEST.HAS_RPN = True
 caffe.set_mode_gpu()
 
 net = caffe.Net(model_file, weigth_file, caffe.TEST)
@@ -68,20 +98,40 @@ print("== Blobs:")
 for name, blob in net.blobs.iteritems():
     print("{:<5}:  {}".format(name, blob.data.shape))
 
-img = caffe.io.load_image(img_file)
+##img = caffe.io.load_image(img_file)
+##transformer = caffe.io.Transformer({'data': net.blobs['data'].data.shape})
+##transformer.set_transpose('data', (2,0,1))
+##transformer.set_raw_scale('data', 255.0)
+##transformer.set_channel_swap('data', (2,1,0))
+##tr_img = transformer.preprocess('data', img)
+##
+##net.blobs['data'].data[...] = tr_img
+##detections = net.forward()
+##
+##print("== Detections:")
+##for key in detections:
+##    print("{}: {}".format(key, detections[key]))
 
-transformer = caffe.io.Transformer({'data': net.blobs['data'].data.shape})
-transformer.set_transpose('data', (2,0,1))
-transformer.set_raw_scale('data', 255.0)
-transformer.set_channel_swap('data', (2,1,0))
-tr_img = transformer.preprocess('data', img)
+img = cv2.imread(img_file)
+scores, boxes = im_detect(net, img)
 
-net.blobs['data'].data[...] = tr_img
-detections = net.forward()
+print("== Detections")
+print("Scores: {}".format(scores))
+print("Boxes: {}".format(boxes))
 
-print("== Detections:")
-for key in detections:
-    print("{}: {}".format(key, detections[key]))
+CONF_THRESH = 0.8
+NMS_THRESH = 0.3
+for cls_ind, cls in enumerate(CLASSES[1:]):
+    cls_ind += 1
+    cls_boxes = boxes[:, 4*cls_ind:4*(cls_ind + 1)]
+    cls_scores = scores[:, cls_ind]
+    dets = np.hstack((cls_boxes,
+                      cls_scores[:, np.newaxis])).astype(np.float32)
+    keep = nms(dets, NMS_THRESH)
+    dets = dets[keep, :]
+    vis_detections(img, cls, dets, thresh=CONF_THRESH)
+
+plt.show()
 
 # loop over the detections
 ##for i in np.arange(0, detections.shape[2]):
