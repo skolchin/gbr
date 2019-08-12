@@ -1,0 +1,3 @@
+[submodule "py-faster-rcnn"]
+	path = py-faster-rcnn
+	url = https://github.com/skolchin/py-faster-rcnn
