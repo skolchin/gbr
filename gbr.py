@@ -54,6 +54,7 @@ class GbrGUI:
           self.grRes = None
           self.showBlack = True
           self.showWhite = True
+          self.showBoxes = False
 
           # Default board image and generated image
           self.origImg = gr.generate_board()
@@ -100,6 +101,15 @@ class GbrGUI:
                                                          width = 30)
           self.showWhiteBtn.bind("<Button-1>", self.show_white_callback)
           self.showWhiteBtn.grid(row = 0, column = 2, padx = PADX, pady = PADY, sticky = "nswe")
+
+          self.boxImgTk = [ImageTk.PhotoImage(Image.open('box_up.png')),
+                           ImageTk.PhotoImage(Image.open('box_down.png'))]
+          self.showBoxBtn = tk.Label(self.genLblFrame, image = self.boxImgTk[0],
+                                                         borderwidth = 1,
+                                                         relief = "groove",
+                                                         width = 30)
+          self.showBoxBtn.bind("<Button-1>", self.show_boxes_callback)
+          self.showBoxBtn.grid(row = 0, column = 3, padx = PADX, pady = PADY, sticky = "nswe")
 
           # Image panel: generated image panel
           self.genImgPanel = tk.Label(self.imgFrame, image = self.origImgTk)
@@ -199,12 +209,13 @@ class GbrGUI:
             f = "White"
             p = gr.find_coord(x, y, self.grRes[grdef.GR_STONES_W])
           if (p[0] >= 0):
-            ct = "{f} {a}{b} at ({x},{y})".format(
+            ct = "{f} {a}{b} at ({x},{y}):{r}".format(
                f = f,
                a = grutils.stone_pos(p, grdef.GR_A),
                b = grutils.stone_pos(p, grdef.GR_B),
                x = round(p[grdef.GR_X],0),
-               y = round(p[grdef.GR_Y],0))
+               y = round(p[grdef.GR_Y],0),
+               r = round(p[grdef.GR_R],0))
             print(ct)
             self.stoneInfo.set(ct)
 
@@ -244,6 +255,7 @@ class GbrGUI:
            # Process image
            self.showBlack = True
            self.showWhite = True
+           self.showBoxes = False
            self.update_board(reprocess = True)
 
            # Update status
@@ -313,6 +325,15 @@ class GbrGUI:
 
         self.showWhite = not self.showWhite
         self.showWhiteBtn.configure(image = self.whiteImgTk[int(self.showWhite)])
+        self.update_board(reprocess= False)
+
+      # Callback for "Show boxes"
+      def show_boxes_callback(self, event):
+        if self.origImgName is None:
+           return
+
+        self.showBoxes = not self.showBoxes
+        self.showBoxBtn.configure(image = self.boxImgTk[int(self.showBoxes)])
         self.update_board(reprocess= False)
 
       # Add Scale widgets with board recognition parameters
@@ -436,12 +457,17 @@ class GbrGUI:
            del r[grdef.GR_STONES_W]
 
         self.genImg = gr.generate_board(shape = self.origImg.shape, res = r)
+        if self.showBoxes:
+           if self.showBlack: self.show_detections(self.genImg, r[grdef.GR_STONES_B])
+           if self.showWhite: self.show_detections(self.genImg, r[grdef.GR_STONES_W])
+
         self.genImgTk, _ = self.make_imgtk(self.genImg)
         self.genImgPanel.configure(image = self.genImgTk)
 
+        board_size = self.grRes[grdef.GR_BOARD_SIZE]
         black_stones = self.grRes[grdef.GR_STONES_B]
         white_stones = self.grRes[grdef.GR_STONES_W]
-        board_size = self.grRes[grdef.GR_BOARD_SIZE]
+
         self.boardInfo.set("Board size: {}, black stones: {}, white stones: {}".format(
                                   board_size, black_stones.shape[0], white_stones.shape[0]))
 
@@ -473,6 +499,14 @@ class GbrGUI:
           imgtk = grutils.img_to_imgtk(img2)
 
           return imgtk, z
+
+      # Display detections on board
+      def show_detections(self, img, stones):
+          for st in stones:
+              x = st[grdef.GR_X]
+              y = st[grdef.GR_Y]
+              r = st[grdef.GR_R]
+              cv2.circle(img, (x,y), r, (0,0,255), 1)
 
 # Main function
 def main():

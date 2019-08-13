@@ -56,6 +56,7 @@ Python 2.7/3.5, packages: numpy, opencv2, tkinter, pathlib
 
 * Added: update_jgf.py script to update all board info files for images where recognition parameters (JSON) exist
 * Added: simple stone position reconcilation (white stones precendent)
+* Added: function to show detections on generated board
 
 07/08/2019:
 

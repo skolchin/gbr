@@ -1,5 +1,15 @@
 go_board_13_gen
 go_board_16
 go_board_17
+go_board_18
 go_board_1_gen
-go_board_9a
+go_board_23
+go_board_25
+go_board_28
+go_board_29
+go_board_30
+go_board_31
+go_board_32
+go_board_33
+go_board_35
+go_board_36

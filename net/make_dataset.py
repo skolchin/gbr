@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------------------
 # Name:        Go board recognition
-# Purpose:     Make a dataset to train the net
+# Purpose:     Deep learning network dataset generation
 #
 # Author:      skolchin
 #
@@ -13,24 +13,40 @@ from pathlib import Path
 import cv2
 import json
 import numpy as np
+from net_utils import show_detections
+from matplotlib import pyplot as plt
+import math
 
 MAX_SIZE = 300
+VISUALIZE = True
 
 def annotate_stones(f, jgf, cls):
     stones = jgf[cls]
-    for i in stones:
-        line = '\n\t<object>'
-        line += '\n\t\t<name>' + cls + '</name>\n\t\t<pose>Unspecified</pose>'
-        line += '\n\t\t<truncated>Unspecified</truncated>\n\t\t<difficult>Unspecified</difficult>'
+    bbox = np.empty((len(stones),5), dtype = np.float)
 
+    n = 0
+    for i in stones:
         x = stones[i]['X']
         y = stones[i]['Y']
         r = stones[i]['R']
+        if r < 4: continue   # Skip objects too small
 
-        xmin = x - int(r/2)
-        ymin = y - int(r/2)
-        xmax = x + int(r/2)
-        ymax = y + int(r/2)
+        a = 2 * r * math.sqrt(2)
+        xmin = x - int(a/2)
+        ymin = y - int(a/2)
+        xmax = x + int(a/2)
+        ymax = y + int(a/2)
+
+        bbox[n,0] = xmin
+        bbox[n,1] = ymin
+        bbox[n,2] = xmax
+        bbox[n,3] = ymax
+        bbox[n,4] = 100.0
+        n += 1
+
+        line = '\n\t<object>'
+        line += '\n\t\t<name>' + cls + '</name>\n\t\t<pose>Unspecified</pose>'
+        line += '\n\t\t<truncated>Unspecified</truncated>\n\t\t<difficult>Unspecified</difficult>'
 
         line += '\n\t\t<bndbox>\n\t\t\t<xmin>' + str(xmin) + '</xmin>'
         line += '\n\t\t\t<ymin>' + str(ymin) + '</ymin>'
@@ -42,7 +58,9 @@ def annotate_stones(f, jgf, cls):
 
         f.write(line)
 
-def make_anno(meta_file, image_file, jgf = None):
+    return bbox
+
+def make_anno(meta_file, image_file, jgf = None, f_vis = False):
     f = open(meta_file,'w')
 
     line = "<annotation>" + '\n'
@@ -64,13 +82,24 @@ def make_anno(meta_file, image_file, jgf = None):
     line = '\n\t<segmented>Unspecified</segmented>'
     f.write(line)
 
+    bb_b = None
+    bb_w = None
     if not jgf is None:
-        annotate_stones(f, jgf, 'black')
-        annotate_stones(f, jgf, 'white')
+        bb_b = annotate_stones(f, jgf, 'black')
+        bb_w = annotate_stones(f, jgf, 'white')
 
     line = "\n</annotation>" + '\n'
     f.write(line)
     f.close()
+
+    if f_vis and not bb_b is None:
+       title = "Showing {} from {}".format("black", image_file)
+       show_detections(im, "black", bb_b, 0.0,
+                           f_label = False, f_title = True, title = title, ptype = "r")
+    if f_vis and not bb_w is None:
+       title = "Showing {} from {}".format("white", image_file)
+       show_detections(im, "white", bb_w, 0.0,
+                           f_label = False, f_title = True, title = title, ptype = "r")
 
 def resize(img, max_size):
     im_size_max = np.max(img.shape[0:2])
@@ -84,7 +113,7 @@ def resize(img, max_size):
     return img2
 
 def main():
-    root_path = Path(__file__).with_name('').joinpath('..').resolve()
+    root_path = Path(__file__).parent.joinpath('..').resolve()
     ds_path = root_path.joinpath("net", "gbr_ds")
     if not ds_path.exists(): ds_path.mkdir(parents = True)
 
@@ -102,6 +131,9 @@ def main():
     file_list['train'] = []
 
     # Process all JGF (board descr) files
+    n_jgf = 0
+    n_img = 0
+    n_vis = 0
     for file in os.listdir(str(src_path)):
         src_file = src_path.joinpath(file)
         print ("Processing file {}".format(src_file))
@@ -130,13 +162,15 @@ def main():
                 png_file = png_file.with_suffix('.png')
 
             img = cv2.imread(str(img_file))
-            #img2 = resize(img, MAX_SIZE)
             cv2.imwrite(str(png_file), img)
             print("  {} -> {}".format(image_file, png_file))
 
             # Make annotation file
             meta_file = meta_path.joinpath(img_file.with_suffix('.xml').name)
-            make_anno(str(meta_file), str(png_file), jgf)
+            f_vis = VISUALIZE and (n_vis <= 10)
+            make_anno(str(meta_file), str(png_file), jgf = jgf, f_vis = f_vis)
+            if f_vis: n_vis += 1
+            n_jgf += 1
 
             # Add to file list
             file_list["train"].append(str(png_file.stem))
@@ -161,6 +195,7 @@ def main():
             # Make annotation file
             meta_file = meta_path.joinpath(src_file.with_suffix('.xml').name)
             make_anno(str(meta_file), str(png_file))
+            n_img += 1
 
             # Add to file list
             file_list["test"].append(str(png_file.stem))
@@ -175,6 +210,9 @@ def main():
             for file in file_list[mode]:
                 f.write("{}\n".format(file))
             f.close()
+
+    print("File(s) processed: {} boards, {} images".format(n_jgf, n_img))
+    if n_vis > 0: plt.show()
 
 if __name__ == '__main__':
     main()
