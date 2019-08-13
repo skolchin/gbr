@@ -504,13 +504,6 @@
             "X": 406,
             "Y": 109
         },
-        "P6": {
-            "A": "P",
-            "B": "6",
-            "R": 7,
-            "X": 406,
-            "Y": 133
-        },
         "P9": {
             "A": "P",
             "B": "9",
@@ -579,9 +572,9 @@
             451
         ]
     },
-    "image_file": "C:/Users/skolchin/Documents/kol/gbr/img/go_board_8a.png",
+    "image_file": "C:\\Users\\skolchin\\Documents\\kol\\gbr\\img\\go_board_8a.png",
     "num_stones": [
-        81,
+        80,
         82
     ],
     "spacing": [

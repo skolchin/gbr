@@ -297,16 +297,19 @@ def process_img(img, params):
     # Find board edges, spacing, size
     board_edges = find_board(gray, params, res)
 
-    # Find black stones
+    # Find stones
     black_stones_xy = find_stones(r, params, res, 'B')
-
-    # Find white stones
     white_stones_xy = find_stones(b, params, res, 'W')
 
     # Convert X-Y coordinates to stone positions
     black_stones = convert_xy(black_stones_xy, res)
-    res[grdef.GR_STONES_B] = black_stones
     white_stones = convert_xy(white_stones_xy, res)
+
+    # Elminate duplicates
+    black_stones, white_stones = eliminate_duplicates(black_stones, white_stones)
+
+    # Store the results
+    res[grdef.GR_STONES_B] = black_stones
     res[grdef.GR_STONES_W] = white_stones
 
     return res
@@ -373,3 +376,13 @@ def generate_board(shape = grdef.DEF_IMG_SIZE, board_size = None, res = None):
 
     return img
 
+def eliminate_duplicates(bs, ws):
+    # Priority for white stones
+    for st in ws:
+        px = st[grdef.GR_A]
+        py = st[grdef.GR_B]
+        for i in range(len(bs)):
+            if px == bs[i,grdef.GR_A] and py == bs[i, grdef.GR_B]:
+               bs = np.delete(bs, i, axis = 0)
+               break;
+    return bs, ws

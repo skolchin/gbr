@@ -52,6 +52,11 @@ Python 2.7/3.5, packages: numpy, opencv2, tkinter, pathlib
 
 ## Changelog
 
+13/08/2019:
+
+* Added: update_jgf.py script to update all board info files for images where recognition parameters (JSON) exist
+* Added: simple stone position reconcilation (white stones precendent)
+
 07/08/2019:
 
 * Changed: net/make_dataset.py now creates both test and training DS in PASCAL VOC format
@@ -79,7 +84,7 @@ Python 2.7/3.5, packages: numpy, opencv2, tkinter, pathlib
 
 - [x] Allow to save recognized stone positions
 
-- [ ] Add stone reconcilation (detection of stones occupying the same position)
+- [x] Add stone reconcilation (detection of stones occupying the same position)
 
 - [ ] Adopt the algorithm to the photos of real boards. This might require image transformations (skew, rotation etc) and background removal.
 
