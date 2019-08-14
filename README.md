@@ -48,6 +48,7 @@ Examples of source and generated images:
 ## Requirements
 
 Python 2.7/3.5, numpy, opencv2, tkinter, pathlib
+
 For DLN: Caffe, py-faster-rcnn (original or any fork)
 
 
