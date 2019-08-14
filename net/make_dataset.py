@@ -13,12 +13,13 @@ from pathlib import Path
 import cv2
 import json
 import numpy as np
-from net_utils import show_detections
-from matplotlib import pyplot as plt
 import math
+import sys
+
+sys.path.append("..")
+from gr.utils import resize
 
 MAX_SIZE = 300
-VISUALIZE = True
 
 def annotate_stones(f, jgf, cls):
     stones = jgf[cls]
@@ -60,7 +61,7 @@ def annotate_stones(f, jgf, cls):
 
     return bbox
 
-def make_anno(meta_file, image_file, jgf = None, f_vis = False):
+def make_anno(meta_file, image_file, jgf = None):
     f = open(meta_file,'w')
 
     line = "<annotation>" + '\n'
@@ -92,25 +93,7 @@ def make_anno(meta_file, image_file, jgf = None, f_vis = False):
     f.write(line)
     f.close()
 
-    if f_vis and not bb_b is None:
-       title = "Showing {} from {}".format("black", image_file)
-       show_detections(im, "black", bb_b, 0.0,
-                           f_label = False, f_title = True, title = title, ptype = "r")
-    if f_vis and not bb_w is None:
-       title = "Showing {} from {}".format("white", image_file)
-       show_detections(im, "white", bb_w, 0.0,
-                           f_label = False, f_title = True, title = title, ptype = "r")
-
-def resize(img, max_size):
-    im_size_max = np.max(img.shape[0:2])
-    im_size_min = np.min(img.shape[0:2])
-    im_scale = float(max_size) / float(im_size_min)
-
-    if np.round(im_scale * im_size_max) > max_size:
-        im_scale = float(max_size) / float(im_size_max)
-
-    img2 = cv2.resize(img, dsize = None, fx = im_scale, fy = im_scale)
-    return img2
+    return bb_b, bb_w
 
 def main():
     root_path = Path(__file__).parent.joinpath('..').resolve()
@@ -133,7 +116,6 @@ def main():
     # Process all JGF (board descr) files
     n_jgf = 0
     n_img = 0
-    n_vis = 0
     for file in os.listdir(str(src_path)):
         src_file = src_path.joinpath(file)
         print ("Processing file {}".format(src_file))
@@ -167,9 +149,7 @@ def main():
 
             # Make annotation file
             meta_file = meta_path.joinpath(img_file.with_suffix('.xml').name)
-            f_vis = VISUALIZE and (n_vis <= 10)
-            make_anno(str(meta_file), str(png_file), jgf = jgf, f_vis = f_vis)
-            if f_vis: n_vis += 1
+            make_anno(str(meta_file), str(png_file), jgf = jgf)
             n_jgf += 1
 
             # Add to file list
@@ -212,7 +192,6 @@ def main():
             f.close()
 
     print("File(s) processed: {} boards, {} images".format(n_jgf, n_img))
-    if n_vis > 0: plt.show()
 
 if __name__ == '__main__':
     main()
