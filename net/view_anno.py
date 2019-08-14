@@ -25,6 +25,7 @@ else:
 
 sys.path.append('..')
 from gr.utils import resize, img_to_imgtk
+from make_dataset import make_anno
 
 class ViewAnnoGui:
       def __init__(self, root):
@@ -51,7 +52,7 @@ class ViewAnnoGui:
           self.load_files()
           self.fileList.bind("<<ListboxSelect>>", self.lb_changed_callback)
 
-          # Image panel
+          # Image frame
           self.imgFrame = tk.Frame(self.root)
           self.imgFrame.grid(row = 0, column = 1, padx = 5, pady = 5, sticky = "nswe")
           self.defBoardImg = cv2.imread('def_board.png')
@@ -59,7 +60,19 @@ class ViewAnnoGui:
           self.boardImgTk = img_to_imgtk(self.boardImg)
           self.boardImgName = ''
           self.imgPanel = tk.Label(self.imgFrame, image = self.boardImgTk)
-          self.imgPanel.pack(fill=tk.BOTH, anchor='center', expand=True)
+          self.imgPanel.pack(fill=tk.BOTH, anchor='center', expand=True, padx = 3, pady = 3)
+
+          # Buttons on image frame
+          self.buttonFrame = tk.Frame(self.imgFrame, bd = 1)
+          self.buttonFrame.pack(fill=tk.BOTH, side=tk.BOTTOM, expand=True, padx = 3, pady = 3)
+
+          self.updateBtn = tk.Button(self.buttonFrame, text = "Update",
+                                                        command = self.update_callback)
+          self.updateBtn.pack(side = tk.LEFT, padx = 5, pady = 5)
+
+          self.openBtn = tk.Button(self.buttonFrame, text = "Open in GBR",
+                                                        command = self.open_callback)
+          self.openBtn.pack(side = tk.LEFT, padx = 5, pady = 5)
 
       def load_files(self):
           g = self.meta_path.glob('*.xml')
@@ -117,6 +130,14 @@ class ViewAnnoGui:
           self.boardImgName = fn
           self.imgFrame.pack_propagate(False)
           self.imgPanel.configure(image = self.boardImgTk)
+
+      def update_callback(self):
+          #make_anno(self.annoFileName, self.boardImgName)
+          pass
+
+      def open_callback(self):
+          pass
+
 
 def main():
     # Construct interface
