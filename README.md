@@ -54,6 +54,11 @@ Python 2.7/3.5, packages: numpy, opencv2, tkinter, pathlib
 
 13/08/2019:
 
+* Changed: gr.py, grdef.py, grutils.py finally assembled as a package
+
+
+13/08/2019:
+
 * Added: update_jgf.py script to update all board info files for images where recognition parameters (JSON) exist
 * Added: simple stone position reconcilation (white stones precendent)
 * Added: function to show detections on generated board

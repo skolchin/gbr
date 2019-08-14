@@ -8,8 +8,8 @@
 # Copyright:   (c) skolchin 2019
 #-------------------------------------------------------------------------------
 
-import grdef
-import grutils
+from gr.grdef import *
+from gr.utils import *
 import cv2
 import numpy as np
 
@@ -50,12 +50,12 @@ def find_stones(img, params, res, f_bw):
        stones_img = cv2.dilate(stones_img, kernel,
                                            iterations=n_iter_d,
                                            borderType = cv2.BORDER_CONSTANT,
-                                           borderValue = grdef.COLOR_BLACK)
+                                           borderValue = COLOR_BLACK)
     if n_iter_e > 0:
        stones_img = cv2.erode(stones_img, kernel,
                                           iterations=n_iter_e,
                                           borderType = cv2.BORDER_CONSTANT,
-                                          borderValue = grdef.COLOR_BLACK)
+                                          borderValue = COLOR_BLACK)
 
     # Add some blur and sharpen the image to smooth the edges
     if n_blur > 0:
@@ -103,15 +103,15 @@ def find_board(img, params, res):
     #   edges = cv2.dilate(edges, kernel, iterations=n_iter)
 
     lines = cv2.HoughLinesP(edges, n_rho, n_theta, n_thresh)
-    lines = grutils.houghp_to_lines(lines)
+    lines = houghp_to_lines(lines)
 
     # Remove lines too close to board edges
-    lines = grutils.clear_lines(edges.shape, lines)
-    lines_img = grutils.make_lines_img(edges.shape, lines)
+    lines = clear_lines(edges.shape, lines)
+    lines_img = make_lines_img(edges.shape, lines)
     nlin = len(lines)
 
-    res[grdef.GR_NUM_LINES] = nlin
-    res[grdef.GR_IMG_LINES] = lines_img
+    res[GR_NUM_LINES] = nlin
+    res[GR_IMG_LINES] = lines_img
     print ("Lines found: " + str(nlin))
 
     # Find min/max coordinates - which are edges
@@ -121,10 +121,10 @@ def find_board(img, params, res):
     ymax = -1
 
     for i in lines:
-        x1 = i[grdef.GR_FROM][grdef.GR_X]
-        y1 = i[grdef.GR_FROM][grdef.GR_Y]
-        x2 = i[grdef.GR_TO][grdef.GR_X]
-        y2 = i[grdef.GR_TO][grdef.GR_Y]
+        x1 = i[GR_FROM][GR_X]
+        y1 = i[GR_FROM][GR_Y]
+        x2 = i[GR_TO][GR_X]
+        y2 = i[GR_TO][GR_Y]
 
         if (abs(x1 - x2) < 3 or abs(y1 - y2) < 3):
            # Vertical or horizontal line
@@ -138,7 +138,7 @@ def find_board(img, params, res):
               ymax = y2
 
     brd_edges = ((int(xmin), int(ymin)), (int(xmax), int(ymax)))
-    res[grdef.GR_EDGES] = brd_edges
+    res[GR_EDGES] = brd_edges
 
     # Detecting board size
     n_rho = params['HL_RHO2']
@@ -147,7 +147,7 @@ def find_board(img, params, res):
 
     lines_img2 = cv2.bitwise_not(lines_img)
     lines2 = cv2.HoughLines(lines_img2, n_rho, n_theta, n_thresh)
-    lines2 = grutils.hough_to_lines(lines2, lines_img2.shape)
+    lines2 = hough_to_lines(lines2, lines_img2.shape)
 
     hlin = []
     vlin = []
@@ -167,53 +167,53 @@ def find_board(img, params, res):
            hlin.append(i)
 
     # Get unique vertical line positions
-    vpos = grutils.remove_nearest(vlin, axis1 = 0, axis2 = 0)
+    vpos = remove_nearest(vlin, axis1 = 0, axis2 = 0)
     vcross = len(vpos)
-    hpos = grutils.remove_nearest(hlin, axis1 = 0, axis2 = 1)
+    hpos = remove_nearest(hlin, axis1 = 0, axis2 = 1)
     hcross = len(hpos)
-    res[grdef.GR_NUM_CROSS_H] = hcross
-    res[grdef.GR_NUM_CROSS_W] = vcross
+    res[GR_NUM_CROSS_H] = hcross
+    res[GR_NUM_CROSS_W] = vcross
 
     # Determine board size
     # First check both sizes are not more or less than 1 point from any of predefined sizes
     size = None
-    for n in grdef.DEF_AVAIL_SIZES:
+    for n in DEF_AVAIL_SIZES:
         if abs(hcross-n) < 2 and abs(vcross-n) < 2:
            size = n
            break
 
     if size is None:
        # Repeat but now check only one side
-        for n in grdef.DEF_AVAIL_SIZES:
+        for n in DEF_AVAIL_SIZES:
            if abs(hcross-n) < 2 or abs(vcross-n) < 2:
               size = n
               break
 
     if size is None:
        # Take size which is more than minimum one
-       if hcross > grdef.DEF_AVAIL_SIZES[0] and vcross > grdef.DEF_AVAIL_SIZES[0]:
+       if hcross > DEF_AVAIL_SIZES[0] and vcross > DEF_AVAIL_SIZES[0]:
           size = min(hcross, vcross)
-       elif hcross > grdef.DEF_AVAIL_SIZES[0]:
+       elif hcross > DEF_AVAIL_SIZES[0]:
           size = hcross
-       elif vcross > grdef.DEF_AVAIL_SIZES[0]:
+       elif vcross > DEF_AVAIL_SIZES[0]:
           size = vcross
 
     if size is None:
        # Oops, take a default one
        print("Cannot properly determine board size, fall back to default one")
-       size = grdef.DEF_BOARD_SIZE
+       size = DEF_BOARD_SIZE
 
-    res[grdef.GR_BOARD_SIZE] = size
+    res[GR_BOARD_SIZE] = size
 
     # Make a debug image
-    lines_img2 = grutils.make_lines_img(img.shape, hpos)
-    lines_img2 = grutils.make_lines_img(img.shape, vpos, img = lines_img2)
-    res[grdef.GR_IMG_LINES2] = lines_img2
+    lines_img2 = make_lines_img(img.shape, hpos)
+    lines_img2 = make_lines_img(img.shape, vpos, img = lines_img2)
+    res[GR_IMG_LINES2] = lines_img2
 
     # Calculate spacing
     space_x = (brd_edges[1][0] - brd_edges[0][0]) / (size - 1)
     space_y = (brd_edges[1][1] - brd_edges[0][1]) / (size - 1)
-    res[grdef.GR_SPACING] = (space_x, space_y)
+    res[GR_SPACING] = (space_x, space_y)
 
     print("Edges:({},{}), ({},{}), crosses: {}, {}, size: {}, spaces: ({}, {})".format(
                           brd_edges[0][0], brd_edges[0][1],
@@ -235,9 +235,9 @@ def convert_xy(coord, res):
         stones = np.zeros((len(coord), 2), dtype = np.uint16)
 
         # Get edges and spacing
-        edges = res[grdef.GR_EDGES]
-        size = res[grdef.GR_BOARD_SIZE]
-        space_x, space_y = res[grdef.GR_SPACING]
+        edges = res[GR_EDGES]
+        size = res[GR_BOARD_SIZE]
+        space_x, space_y = res[GR_SPACING]
 
         # Loop through, converting board coordinates to integer positions
         # Radius is stored in dictiotary to retrieve later
@@ -252,17 +252,17 @@ def convert_xy(coord, res):
             rd[str(stones[i,0]) + "_" + str(stones[i,1])] = coord[i,2]
 
         # Remove duplicates
-        stones_u = grutils.unique_rows(stones)
+        stones_u = unique_rows(stones)
 
         # Calculate coordinates for stones left in the list
         stones = np.zeros((len(stones_u), 5), dtype = np.uint16)
 
         for i in range(len(stones_u)):
-            stones[i,grdef.GR_X] = (stones_u[i, 0]-1) * space_x + edges[0][0]
-            stones[i,grdef.GR_Y] = (stones_u[i, 1]-1) * space_y + edges[0][1]
-            stones[i,grdef.GR_A] = stones_u[i, 0]
-            stones[i,grdef.GR_B] = stones_u[i, 1]
-            stones[i,grdef.GR_R] = rd[str(stones_u[i,0]) + "_" + str(stones_u[i,1])]
+            stones[i,GR_X] = (stones_u[i, 0]-1) * space_x + edges[0][0]
+            stones[i,GR_Y] = (stones_u[i, 1]-1) * space_y + edges[0][1]
+            stones[i,GR_A] = stones_u[i, 0]
+            stones[i,GR_B] = stones_u[i, 1]
+            stones[i,GR_R] = rd[str(stones_u[i,0]) + "_" + str(stones_u[i,1])]
 
         return stones
 
@@ -270,10 +270,10 @@ def convert_xy(coord, res):
 # Takes X and Y in image coordinates and a list of stones created by convert_xy
 def find_coord(x, y, coord):
     for i in coord:
-        min_x = i[grdef.GR_X] - i[grdef.GR_R]
-        min_y = i[grdef.GR_Y] - i[grdef.GR_R]
-        max_x = i[grdef.GR_X] + i[grdef.GR_R]
-        max_y = i[grdef.GR_Y] + i[grdef.GR_R]
+        min_x = i[GR_X] - i[GR_R]
+        min_y = i[GR_Y] - i[GR_R]
+        max_x = i[GR_X] + i[GR_R]
+        max_y = i[GR_Y] + i[GR_R]
         if (x >= min_x and x <= max_x and y >= min_y and y <= max_y):
            return i
 
@@ -289,10 +289,10 @@ def process_img(img, params):
 
     # Graying out
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    res[grdef.GR_IMG_GRAY] = gray
+    res[GR_IMG_GRAY] = gray
     b,g,r = cv2.split(img)
-    res[grdef.GR_IMG_BLUE] = b
-    res[grdef.GR_IMG_RED] = r
+    res[GR_IMG_BLUE] = b
+    res[GR_IMG_RED] = r
 
     # Find board edges, spacing, size
     board_edges = find_board(gray, params, res)
@@ -309,80 +309,80 @@ def process_img(img, params):
     black_stones, white_stones = eliminate_duplicates(black_stones, white_stones)
 
     # Store the results
-    res[grdef.GR_STONES_B] = black_stones
-    res[grdef.GR_STONES_W] = white_stones
+    res[GR_STONES_B] = black_stones
+    res[GR_STONES_W] = white_stones
 
     return res
 
 # Creates a board image for given image shape and board size
 # If recognition results are provided, plot them on the board
-def generate_board(shape = grdef.DEF_IMG_SIZE, board_size = None, res = None):
+def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None):
 
     # Prepare params
     if board_size is None:
        if res is None:
-          board_size = grdef.DEF_BOARD_SIZE
+          board_size = DEF_BOARD_SIZE
        else:
-          board_size = res[grdef.GR_BOARD_SIZE]
+          board_size = res[GR_BOARD_SIZE]
 
     edges = None
     space_x = None
     space_y = None
     if res is None:
-       edges = ((14,14),(shape[grdef.CV_WIDTH]-14, shape[grdef.CV_HEIGTH]-14))
-       space_x = (edges[grdef.GR_TO][grdef.GR_X] - edges[grdef.GR_FROM][grdef.GR_X]) / (board_size - 1)
-       space_y = (edges[grdef.GR_TO][grdef.GR_Y] - edges[grdef.GR_FROM][grdef.GR_Y]) / (board_size - 1)
+       edges = ((14,14),(shape[CV_WIDTH]-14, shape[CV_HEIGTH]-14))
+       space_x = (edges[GR_TO][GR_X] - edges[GR_FROM][GR_X]) / (board_size - 1)
+       space_y = (edges[GR_TO][GR_Y] - edges[GR_FROM][GR_Y]) / (board_size - 1)
     else:
-       edges = res[grdef.GR_EDGES]
-       space_x, space_y = res[grdef.GR_SPACING]
+       edges = res[GR_EDGES]
+       space_x, space_y = res[GR_SPACING]
 
     # Make up empty image
     img = np.zeros((shape[0], shape[1], 3), dtype=np.uint8)
-    img[:] = grdef.DEF_IMG_COLOR
+    img[:] = DEF_IMG_COLOR
 
     # Draw the lines
     for i in range(board_size):
-        x1 = int(edges[grdef.GR_FROM][grdef.GR_X] + (i * space_x))
-        y1 = int(edges[grdef.GR_FROM][grdef.GR_Y])
+        x1 = int(edges[GR_FROM][GR_X] + (i * space_x))
+        y1 = int(edges[GR_FROM][GR_Y])
         x2 = x1
-        y2 = int(edges[grdef.GR_TO][grdef.GR_Y])
-        cv2.line(img,(x1,y1),(x2,y2),grdef.COLOR_BLACK,1)
+        y2 = int(edges[GR_TO][GR_Y])
+        cv2.line(img,(x1,y1),(x2,y2),COLOR_BLACK,1)
 
     for i in range(board_size):
-        x1 = int(edges[grdef.GR_FROM][grdef.GR_X])
-        y1 = int(edges[grdef.GR_FROM][grdef.GR_Y] + (i * space_y))
-        x2 = int(edges[grdef.GR_TO][grdef.GR_X])
+        x1 = int(edges[GR_FROM][GR_X])
+        y1 = int(edges[GR_FROM][GR_Y] + (i * space_y))
+        x2 = int(edges[GR_TO][GR_X])
         y2 = y1
-        cv2.line(img, (x1,y1), (x2,y2), grdef.COLOR_BLACK, 1)
+        cv2.line(img, (x1,y1), (x2,y2), COLOR_BLACK, 1)
 
     # Draw the stones
     if res is not None:
-       black_stones = res.get(grdef.GR_STONES_B)
-       white_stones = res.get(grdef.GR_STONES_W)
+       black_stones = res.get(GR_STONES_B)
+       white_stones = res.get(GR_STONES_W)
        r = max(int(min(space_x, space_y) / 2) - 1, 5)
 
        if black_stones is not None:
           for i in black_stones:
-              x1 = int(edges[grdef.GR_FROM][grdef.GR_X] + ((i[2]-1) * space_x))
-              y1 = int(edges[grdef.GR_FROM][grdef.GR_Y] + ((i[3]-1) * space_y))
-              cv2.circle(img, (x1,y1), r, grdef.COLOR_BLACK, -1)
+              x1 = int(edges[GR_FROM][GR_X] + ((i[2]-1) * space_x))
+              y1 = int(edges[GR_FROM][GR_Y] + ((i[3]-1) * space_y))
+              cv2.circle(img, (x1,y1), r, COLOR_BLACK, -1)
 
        if white_stones is not None:
           for i in white_stones:
-              x1 = int(edges[grdef.GR_FROM][grdef.GR_X] + ((i[2]-1) * space_x))
-              y1 = int(edges[grdef.GR_FROM][grdef.GR_Y] + ((i[3]-1) * space_y))
-              cv2.circle(img, (x1,y1), r, grdef.COLOR_BLACK, 1)
-              cv2.circle(img, (x1,y1), r-1, grdef.COLOR_WHITE, -1)
+              x1 = int(edges[GR_FROM][GR_X] + ((i[2]-1) * space_x))
+              y1 = int(edges[GR_FROM][GR_Y] + ((i[3]-1) * space_y))
+              cv2.circle(img, (x1,y1), r, COLOR_BLACK, 1)
+              cv2.circle(img, (x1,y1), r-1, COLOR_WHITE, -1)
 
     return img
 
 def eliminate_duplicates(bs, ws):
     # Priority for white stones
     for st in ws:
-        px = st[grdef.GR_A]
-        py = st[grdef.GR_B]
+        px = st[GR_A]
+        py = st[GR_B]
         for i in range(len(bs)):
-            if px == bs[i,grdef.GR_A] and py == bs[i, grdef.GR_B]:
+            if px == bs[i,GR_A] and py == bs[i, GR_B]:
                bs = np.delete(bs, i, axis = 0)
                break;
     return bs, ws

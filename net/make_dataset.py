@@ -4,7 +4,7 @@
 #
 # Author:      skolchin
 #
-# Created:     03.08.2019
+# Created:     03.08.2019.
 # Copyright:   (c) skolchin 2019
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------

@@ -8,9 +8,9 @@
 # Copyright:   (c) skolchin 2019
 #-------------------------------------------------------------------------------
 
-import grdef
-import gr
-import grutils
+from gr.grdef import *
+from gr.gr import *
+from gr.utils import img_to_imgtk
 
 import numpy as np
 import cv2
@@ -50,14 +50,14 @@ class GbrGUI:
           self.root = root
 
           # Defaults params
-          self.grParams = grdef.DEF_GR_PARAMS.copy()
+          self.grParams = DEF_GR_PARAMS.copy()
           self.grRes = None
           self.showBlack = True
           self.showWhite = True
           self.showBoxes = False
 
           # Default board image and generated image
-          self.origImg = gr.generate_board()
+          self.origImg = generate_board()
           self.origImgName = None
           self.origImgTk, self.zoom = self.make_imgtk(self.origImg)
           self.genImg = self.origImg
@@ -135,12 +135,12 @@ class GbrGUI:
           self.dbgFrameCanvas.create_window((0,0), window=self.dbgFrame, anchor='nw')
 
           # Info frame
-          self.infoFrame = tk.Frame(self.root, width = self.origImg.shape[grdef.CV_WIDTH]*2, height = 300)
+          self.infoFrame = tk.Frame(self.root, width = self.origImg.shape[CV_WIDTH]*2, height = 300)
           self.infoFrame.grid(row = 1, column = 0, padx = PADX, pady = PADY, sticky = "nswe")
 
           # Info frame: buttons
           self.buttonFrame = tk.Frame(self.infoFrame, bd = 1, relief = tk.RAISED,
-                                                 width = self.origImg.shape[grdef.CV_WIDTH]*2+PADX*2, height = 50)
+                                                 width = self.origImg.shape[CV_WIDTH]*2+PADX*2, height = 50)
           self.buttonFrame.grid(row = 0, column = 0, sticky = "nswe")
           self.buttonFrame.grid_propagate(0)
 
@@ -193,29 +193,29 @@ class GbrGUI:
           h = event.widget.winfo_height()
           x = event.x
           y = event.y
-          zx = self.zoom[grdef.GR_X]
-          zy = self.zoom[grdef.GR_Y]
+          zx = self.zoom[GR_X]
+          zy = self.zoom[GR_Y]
 
           if self.origImgName is None:
             return
 
-          x = int((x - (w - self.origImg.shape[grdef.CV_WIDTH] * zx) / 2) / zx)
-          y = int((y - (h - self.origImg.shape[grdef.CV_HEIGTH] * zy) / 2) / zy)
+          x = int((x - (w - self.origImg.shape[CV_WIDTH] * zx) / 2) / zx)
+          y = int((y - (h - self.origImg.shape[CV_HEIGTH] * zy) / 2) / zy)
           print('{}, {}'.format(x, y))
 
           f = "Black"
-          p = gr.find_coord(x, y, self.grRes[grdef.GR_STONES_B])
+          p = find_coord(x, y, self.grRes[GR_STONES_B])
           if (p[0] == -1):
             f = "White"
-            p = gr.find_coord(x, y, self.grRes[grdef.GR_STONES_W])
+            p = find_coord(x, y, self.grRes[GR_STONES_W])
           if (p[0] >= 0):
             ct = "{f} {a}{b} at ({x},{y}):{r}".format(
                f = f,
-               a = grutils.stone_pos(p, grdef.GR_A),
-               b = grutils.stone_pos(p, grdef.GR_B),
-               x = round(p[grdef.GR_X],0),
-               y = round(p[grdef.GR_Y],0),
-               r = round(p[grdef.GR_R],0))
+               a = stone_pos(p, GR_A),
+               b = stone_pos(p, GR_B),
+               x = round(p[GR_X],0),
+               y = round(p[GR_Y],0),
+               r = round(p[GR_R],0))
             print(ct)
             self.stoneInfo.set(ct)
 
@@ -227,7 +227,7 @@ class GbrGUI:
       def dbg_img_mouse_callback(self, event):
         w = event.widget
         k = w.tag
-        grutils.show(k, self.grRes[k])
+        show(k, self.grRes[k])
 
       # Load image button callback
       def load_img_callback(self):
@@ -281,7 +281,7 @@ class GbrGUI:
            # Nothing to do!
            return
 
-        jgf = grutils.gres_to_jgf(self.grRes)
+        jgf = gres_to_jgf(self.grRes)
         jgf['image_file'] = self.origImgName
 
         fn = Path(self.origImgName).with_suffix('.jgf')
@@ -298,7 +298,7 @@ class GbrGUI:
 
       # Apply defaults button callback
       def apply_def_callback(self):
-        self.grParams = grdef.DEF_GR_PARAMS.copy()
+        self.grParams = DEF_GR_PARAMS.copy()
         for key in self.tkVars.keys():
             self.tkVars[key].set(self.grParams[key])
         self.update_board(reprocess = True)
@@ -348,7 +348,7 @@ class GbrGUI:
         nb.grid(row = nrow, column = 0, sticky = "nswe", padx = PADX, pady = PADY)
 
         # Get unique tabs
-        tabs = set([e[2] for e in grdef.GR_PARAMS_PROP.values() if e[2]])
+        tabs = set([e[2] for e in GR_PARAMS_PROP.values() if e[2]])
 
         # Add switches to notebook tabs
         for tab in sorted(tabs):
@@ -361,7 +361,7 @@ class GbrGUI:
 
             # Iterate through the params processing only ones belonging to current tab
             for key in params.keys():
-                if grdef.GR_PARAMS_PROP[key][2] == tab:
+                if GR_PARAMS_PROP[key][2] == tab:
                     if (n == 3 or frame is None):
                        frame = tk.Frame(nbFrame, width = 400)
                        frame.grid(row = 0, column = ncol, padx = 3, pady = 3)
@@ -374,8 +374,8 @@ class GbrGUI:
 
                     v = tk.IntVar()
                     v.set(params[key])
-                    panel = tk.Scale(frame, from_ = grdef.GR_PARAMS_PROP[key][0],
-                                            to = grdef.GR_PARAMS_PROP[key][1],
+                    panel = tk.Scale(frame, from_ = GR_PARAMS_PROP[key][0],
+                                            to = GR_PARAMS_PROP[key][1],
                                             orient = tk.HORIZONTAL,
                                             variable = v)
                     panel.grid(row = n, column = 1, padx = 2, pady = 2)
@@ -391,9 +391,9 @@ class GbrGUI:
 
         nrow = 0
         ncol = 0
-        sx = int(shape[grdef.CV_WIDTH] / 2) - 5
+        sx = int(shape[CV_WIDTH] / 2) - 5
         if sx > self.MAX_DBG_IMG_SIZE: sx = self.MAX_DBG_IMG_SIZE
-        sy = int(float(sx) / float(shape[grdef.CV_WIDTH]) * shape[grdef.CV_HEIGTH])
+        sy = int(float(sx) / float(shape[CV_WIDTH]) * shape[CV_HEIGTH])
 
         # Remove all previously added controls
         for c in root.winfo_children():
@@ -429,11 +429,11 @@ class GbrGUI:
         lbox.grid(row = 0, column = 0, sticky = "nswe")
         lbox.config(width = int(sx / 8))
 
-        edges = res[grdef.GR_EDGES]
-        spacing = res[grdef.GR_SPACING]
-        hcross = res[grdef.GR_NUM_CROSS_H]
-        vcross = res[grdef.GR_NUM_CROSS_W]
-        size = res[grdef.GR_BOARD_SIZE]
+        edges = res[GR_EDGES]
+        spacing = res[GR_SPACING]
+        hcross = res[GR_NUM_CROSS_H]
+        vcross = res[GR_NUM_CROSS_W]
+        size = res[GR_BOARD_SIZE]
 
         lbox.insert(tk.END, "Edges: ({},{}) : ({},{})".format(edges[0][0], edges[0][1], edges[1][0], edges[1][1]))
         lbox.insert(tk.END, "Net: {},{}".format(round(spacing[0],2), round(spacing[1],2)))
@@ -447,26 +447,26 @@ class GbrGUI:
       def update_board(self, reprocess = True):
         # Process original image
         if self.grRes is None or reprocess:
-           self.grRes = gr.process_img(self.origImg, self.grParams)
+           self.grRes = process_img(self.origImg, self.grParams)
 
         # Generate board using analysis results
         r = self.grRes.copy()
         if not self.showBlack:
-           del r[grdef.GR_STONES_B]
+           del r[GR_STONES_B]
         if not self.showWhite:
-           del r[grdef.GR_STONES_W]
+           del r[GR_STONES_W]
 
-        self.genImg = gr.generate_board(shape = self.origImg.shape, res = r)
+        self.genImg = generate_board(shape = self.origImg.shape, res = r)
         if self.showBoxes:
-           if self.showBlack: self.show_detections(self.genImg, r[grdef.GR_STONES_B])
-           if self.showWhite: self.show_detections(self.genImg, r[grdef.GR_STONES_W])
+           if self.showBlack: self.show_detections(self.genImg, r[GR_STONES_B])
+           if self.showWhite: self.show_detections(self.genImg, r[GR_STONES_W])
 
         self.genImgTk, _ = self.make_imgtk(self.genImg)
         self.genImgPanel.configure(image = self.genImgTk)
 
-        board_size = self.grRes[grdef.GR_BOARD_SIZE]
-        black_stones = self.grRes[grdef.GR_STONES_B]
-        white_stones = self.grRes[grdef.GR_STONES_W]
+        board_size = self.grRes[GR_BOARD_SIZE]
+        black_stones = self.grRes[GR_STONES_B]
+        white_stones = self.grRes[GR_STONES_W]
 
         self.boardInfo.set("Board size: {}, black stones: {}, white stones: {}".format(
                                   board_size, black_stones.shape[0], white_stones.shape[0]))
@@ -478,34 +478,34 @@ class GbrGUI:
       # If image size greater than maximim one, resize it to proper level and store zoom factor
       def make_imgtk(self, img):
           z = [1.0, 1.0]
-          w = img.shape[grdef.CV_WIDTH]
-          h = img.shape[grdef.CV_HEIGTH]
+          w = img.shape[CV_WIDTH]
+          h = img.shape[CV_HEIGTH]
           if (w > self.MAX_IMG_SIZE and h > self.MAX_IMG_SIZE):
              if w >= h:
-                z[grdef.GR_X] = float(self.MAX_IMG_SIZE) / float(w)
-                z[grdef.GR_Y] = z[grdef.GR_X]
+                z[GR_X] = float(self.MAX_IMG_SIZE) / float(w)
+                z[GR_Y] = z[GR_X]
              else:
-                z[grdef.GR_Y] = float(self.MAX_IMG_SIZE) / float(h)
-                z[grdef.GR_X] = z[grdef.GR_Y]
+                z[GR_Y] = float(self.MAX_IMG_SIZE) / float(h)
+                z[GR_X] = z[GR_Y]
           elif (w > self.MAX_IMG_SIZE):
-             z[grdef.GR_X] = float(self.MAX_IMG_SIZE) / float(w)
-             z[grdef.GR_Y] = z[grdef.GR_X]
+             z[GR_X] = float(self.MAX_IMG_SIZE) / float(w)
+             z[GR_Y] = z[GR_X]
           elif (h > self.MAX_IMG_SIZE):
-             z[grdef.GR_Y] = float(self.MAX_IMG_SIZE) / float(h)
-             z[grdef.GR_X] = z[grdef.GR_Y]
+             z[GR_Y] = float(self.MAX_IMG_SIZE) / float(h)
+             z[GR_X] = z[GR_Y]
 
-          img2 = cv2.resize(img, None, fx = z[grdef.GR_X],
-                                       fy = z[grdef.GR_Y])
-          imgtk = grutils.img_to_imgtk(img2)
+          img2 = cv2.resize(img, None, fx = z[GR_X],
+                                       fy = z[GR_Y])
+          imgtk = img_to_imgtk(img2)
 
           return imgtk, z
 
       # Display detections on board
       def show_detections(self, img, stones):
           for st in stones:
-              x = st[grdef.GR_X]
-              y = st[grdef.GR_Y]
-              r = st[grdef.GR_R]
+              x = st[GR_X]
+              y = st[GR_Y]
+              r = st[GR_R]
               cv2.circle(img, (x,y), r, (0,0,255), 1)
 
 # Main function
