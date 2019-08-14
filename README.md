@@ -47,12 +47,13 @@ Examples of source and generated images:
 
 ## Requirements
 
-Python 2.7/3.5, packages: numpy, opencv2, tkinter, pathlib
+Python 2.7/3.5, numpy, opencv2, tkinter, pathlib
+For DLN: Caffe, py-faster-rcnn (original or any fork)
 
 
 ## Changelog
 
-13/08/2019:
+14/08/2019:
 
 * Changed: gr.py, grdef.py, grutils.py finally assembled as a package
 
