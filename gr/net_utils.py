@@ -73,13 +73,13 @@ def make_anno(meta_file, image_file, img = None, jgf = None):
             r = stones[i]['R']
             if r < 4: continue   # Skip objects too small
 
-            a = 2 * r * math.sqrt(2)
-            xmin = x - int(a/2)
+            a = r+1 #2 * r * math.sqrt(2)
+            xmin = x - int(a)
             if xmin <= 0: xmin = 1
-            ymin = y - int(a/2)
+            ymin = y - int(a)
             if ymin <= 0: ymin = 1
-            xmax = x + int(a/2)
-            ymax = y + int(a/2)
+            xmax = x + int(a)
+            ymax = y + int(a)
 
             bbox[n,0] = xmin
             bbox[n,1] = ymin

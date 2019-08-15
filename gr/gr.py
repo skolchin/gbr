@@ -327,10 +327,14 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None):
        else:
           board_size = res[GR_BOARD_SIZE]
 
-    EDGE = 14
-    edges = ((EDGE,EDGE),(shape[CV_WIDTH]-EDGE, shape[CV_HEIGTH]-EDGE))
-    space_x = (edges[GR_TO][GR_X] - edges[GR_FROM][GR_X]) / (board_size - 1)
-    space_y = (edges[GR_TO][GR_Y] - edges[GR_FROM][GR_Y]) / (board_size - 1)
+    if res is None:
+       edges = ((14,14),(shape[CV_WIDTH]-14, shape[CV_HEIGTH]-14))
+       space_x = (edges[GR_TO][GR_X] - edges[GR_FROM][GR_X]) / (board_size - 1)
+       space_y = (edges[GR_TO][GR_Y] - edges[GR_FROM][GR_Y]) / (board_size - 1)
+    else:
+       edges = res[GR_EDGES]
+       space_x = res[GR_SPACING][GR_X]
+       space_y = res[GR_SPACING][GR_Y]
 
     # Make up empty image
     img = np.zeros((shape[0], shape[1], 3), dtype=np.uint8)
