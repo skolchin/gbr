@@ -1,0 +1,26 @@
+<annotation>
+	<folder>folder</folder>
+	<filename>go_board_19.png</filename>
+	<path>C:\Users\skolchin\Documents\kol\gbr\gbr_ds\data\Images\go_board_19.png</path>
+	<source>
+		<database>Source</database>
+	</source>
+	<size>
+		<width>441</width>
+		<height>441</height>
+		<depth>3</depth>
+	</size>
+	<segmented>Unspecified</segmented>
+	<object>
+		<name>black</name>
+		<pose>Unspecified</pose>
+		<truncated>Unspecified</truncated>
+		<difficult>Unspecified</difficult>
+		<bndbox>
+			<xmin>96</xmin>
+			<ymin>50</ymin>
+			<xmax>112</xmax>
+			<ymax>66</ymax>
+		</bndbox>
+	</object>
+</annotation>

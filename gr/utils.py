@@ -245,6 +245,31 @@ def gres_to_jgf(res):
     jgf['white'] = sp(res[GR_STONES_W])
     return jgf
 
+# JGF to GR results
+def jgf_to_gres(jgf):
+    def sp(stones):
+        p = np.zeros((len(stones), 5), dtype = np.int32)
+        n = 0
+        for key in stones.keys():
+            stone = stones[key]
+            p[n,GR_X] = int(stone['X'])
+            p[n,GR_Y] = int(stone['Y'])
+            p[n,GR_R] = int(stone['R'])
+            p[n,GR_A] = ord(stone['A']) - ord('A') + 1
+            p[n,GR_B] = int(stone['B'])
+            n += 1
+        return p
+
+    res = dict()
+    res[GR_BOARD_SIZE] = jgf['board_size']
+    res[GR_EDGES] = [(0,0),(0,0)]
+    res[GR_EDGES][0] = jgf['edges']['0']
+    res[GR_EDGES][1] = jgf['edges']['1']
+    res[GR_SPACING] = jgf['spacing']
+    res[GR_STONES_B] = sp(jgf['black'])
+    res[GR_STONES_W] = sp(jgf['white'])
+    return res
+
 # Resize the image proportionally so no side will exceed given max_size
 # if f_upsize = False, images with size less than max_size are not upscaled
 def resize(img, max_size, f_upsize = True):

@@ -11,6 +11,9 @@
 from gr.gr import *
 from gr.utils import *
 from gr.grdef import *
+from gr.net_utils import make_anno
+import xml.dom.minidom as minidom
+
 from pathlib import Path
 import cv2
 import numpy as np
@@ -31,7 +34,7 @@ class GrBoard:
             # Load board from file
             self.load_image(image_file)
 
-    def load_image(self, filename, f_with_params = True):
+    def load_image(self, filename, f_with_params = True, f_process = True):
         # Load image
         img = cv2.imread(filename)
         if img is None:
@@ -49,12 +52,12 @@ class GrBoard:
                 f_params_loaded = True
 
         # Analyze board
-        self.process()
+        if f_process: self.process()
         return f_params_loaded
 
     def generate(self, shape = DEF_IMG_SIZE):
+        self._img = generate_board(shape, res = self._res)
         self._gen_board = True
-        self._img = generate_board(shape)
 
     def load_params(self, filename):
         p = json.load(open(str(filename)))
@@ -65,8 +68,23 @@ class GrBoard:
                 r[key] = p[key]
         return r
 
-    def load_board_info(self, filename):
-        self._gen_board = True
+    def load_board_info(self, filename, f_use_gen_img = True):
+        jgf = json.load(open(str(filename)))
+
+        # Populate _res
+        self._res = jgf_to_gres(jgf)
+
+        # Load images
+        if not f_use_gen_img:
+            # Load existing image
+            fn = jgf['image_file']
+            self.load_image(fn, f_process = False)
+        else:
+            # Use generated image
+            self._img_file = jgf['image_file']
+            max_e = jgf['edges']['1']
+            shape = (max_e[0] + 14,max_e[1] + 14)
+            self.generate(shape)
 
     def save_params(self, filename = None):
         if self._gen_board:
@@ -90,11 +108,37 @@ class GrBoard:
             json.dump(jgf, f, indent=4, sort_keys=True, ensure_ascii=False)
         return filename
 
-    def load_anno(self, filename):
-        self._gen_board = True
+    def load_annotation(self, filename):
+        def get_data_from_tag(node, tag):
+            return node.getElementsByTagName(tag)[0].childNodes[0].data
 
-    def save_anno(self, filename = None):
-        pass
+        # Load annotation file
+        with open(fn) as f:
+            data = minidom.parseString(f.read())
+
+        # Find image file name
+        fn_list = data.getElementsByTagName('path')
+        if fn_list is None or len(fn_list) == 0:
+            raise Exception('Filename not specified')
+
+        # Load image
+        fn = fn_list[0].firstChild.data
+        self.load_image(fn, f_process = True)
+
+    def save_annotation(self, filename = None, max_size = None):
+        if self._img is None:
+            return None
+        if filename is None:
+            filename = str(Path(self._img_file).with_suffix('.xml'))
+
+        im = self._img
+        if not max_size is None: im = resize(im, max_size)
+
+        jgf = None
+        if not self._res is None: jgf = gres_to_jgf(self._res)
+        make_anno(filename, self._img_file, img = im, jgf = jgf)
+
+        return filename
 
     def process(self):
         if self._img is None or self._gen_board:
@@ -147,7 +191,7 @@ class GrBoard:
     def params(self, p):
         for key in p.keys():
             if key in self._params:
-               self._params[key] = p[key]
+                self._params[key] = p[key]
 
     @property
     def results(self):
@@ -160,6 +204,10 @@ class GrBoard:
     @property
     def image_file(self):
         return self._img_file
+
+    @image_file.setter
+    def image_file(self, fn):
+        self._img_file = fn
 
     @property
     def is_gen_board(self):
