@@ -49,7 +49,7 @@ Examples of source and generated images:
 
 Python 2.7/3.5, numpy, opencv2, tkinter, pathlib
 
-For DLN: Caffe, py-faster-rcnn (!(original)(https://github.com/rbgirshick/py-faster-rcnn) or any other fork)
+For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-faster-rcnn) or any other fork)
 
 
 ## Changelog
