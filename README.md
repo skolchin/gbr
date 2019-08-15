@@ -54,9 +54,10 @@ For DLN: Caffe, py-faster-rcnn (original or any fork)
 
 ## Changelog
 
-14/08/2019:
+15/08/2019:
 
 * Changed: gr.py, grdef.py, grutils.py finally assembled as a package
+* Added: GrBoard class. Main window code refactored to work with the board class.
 
 
 13/08/2019:

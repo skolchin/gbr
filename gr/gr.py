@@ -270,14 +270,16 @@ def convert_xy(coord, res):
 # Takes X and Y in image coordinates and a list of stones created by convert_xy
 def find_coord(x, y, coord):
     for i in coord:
-        min_x = i[GR_X] - i[GR_R]
-        min_y = i[GR_Y] - i[GR_R]
+        min_x = int(i[GR_X]) - int(i[GR_R])
+        if min_x < 1: min_x = 1
+        min_y = int(i[GR_Y]) - int(i[GR_R])
+        if min_y < 1: min_y = 1
         max_x = i[GR_X] + i[GR_R]
         max_y = i[GR_Y] + i[GR_R]
         if (x >= min_x and x <= max_x and y >= min_y and y <= max_y):
            return i
 
-    return (-1, -1, -1, -1)
+    return None
 
 
 # Board image processing main function
@@ -325,16 +327,10 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None):
        else:
           board_size = res[GR_BOARD_SIZE]
 
-    edges = None
-    space_x = None
-    space_y = None
-    if res is None:
-       edges = ((14,14),(shape[CV_WIDTH]-14, shape[CV_HEIGTH]-14))
-       space_x = (edges[GR_TO][GR_X] - edges[GR_FROM][GR_X]) / (board_size - 1)
-       space_y = (edges[GR_TO][GR_Y] - edges[GR_FROM][GR_Y]) / (board_size - 1)
-    else:
-       edges = res[GR_EDGES]
-       space_x, space_y = res[GR_SPACING]
+    EDGE = 14
+    edges = ((EDGE,EDGE),(shape[CV_WIDTH]-EDGE, shape[CV_HEIGTH]-EDGE))
+    space_x = (edges[GR_TO][GR_X] - edges[GR_FROM][GR_X]) / (board_size - 1)
+    space_y = (edges[GR_TO][GR_Y] - edges[GR_FROM][GR_Y]) / (board_size - 1)
 
     # Make up empty image
     img = np.zeros((shape[0], shape[1], 3), dtype=np.uint8)

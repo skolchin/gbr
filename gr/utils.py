@@ -209,7 +209,7 @@ def hough_to_lines(lines, shape):
 
     return res
 
-def stone_pos(stone, axis = None):
+def format_stone_pos(stone, axis = None):
     if axis is None:
          return ss.ascii_uppercase[stone[GR_A]-1] + str(stone[GR_B])
     elif axis == GR_A:
@@ -225,13 +225,13 @@ def gres_to_jgf(res):
     def sp(stones):
         p = dict()
         for stone in stones:
-            key = stone_pos(stone)
+            key = format_stone_pos(stone)
             p[key] = dict()
-            p[key]['X'] = stone_pos(stone, GR_X)
-            p[key]['Y'] = stone_pos(stone, GR_Y)
-            p[key]['R'] = stone_pos(stone, GR_R)
-            p[key]['A'] = stone_pos(stone, GR_A)
-            p[key]['B'] = stone_pos(stone, GR_B)
+            p[key]['X'] = format_stone_pos(stone, GR_X)
+            p[key]['Y'] = format_stone_pos(stone, GR_Y)
+            p[key]['R'] = format_stone_pos(stone, GR_R)
+            p[key]['A'] = format_stone_pos(stone, GR_A)
+            p[key]['B'] = format_stone_pos(stone, GR_B)
         return p
 
     jgf = dict()
@@ -248,6 +248,10 @@ def gres_to_jgf(res):
 # Resize the image proportionally so no side will exceed given max_size
 # if f_upsize = False, images with size less than max_size are not upscaled
 def resize(img, max_size, f_upsize = True):
+    img, _ = resize2(img, max_size, f_upsize)
+    return img
+
+def resize2(img, max_size, f_upsize = True):
     im_size_max = np.max(img.shape[0:2])
     im_size_min = np.min(img.shape[0:2])
     im_scale = float(max_size) / float(im_size_min)
@@ -256,8 +260,8 @@ def resize(img, max_size, f_upsize = True):
         im_scale = float(max_size) / float(im_size_max)
 
     if not f_upsize and im_scale > 1.0:
-        return img
+        return img, [im_scale, im_scale]
     else:
-        return cv2.resize(img, dsize = None, fx = im_scale, fy = im_scale)
+        return cv2.resize(img, dsize = None, fx = im_scale, fy = im_scale), [im_scale, im_scale]
 
 
