@@ -41,6 +41,7 @@ def main():
         src_file = src_path.joinpath(file)
         board = GrBoard()
         stage = ""
+        max_size = None
 
         if file.endswith('.jgf'):
             # Process JGF file
@@ -56,15 +57,15 @@ def main():
             print ("Processing file {}".format(src_file))
             board.load_image(str(src_file), f_process = False)
             stage = "test"
+            max_size = MAX_SIZE
         else:
             continue
 
         # Convert to PNG
         image_file = Path(board.image_file).name
         png_file = img_path.joinpath(image_file).with_suffix('.png')
-        cv2.imwrite(str(png_file), board.image)
         print("  {} -> {}".format(image_file, png_file))
-        board.image_file = str(png_file)
+        board.save_image(str(png_file), max_size)
 
         # Save annotation
         meta_file = meta_path.joinpath(image_file).with_suffix('.xml')

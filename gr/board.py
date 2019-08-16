@@ -8,9 +8,9 @@
 # Copyright:   (c) skolchin 2019
 #-------------------------------------------------------------------------------
 
-from gr.gr import *
-from gr.utils import *
 from gr.grdef import *
+from gr.gr import process_img, generate_board, find_coord
+from gr.utils import gres_to_jgf, jgf_to_gres, resize
 from gr.net_utils import make_anno
 import xml.dom.minidom as minidom
 
@@ -57,7 +57,21 @@ class GrBoard:
 
     def generate(self, shape = DEF_IMG_SIZE):
         self._img = generate_board(shape, res = self._res)
+        self._img_file = None
         self._gen_board = True
+
+    def save_image(self, filename = None, max_size = None):
+        if self._img is None:
+           raise Exception('Image was not loaded')
+
+        if filename is None: filename = self._img_file
+        im = self._img
+        if not max_size is None: im = resize(im, max_size)
+
+        cv2.imwrite(str(filename), im)
+
+        self._img_file = filename
+        self.is_gen_board = False
 
     def load_params(self, filename):
         p = json.load(open(str(filename)))
@@ -70,11 +84,8 @@ class GrBoard:
 
     def load_board_info(self, filename, f_use_gen_img = True):
         jgf = json.load(open(str(filename)))
-
-        # Populate _res
         self._res = jgf_to_gres(jgf)
 
-        # Load images
         if not f_use_gen_img:
             # Load existing image
             fn = jgf['image_file']
@@ -87,8 +98,6 @@ class GrBoard:
             self.generate(shape)
 
     def save_params(self, filename = None):
-        if self._gen_board:
-            return None
         if filename is None:
             filename = str(Path(self._img_file).with_suffix('.json'))
         with open(filename, "w") as f:
@@ -96,8 +105,6 @@ class GrBoard:
         return filename
 
     def save_board_info(self, filename = None):
-        if self._gen_board:
-            return None
         if filename is None:
             filename = str(Path(self._img_file).with_suffix('.jgf'))
 
@@ -154,9 +161,6 @@ class GrBoard:
                 r = st[GR_R]
                 cv2.circle(img, (x,y), r, (0,0,255), 1)
 
-        if self._gen_board:
-            return None
-
         r = self._res.copy()
         if not f_black:
             del r[GR_STONES_B]
@@ -181,7 +185,7 @@ class GrBoard:
                 if not pt is None: c = GR_STONES_W
             return pt, c
         else:
-            return None
+            return None, None
 
     @property
     def params(self):
@@ -204,10 +208,6 @@ class GrBoard:
     @property
     def image_file(self):
         return self._img_file
-
-    @image_file.setter
-    def image_file(self, fn):
-        self._img_file = fn
 
     @property
     def is_gen_board(self):
