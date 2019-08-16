@@ -8,8 +8,8 @@
 # Copyright:   (c) skolchin 2019
 #-------------------------------------------------------------------------------
 
-from gr.grdef import *
-from gr.utils import *
+from grdef import *
+from utils import *
 import cv2
 import numpy as np
 

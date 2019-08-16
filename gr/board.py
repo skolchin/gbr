@@ -8,10 +8,10 @@
 # Copyright:   (c) skolchin 2019
 #-------------------------------------------------------------------------------
 
-from gr.grdef import *
-from gr.gr import process_img, generate_board, find_coord
-from gr.utils import gres_to_jgf, jgf_to_gres, resize
-from gr.net_utils import make_anno
+from grdef import *
+from gr import process_img, generate_board, find_coord
+from utils import gres_to_jgf, jgf_to_gres, resize
+from net_utils import make_anno
 import xml.dom.minidom as minidom
 
 from pathlib import Path
@@ -19,7 +19,7 @@ import cv2
 import numpy as np
 import json
 
-class GrBoard:
+class GrBoard(object):
     def __init__(self, image_file = None, board_shape = DEF_IMG_SIZE):
         self._params = DEF_GR_PARAMS.copy()
         self._res = None

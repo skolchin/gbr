@@ -8,7 +8,7 @@
 # Copyright:   (c) skolchin 2019
 #-------------------------------------------------------------------------------
 
-from gr.grdef import *
+from grdef import *
 import cv2
 import numpy as np
 from PIL import Image, ImageTk
