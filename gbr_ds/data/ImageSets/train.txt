@@ -1,17 +1,10 @@
 go_board_1
 go_board_10
-go_board_11
-go_board_12
-go_board_13
 go_board_14
-go_board_15_large
 go_board_19
 go_board_2
 go_board_20
 go_board_21
-go_board_22
-go_board_24
-go_board_26
 go_board_27
 go_board_3
 go_board_4
@@ -19,5 +12,3 @@ go_board_5
 go_board_6
 go_board_7
 go_board_8a
-go_board_8a_gen
-go_board_9a

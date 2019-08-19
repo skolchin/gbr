@@ -293,4 +293,9 @@ def resize2(img, max_size, f_upsize = True):
     else:
         return cv2.resize(img, dsize = None, fx = im_scale, fy = im_scale), [im_scale, im_scale]
 
+# Calculate spacing
+def board_spacing(edges, size):
+    space_x = (edges[1][0] - edges[0][0]) / float(size-1)
+    space_y = (edges[1][1] - edges[0][1]) / float(size-1)
+    return space_x, space_y
 

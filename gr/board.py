@@ -78,7 +78,7 @@ class GrBoard(object):
         cv2.imwrite(str(filename), im)
 
         self._img_file = filename
-        self.is_gen_board = False
+        self._gen_board = False
 
     def load_params(self, filename):
         p = json.load(open(str(filename)))
@@ -255,6 +255,7 @@ class GrBoard(object):
             r[GR_NUM_CROSS_H] = self._res[GR_NUM_CROSS_H]
             r[GR_NUM_CROSS_W] = self._res[GR_NUM_CROSS_W]
             r[GR_BOARD_SIZE] = self._res[GR_BOARD_SIZE]
+            r[GR_IMAGE_SIZE] = self._res[GR_IMAGE_SIZE]
             return r
 
     @property

@@ -104,7 +104,7 @@ def make_anno(meta_file, image_file, img = None, jgf = None):
 
         return bbox
 
-    f = open(meta_file,'w')
+    f = open(str(meta_file),'w')
 
     line = "<annotation>" + '\n'
     f.write(line)
@@ -118,7 +118,7 @@ def make_anno(meta_file, image_file, img = None, jgf = None):
     f.write(line)
 
     if img is None:
-       img = cv2.imread(image_file)
+       img = cv2.imread(str(image_file))
        if img is None: raise Exception("File not found {}".format(image_file))
 
     (height, width, depth) = img.shape

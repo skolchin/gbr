@@ -110,3 +110,4 @@ GR_SPACING = "SPACES"               # spacing of board net (x,y)
 GR_NUM_LINES = "NLIN"               # overall number of lines found
 GR_NUM_CROSS_H = "NCROSS_H"         # Number of crosses on horizontal line
 GR_NUM_CROSS_W = "NCROSS_W"         # Number of crosses on vertical line
+GR_IMAGE_SIZE = "IMAGE_SIZE"        # Image size (width, height)

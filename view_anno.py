@@ -118,6 +118,10 @@ class ViewAnnoGui:
               x2 = int(get_data_from_tag(obj, 'xmax'))
               y2 = int(get_data_from_tag(obj, 'ymax'))
               cls = str(get_data_from_tag(obj, "name")).lower().strip()
+              if x1 <= 0 or y1 <= 0 or x1 >= img.shape[1] or y1 >= img.shape[0]:
+                print("ERROR: coordinate out of boundary")
+              if x1 >= x2 or y1 >= y2:
+                print("ERROR: coordinates overlap")
 
               # Draw a bounding box
               cv2.rectangle(img2,(x1,y1),(x2,y2),(0,255,0),1)

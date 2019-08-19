@@ -77,18 +77,19 @@ class gbr(imdb):
         Return the database of ground-truth regions of interest.
         This function loads/saves from/to a cache file to speed up future calls.
         """
-        cache_file = os.path.join(self.cache_path, self.name + '_gt_roidb.pkl')
-        if os.path.exists(cache_file):
-            with open(cache_file, 'rb') as fid:
-                roidb = cPickle.load(fid)
-            print '{} gt roidb loaded from {}'.format(self.name, cache_file)
-            return roidb
+##        cache_file = os.path.join(self.cache_path, self.name + '_gt_roidb.pkl')
+##        if os.path.exists(cache_file):
+##            with open(cache_file, 'rb') as fid:
+##                roidb = cPickle.load(fid)
+##            print '{} gt roidb loaded from {}'.format(self.name, cache_file)
+##            return roidb
 
         gt_roidb = [self._load_gbr_annotation(index)
                     for index in self.image_index]
-        with open(cache_file, 'wb') as fid:
-            cPickle.dump(gt_roidb, fid, cPickle.HIGHEST_PROTOCOL)
-        print 'wrote gt roidb to {}'.format(cache_file)
+##
+##        with open(cache_file, 'wb') as fid:
+##            cPickle.dump(gt_roidb, fid, cPickle.HIGHEST_PROTOCOL)
+##        print 'wrote gt roidb to {}'.format(cache_file)
 
         return gt_roidb
 

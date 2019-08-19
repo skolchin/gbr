@@ -19,7 +19,7 @@ from matplotlib import pyplot as plt
 from fast_rcnn.config import cfg
 from fast_rcnn.test import im_detect
 from fast_rcnn.nms_wrapper import nms
-from net_utils import show_detections
+from gr.net_utils import show_detections
 
 
 CLASSES = ["_back_", "white", "black"]
@@ -40,17 +40,9 @@ CLASSES = ["_back_", "white", "black"]
 
 #detections = net.forward()
 
-root_path = Path(__file__).with_name('').joinpath('..').resolve()
-print("Root path is {}".format(root_path))
-rcnn_path = root_path.joinpath('..','py-faster-rcnn').resolve()
-print("RCNN path is {}".format(rcnn_path))
-
-model_file = str(root_path.joinpath("net", "models","test.prototxt"))
-print("Model file is {}".format(model_file))
-weigth_file = str(root_path.joinpath("net", "models","out", "gbr_zf", "train", "gbr_zf_iter_20000.caffemodel"))
-print("Using weights {}".format(weigth_file))
-img_file = str(root_path.joinpath("img","go_board_5.jpg"))
-print("Image {}".format(img_file))
+model_file = "models\\test.prototxt"
+weigth_file = "out\\gbr_zf\\train\\gbr_zf_iter_10000.caffemodel"
+img_file = "img\\go_board_1.png"
 
 cfg.TEST.HAS_RPN = True
 caffe.set_mode_gpu()

@@ -180,7 +180,6 @@ def find_board(img, params, res):
 
     res[GR_NUM_LINES] = nlin
     res[GR_IMG_LINES] = lines_img
-    print ("Lines found: " + str(nlin))
 
     # Find min/max coordinates - which are edges
     xmin = -1
@@ -273,14 +272,13 @@ def find_board(img, params, res):
 
     res[GR_BOARD_SIZE] = size
 
-    # Make a debug image
+     # Make a debug image
     lines_img2 = make_lines_img(img.shape, hpos)
     lines_img2 = make_lines_img(img.shape, vpos, img = lines_img2)
     res[GR_IMG_LINES2] = lines_img2
 
     # Calculate spacing
-    space_x = (brd_edges[1][0] - brd_edges[0][0]) / (size - 1)
-    space_y = (brd_edges[1][1] - brd_edges[0][1]) / (size - 1)
+    space_x, space_y = board_spacing(brd_edges, size)
     res[GR_SPACING] = (space_x, space_y)
 
     print("Edges:({},{}), ({},{}), crosses: {}, {}, size: {}, spaces: ({}, {})".format(
@@ -356,6 +354,7 @@ def find_coord(x, y, coord):
 # Dict keys are defined in grdef module
 def process_img(img, params):
     res = dict()
+    res[GR_IMAGE_SIZE] = img.shape[:2]
 
     # Graying out
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -393,8 +392,7 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None):
 
     if res is None:
         edges = ((14,14),(shape[CV_WIDTH]-14, shape[CV_HEIGTH]-14))
-        space_x = (edges[GR_TO][GR_X] - edges[GR_FROM][GR_X]) / (board_size - 1)
-        space_y = (edges[GR_TO][GR_Y] - edges[GR_FROM][GR_Y]) / (board_size - 1)
+        space_x, space_y = board_spacing(edges, board_size)
     else:
         edges = res[GR_EDGES]
         space_x = res[GR_SPACING][GR_X]
@@ -403,21 +401,26 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None):
     # Make up empty image
     img = np.zeros((shape[0], shape[1], 3), dtype=np.uint8)
     img[:] = DEF_IMG_COLOR
+    #print("Image shape: {}".format(img.shape))
 
     # Draw the lines
+    #print("Vertical")
     for i in range(board_size):
         x1 = int(edges[GR_FROM][GR_X] + (i * space_x))
         y1 = int(edges[GR_FROM][GR_Y])
         x2 = x1
         y2 = int(edges[GR_TO][GR_Y])
         cv2.line(img,(x1,y1),(x2,y2),COLOR_BLACK,1)
+        #print("{}: ({},{}) - ({},{})".format(i,x1,y1,x2,y2))
 
+    #print("Horizontal")
     for i in range(board_size):
         x1 = int(edges[GR_FROM][GR_X])
         y1 = int(edges[GR_FROM][GR_Y] + (i * space_y))
         x2 = int(edges[GR_TO][GR_X])
         y2 = y1
         cv2.line(img, (x1,y1), (x2,y2), COLOR_BLACK, 1)
+        #print("{}: ({},{}) - ({},{})".format(i,x1,y1,x2,y2))
 
     # Draw the stones
     if res is not None:
@@ -441,6 +444,9 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None):
     return img
 
 def eliminate_duplicates(bs, ws):
+    if ws is None or bs is None:
+        return bs, ws
+
     # Priority for white stones
     for st in ws:
         px = st[GR_A]
