@@ -236,7 +236,7 @@ class GbrGUI:
             self.showBlack = True
             self.showWhite = True
             self.showBoxes = False
-            self.update_board(reprocess = True)
+            self.update_board(reprocess = False)
 
             # Update status
             ftitle = ""
@@ -427,6 +427,12 @@ class GbrGUI:
 
         self.boardInfo.set("Board size: {}, black stones: {}, white stones: {}".format(
                                   board_size, black_stones.shape[0], white_stones.shape[0]))
+
+        # Update params
+        p = self.board.params
+        for key in p.keys():
+            if key in self.tkVars.keys():
+               self.tkVars[key].set(p[key])
 
         # Update debug info
         self.add_debug_info(self.dbgFrame, self.board.board_shape,

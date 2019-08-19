@@ -32,6 +32,8 @@ The algorithm per se is the following:
 
 4. Convert X, Y stone coordinates to board positions
 
+5. Apply watershed, if specified
+
 There are some tuning parameters for each of the steps and they are to be adjusted for each particular board. After the tuning, the program performs quite well on a computer-generated boards.
 
 As for real board images, they have to be manually adjusted to have all edges to be equal to abount 90 degree and board lines - to be horizontal/vertical. After that, they are processed satisfactory, but more tuning on parameters might be required.
@@ -53,6 +55,10 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 
 ## Changelog
+
+19/08/2019:
+
+* Added: waterhed transformation which allows to precisely determite stone radius (now working only for white stones)
 
 16/08/2019:
 

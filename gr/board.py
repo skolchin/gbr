@@ -8,10 +8,10 @@
 # Copyright:   (c) skolchin 2019
 #-------------------------------------------------------------------------------
 
-from grdef import *
-from gr import process_img, generate_board, find_coord
-from utils import gres_to_jgf, jgf_to_gres, resize
-from net_utils import make_anno
+from gr.grdef import *
+from gr.gr import process_img, generate_board, find_coord
+from gr.utils import gres_to_jgf, jgf_to_gres, resize
+from gr.net_utils import make_anno
 import xml.dom.minidom as minidom
 
 from pathlib import Path

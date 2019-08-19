@@ -8,8 +8,8 @@
 # Copyright:   (c) skolchin 2019
 #-------------------------------------------------------------------------------
 
-from grdef import *
-from utils import *
+from gr.grdef import *
+from gr.utils import *
 import cv2
 import numpy as np
 from skimage.feature import peak_local_max
@@ -19,13 +19,45 @@ from scipy import ndimage
 # Find stones on a board
 # Takes an image, recognition param dictionary, results dictionary and
 # kind of stones been processed ('B' or 'W')
-# Recognized stones are saved in a list in form of (X, Y, R),
-# where X,Y are image coordinates, R - radius in pixels
+# Recognized stones are saved in a list in form of (X, Y, A, B, R),
+# where (X,Y) are image coordinates, (A,B) - stone position, R - radius in pixels
 # Several analysis parameters are also stored in the results dict
 # The array is stored in the results dictionary and returned
 def find_stones(img, params, res, f_bw):
 
-    # Make a thresholded image
+    # Apply watershed transformation
+    def apply_watershed(img, stones, res, f_bw):
+        if f_bw == 'B':
+            ret, t2 = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY_INV)
+        else:
+            ret, t2 = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY)
+
+        kernel = np.ones((3,3),np.uint8)
+        D = ndimage.distance_transform_edt(t2)
+
+        localMax = np.zeros(t2.shape[:2], dtype = np.bool)
+        for st in stones:
+            x = int(st[0])
+            y = int(st[1])
+            localMax[y,x] = True
+
+        markers = ndimage.label(localMax, structure=np.ones((3, 3)))[0]
+        labels = watershed(-D, markers, mask=t2)
+
+        rt = []
+        for label in np.unique(labels):
+            if label == 0: continue
+
+            mask = np.zeros(t2.shape, dtype="uint8")
+            mask[labels == label] = 255
+            cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
+            c = max(cnts, key=cv2.contourArea)
+            ((x, y), r) = cv2.minEnclosingCircle(c)
+            rt.append ([int(x), int(y), int(r)])
+
+        return np.array(rt)
+
+    # Params
     n_thresh = params['STONES_THRESHOLD_' + f_bw]
     n_maxval = params['STONES_MAXVAL_' + f_bw]
     n_iter_d = params['STONES_DILATE_' + f_bw]
@@ -37,33 +69,34 @@ def find_stones(img, params, res, f_bw):
     n_blur = params['BLUR_MASK_' + f_bw]
     n_watershed = params['WATERSHED_' + f_bw]
 
+    # Create thresholded image
     thresh = None
     if (f_bw == 'B'):
-       ret, thresh = cv2.threshold(img, n_thresh, n_maxval, cv2.THRESH_BINARY)
+        ret, thresh = cv2.threshold(img, n_thresh, n_maxval, cv2.THRESH_BINARY)
     else:
-       ret, thresh = cv2.threshold(img, n_thresh, n_maxval, cv2.THRESH_BINARY_INV)
+        ret, thresh = cv2.threshold(img, n_thresh, n_maxval, cv2.THRESH_BINARY_INV)
 
     res['IMG_THRESH_' + f_bw] = thresh
 
     # Dilate and erode
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(100,100))
-    kernel = cv2.resize(kernel, (n_mask, n_mask))
+    kernel = cv2.resize(kernel, (n_mask,n_mask))
 
     stones_img = thresh.copy()
     if n_iter_d > 0:
-       stones_img = cv2.dilate(stones_img, kernel,
-                                           iterations=n_iter_d,
+        stones_img = cv2.dilate(stones_img, kernel,
+                                            iterations=n_iter_d,
+                                            borderType = cv2.BORDER_CONSTANT,
+                                            borderValue = COLOR_BLACK)
+    if n_iter_e > 0:
+        stones_img = cv2.erode(stones_img, kernel,
+                                           iterations=n_iter_e,
                                            borderType = cv2.BORDER_CONSTANT,
                                            borderValue = COLOR_BLACK)
-    if n_iter_e > 0:
-       stones_img = cv2.erode(stones_img, kernel,
-                                          iterations=n_iter_e,
-                                          borderType = cv2.BORDER_CONSTANT,
-                                          borderValue = COLOR_BLACK)
 
     # Add some blur and sharpen the image to smooth the edges
     if n_blur > 0:
-       stones_img = cv2.blur(stones_img, (n_blur, n_blur))
+        stones_img = cv2.blur(stones_img, (n_blur, n_blur))
 
     res['IMG_MORPH_' + f_bw] = stones_img
 
@@ -76,42 +109,16 @@ def find_stones(img, params, res, f_bw):
                                           #minRadius = 3,
                                           maxRadius = n_maxrad)
 
-    if (stones is None):
-       return None
+    if stones is None:
+        return None
     else:
-        if n_watershed == 0:
-            return stones[0]
-        else:
+        # Determine board positions
+        stones = convert_xy(stones[0], res)
+        if n_watershed > 0:
             # Apply watershed
-            thresh = cv2.bitwise_not(thresh)
-            kernel = np.ones((3,3),np.uint8)
-            D = ndimage.distance_transform_edt(thresh)
-
-            localMax = np.zeros(thresh.shape[:2], dtype = np.bool)
-            for st in stones[0]:
-                x = int(st[0])
-                y = int(st[1])
-                localMax[y,x] = True
-
-            markers = ndimage.label(localMax, structure=np.ones((3, 3)))[0]
-            labels = watershed(-D, markers, mask=thresh)
-
-            rt = []
-            for label in np.unique(labels):
-            	if label == 0:
-            		continue
-
-            	mask = np.zeros(thresh.shape, dtype="uint8")
-            	mask[labels == label] = 255
-
-            	cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
-            		cv2.CHAIN_APPROX_SIMPLE)[-2]
-            	c = max(cnts, key=cv2.contourArea)
-
-            	((x, y), r) = cv2.minEnclosingCircle(c)
-                rt.append([x,y,r+1])
-
-            return np.array(rt)
+            ws_stones = apply_watershed(img, stones, res, f_bw)
+            stones = convert_xy(ws_stones, res)
+        return stones
 
 # Find board edges, spacing and size
 # Takes an image, recognition param dictionary and results dictionary
@@ -163,15 +170,15 @@ def find_board(img, params, res):
         y2 = i[GR_TO][GR_Y]
 
         if (abs(x1 - x2) < 3 or abs(y1 - y2) < 3):
-           # Vertical or horizontal line
-           if (x1 < xmin or xmin == -1):
-              xmin = x1
-           if (y1 < ymin or ymin == -1):
-              ymin = y1
-           if (x2 > xmax or xmax == -1):
-              xmax = x2
-           if (y2 > ymax or ymax == -1):
-              ymax = y2
+            # Vertical or horizontal line
+            if (x1 < xmin or xmin == -1):
+                xmin = x1
+            if (y1 < ymin or ymin == -1):
+                ymin = y1
+            if (x2 > xmax or xmax == -1):
+                xmax = x2
+            if (y2 > ymax or ymax == -1):
+                ymax = y2
 
     brd_edges = ((int(xmin), int(ymin)), (int(xmax), int(ymax)))
     res[GR_EDGES] = brd_edges
@@ -196,11 +203,11 @@ def find_board(img, params, res):
 
         # Collect all horizontal and vertical lines
         if abs(x1 - x2) < 3 and y1 != y2:
-           # vertical
-           vlin.append(i)
+            # vertical
+            vlin.append(i)
         elif abs(y1 - y2) < 3 and x1 != x2:
-           # horizontal
-           hlin.append(i)
+            # horizontal
+            hlin.append(i)
 
     # Get unique vertical line positions
     vpos = remove_nearest(vlin, axis1 = 0, axis2 = 0)
@@ -215,29 +222,29 @@ def find_board(img, params, res):
     size = None
     for n in DEF_AVAIL_SIZES:
         if abs(hcross-n) < 2 and abs(vcross-n) < 2:
-           size = n
-           break
+            size = n
+            break
 
     if size is None:
-       # Repeat but now check only one side
+        # Repeat but now check only one side
         for n in DEF_AVAIL_SIZES:
-           if abs(hcross-n) < 2 or abs(vcross-n) < 2:
-              size = n
-              break
+            if abs(hcross-n) < 2 or abs(vcross-n) < 2:
+                size = n
+                break
 
     if size is None:
-       # Take size which is more than minimum one
-       if hcross > DEF_AVAIL_SIZES[0] and vcross > DEF_AVAIL_SIZES[0]:
-          size = min(hcross, vcross)
-       elif hcross > DEF_AVAIL_SIZES[0]:
-          size = hcross
-       elif vcross > DEF_AVAIL_SIZES[0]:
-          size = vcross
+        # Take size which is more than minimum one
+        if hcross > DEF_AVAIL_SIZES[0] and vcross > DEF_AVAIL_SIZES[0]:
+            size = min(hcross, vcross)
+        elif hcross > DEF_AVAIL_SIZES[0]:
+            size = hcross
+        elif vcross > DEF_AVAIL_SIZES[0]:
+            size = vcross
 
     if size is None:
-       # Oops, take a default one
-       print("Cannot properly determine board size, fall back to default one")
-       size = DEF_BOARD_SIZE
+        # Oops, take a default one
+        print("Cannot properly determine board size, fall back to default one")
+        size = DEF_BOARD_SIZE
 
     res[GR_BOARD_SIZE] = size
 
@@ -265,7 +272,7 @@ def find_board(img, params, res):
 # Board coordinates are stores as first two array items, board position - as 3,4
 def convert_xy(coord, res):
     if (coord is None):
-       return np.empty([0,0,0,0])
+        return np.empty([0,0,0,0])
     else:
          # Make up an empty array
         stones = np.zeros((len(coord), 2), dtype = np.uint16)
@@ -313,7 +320,7 @@ def find_coord(x, y, coord):
         max_x = i[GR_X] + i[GR_R]
         max_y = i[GR_Y] + i[GR_R]
         if (x >= min_x and x <= max_x and y >= min_y and y <= max_y):
-           return i
+            return i
 
     return None
 
@@ -336,12 +343,8 @@ def process_img(img, params):
     board_edges = find_board(gray, params, res)
 
     # Find stones
-    black_stones_xy = find_stones(r, params, res, 'B')
-    white_stones_xy = find_stones(b, params, res, 'W')
-
-    # Convert X-Y coordinates to stone positions
-    black_stones = convert_xy(black_stones_xy, res)
-    white_stones = convert_xy(white_stones_xy, res)
+    black_stones = find_stones(r, params, res, 'B')
+    white_stones = find_stones(b, params, res, 'W')
 
     # Elminate duplicates
     black_stones, white_stones = eliminate_duplicates(black_stones, white_stones)
@@ -358,19 +361,19 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None):
 
     # Prepare params
     if board_size is None:
-       if res is None:
-          board_size = DEF_BOARD_SIZE
-       else:
-          board_size = res[GR_BOARD_SIZE]
+        if res is None:
+            board_size = DEF_BOARD_SIZE
+        else:
+            board_size = res[GR_BOARD_SIZE]
 
     if res is None:
-       edges = ((14,14),(shape[CV_WIDTH]-14, shape[CV_HEIGTH]-14))
-       space_x = (edges[GR_TO][GR_X] - edges[GR_FROM][GR_X]) / (board_size - 1)
-       space_y = (edges[GR_TO][GR_Y] - edges[GR_FROM][GR_Y]) / (board_size - 1)
+        edges = ((14,14),(shape[CV_WIDTH]-14, shape[CV_HEIGTH]-14))
+        space_x = (edges[GR_TO][GR_X] - edges[GR_FROM][GR_X]) / (board_size - 1)
+        space_y = (edges[GR_TO][GR_Y] - edges[GR_FROM][GR_Y]) / (board_size - 1)
     else:
-       edges = res[GR_EDGES]
-       space_x = res[GR_SPACING][GR_X]
-       space_y = res[GR_SPACING][GR_Y]
+        edges = res[GR_EDGES]
+        space_x = res[GR_SPACING][GR_X]
+        space_y = res[GR_SPACING][GR_Y]
 
     # Make up empty image
     img = np.zeros((shape[0], shape[1], 3), dtype=np.uint8)
@@ -393,22 +396,22 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None):
 
     # Draw the stones
     if res is not None:
-       black_stones = res.get(GR_STONES_B)
-       white_stones = res.get(GR_STONES_W)
-       r = max(int(min(space_x, space_y) / 2) - 1, 5)
+        black_stones = res.get(GR_STONES_B)
+        white_stones = res.get(GR_STONES_W)
+        r = max(int(min(space_x, space_y) / 2) - 1, 5)
 
-       if black_stones is not None:
-          for i in black_stones:
-              x1 = int(edges[GR_FROM][GR_X] + ((i[2]-1) * space_x))
-              y1 = int(edges[GR_FROM][GR_Y] + ((i[3]-1) * space_y))
-              cv2.circle(img, (x1,y1), r, COLOR_BLACK, -1)
+        if black_stones is not None:
+            for i in black_stones:
+                x1 = int(edges[GR_FROM][GR_X] + ((i[2]-1) * space_x))
+                y1 = int(edges[GR_FROM][GR_Y] + ((i[3]-1) * space_y))
+                cv2.circle(img, (x1,y1), r, COLOR_BLACK, -1)
 
-       if white_stones is not None:
-          for i in white_stones:
-              x1 = int(edges[GR_FROM][GR_X] + ((i[2]-1) * space_x))
-              y1 = int(edges[GR_FROM][GR_Y] + ((i[3]-1) * space_y))
-              cv2.circle(img, (x1,y1), r, COLOR_BLACK, 1)
-              cv2.circle(img, (x1,y1), r-1, COLOR_WHITE, -1)
+        if white_stones is not None:
+            for i in white_stones:
+                x1 = int(edges[GR_FROM][GR_X] + ((i[2]-1) * space_x))
+                y1 = int(edges[GR_FROM][GR_Y] + ((i[3]-1) * space_y))
+                cv2.circle(img, (x1,y1), r, COLOR_BLACK, 1)
+                cv2.circle(img, (x1,y1), r-1, COLOR_WHITE, -1)
 
     return img
 
@@ -419,6 +422,7 @@ def eliminate_duplicates(bs, ws):
         py = st[GR_B]
         for i in range(len(bs)):
             if px == bs[i,GR_A] and py == bs[i, GR_B]:
-               bs = np.delete(bs, i, axis = 0)
-               break;
+                bs = np.delete(bs, i, axis = 0)
+                break;
     return bs, ws
+
