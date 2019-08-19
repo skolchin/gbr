@@ -8,8 +8,13 @@
 # Copyright:   (c) skolchin 2019
 #-------------------------------------------------------------------------------
 
-from gr.grdef import *
-from gr.utils import *
+import sys
+if sys.version_info[0] < 3:
+    from grdef import *
+    from utils import *
+else:
+    from gr.grdef import *
+    from gr.utils import *
 import cv2
 import numpy as np
 from skimage.feature import peak_local_max
@@ -28,7 +33,10 @@ def find_stones(img, params, res, f_bw):
     # Apply watershed transformation
     def apply_watershed(img, stones, res, f_bw):
         if f_bw == 'B':
-            ret, t2 = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY_INV)
+            kernel  = np.ones((3,3),np.uint8)
+            img2 = cv2.dilate(img,kernel,iterations=1)
+            img2 = cv2.bitwise_not(img2)
+            ret, t2 = cv2.threshold(img2, 200, 255, cv2.THRESH_BINARY)
         else:
             ret, t2 = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY)
 
@@ -114,11 +122,28 @@ def find_stones(img, params, res, f_bw):
     else:
         # Determine board positions
         stones = convert_xy(stones[0], res)
-        if n_watershed > 0:
+        if n_watershed == 0:
+            return stones
+        else:
             # Apply watershed
             ws_stones = apply_watershed(img, stones, res, f_bw)
-            stones = convert_xy(ws_stones, res)
-        return stones
+            ws_stones = convert_xy(ws_stones, res)
+
+            # Combine stones from both sources
+            st_res = []
+            #mean = lambda f: sum(f[2],0.0) / len(f)
+            #mean_r = mean(ws_stones)
+            for s1 in stones:
+                found = False
+                for s2 in ws_stones:
+                    if s1[GR_A] == s2[GR_A] and s1[GR_B] == s2[GR_B]:
+                        st_res.append(s2)
+                        found = True
+                        break
+                if not found:
+                    st_res.append(s1)
+
+            return np.array(st_res)
 
 # Find board edges, spacing and size
 # Takes an image, recognition param dictionary and results dictionary

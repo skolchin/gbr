@@ -8,7 +8,11 @@
 # Copyright:   (c) skolchin 2019
 #-------------------------------------------------------------------------------
 
-from gr.grdef import *
+import sys
+if sys.version_info[0] < 3:
+    from grdef import *
+else:
+    from gr.grdef import *
 import cv2
 import numpy as np
 from PIL import Image, ImageTk
