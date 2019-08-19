@@ -58,7 +58,7 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 19/08/2019:
 
-* Added: waterhed transformation which allows to precisely determite stone radius (now working only for white stones)
+* Added: waterhed transformation to determine stone radius more precisely
 
 16/08/2019:
 
