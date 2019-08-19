@@ -36,7 +36,7 @@ class GrBoard(object):
 
     def load_image(self, filename, f_with_params = True, f_process = True):
         # Load image
-        img = cv2.imread(filename)
+        img = cv2.imread(str(filename))
         if img is None:
             raise Exception('Image file not found {}'.format(filename))
         self._gen_board = False

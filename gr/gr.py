@@ -12,6 +12,9 @@ from grdef import *
 from utils import *
 import cv2
 import numpy as np
+from skimage.feature import peak_local_max
+from skimage.morphology import watershed
+from scipy import ndimage
 
 # Find stones on a board
 # Takes an image, recognition param dictionary, results dictionary and
@@ -32,6 +35,7 @@ def find_stones(img, params, res, f_bw):
     n_param2 = params['HC_SENSITIVITY_' + f_bw]
     n_mask = params['HC_MASK_' + f_bw]
     n_blur = params['BLUR_MASK_' + f_bw]
+    n_watershed = params['WATERSHED_' + f_bw]
 
     thresh = None
     if (f_bw == 'B'):
@@ -45,7 +49,7 @@ def find_stones(img, params, res, f_bw):
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(100,100))
     kernel = cv2.resize(kernel, (n_mask, n_mask))
 
-    stones_img = thresh
+    stones_img = thresh.copy()
     if n_iter_d > 0:
        stones_img = cv2.dilate(stones_img, kernel,
                                            iterations=n_iter_d,
@@ -75,7 +79,39 @@ def find_stones(img, params, res, f_bw):
     if (stones is None):
        return None
     else:
-         return stones[0]
+        if n_watershed == 0:
+            return stones[0]
+        else:
+            # Apply watershed
+            thresh = cv2.bitwise_not(thresh)
+            kernel = np.ones((3,3),np.uint8)
+            D = ndimage.distance_transform_edt(thresh)
+
+            localMax = np.zeros(thresh.shape[:2], dtype = np.bool)
+            for st in stones[0]:
+                x = int(st[0])
+                y = int(st[1])
+                localMax[y,x] = True
+
+            markers = ndimage.label(localMax, structure=np.ones((3, 3)))[0]
+            labels = watershed(-D, markers, mask=thresh)
+
+            rt = []
+            for label in np.unique(labels):
+            	if label == 0:
+            		continue
+
+            	mask = np.zeros(thresh.shape, dtype="uint8")
+            	mask[labels == label] = 255
+
+            	cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
+            		cv2.CHAIN_APPROX_SIMPLE)[-2]
+            	c = max(cnts, key=cv2.contourArea)
+
+            	((x, y), r) = cv2.minEnclosingCircle(c)
+                rt.append([x,y,r+1])
+
+            return np.array(rt)
 
 # Find board edges, spacing and size
 # Takes an image, recognition param dictionary and results dictionary
