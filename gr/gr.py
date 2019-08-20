@@ -31,27 +31,54 @@ from scipy import ndimage
 def find_stones(img, params, res, f_bw):
 
     # Apply watershed transformation
+    # The algorithm was originally developed by Adrian Rosebrock (PyImageSearch.com)
+    # and adopted so it currently uses stone coordinations as an indicators of peaks
+    # instead of original "max peak value" method
+    # TODO: rewrite to use only OpenCV methods
     def apply_watershed(img, stones, res, f_bw):
-        if f_bw == 'B':
-            kernel  = np.ones((3,3),np.uint8)
-            img2 = cv2.dilate(img,kernel,iterations=1)
-            img2 = cv2.bitwise_not(img2)
-            ret, t2 = cv2.threshold(img2, 200, 255, cv2.THRESH_BINARY)
-        else:
-            ret, t2 = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY)
+        WS_MIN = 190
+        WS_MAX = 255
 
-        kernel = np.ones((3,3),np.uint8)
+        if f_bw == 'B':
+           # To have watershed properly determine black stones, board dividers
+           # have to be removed with deilation, source image converted to negative
+           kernel  = np.ones((3,3),np.uint8)
+           img2 = cv2.dilate(img,kernel,iterations=1)
+           img2 = cv2.bitwise_not(img2)
+           ret, t2 = cv2.threshold(img2, WS_MIN, WS_MAX, cv2.THRESH_BINARY)
+        else:
+           # White stones, normal thresholding
+           ret, t2 = cv2.threshold(img, WS_MIN, WS_MAX, cv2.THRESH_BINARY)
+
+        # Apply distance transformation
         D = ndimage.distance_transform_edt(t2)
 
-        localMax = np.zeros(t2.shape[:2], dtype = np.bool)
+        # Use stones coordinations as peaks
+        peaks = np.zeros(t2.shape[:2], dtype = np.bool)
         for st in stones:
             x = int(st[0])
             y = int(st[1])
-            localMax[y,x] = True
+            peaks[y,x] = True
+            if img[y,x] < WS_MIN:
+               # Central point is not white
+               # Move little bit around to find proper point
+               for xt in range(7):
+                   x1 = x + xt - 3
+                   f = False
+                   for yt in range(7):
+                       y1 = y + yt - 3
+                       if img[y1,x1] >= WS_MIN:
+                          peaks[y,x] = False
+                          peaks[y1,x1] = True
+                          f = True
+                          break
+                   if f: break
 
-        markers = ndimage.label(localMax, structure=np.ones((3, 3)))[0]
+        # Set the markers and apply watershed
+        markers = ndimage.label(peaks, structure=np.ones((3, 3)))[0]
         labels = watershed(-D, markers, mask=t2)
 
+        # Collect results
         rt = []
         for label in np.unique(labels):
             if label == 0: continue
@@ -131,15 +158,15 @@ def find_stones(img, params, res, f_bw):
 
             # Combine stones from both sources
             st_res = []
-            #mean = lambda f: sum(f[2],0.0) / len(f)
-            #mean_r = mean(ws_stones)
+            min_r = sum([i[4] for i in ws_stones]) / float(len(ws_stones) * 2)
             for s1 in stones:
                 found = False
                 for s2 in ws_stones:
-                    if s1[GR_A] == s2[GR_A] and s1[GR_B] == s2[GR_B]:
-                        st_res.append(s2)
-                        found = True
-                        break
+                    # Use watershed's results only if determined radius is not too small
+                    if s1[GR_A] == s2[GR_A] and s1[GR_B] == s2[GR_B] and s2[GR_R] >= min_r:
+                       st_res.append(s2)
+                       found = True
+                       break
                 if not found:
                     st_res.append(s1)
 
