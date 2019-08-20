@@ -68,7 +68,7 @@ def show_detections(im, class_name, dets, thresh=0.5, f_label = True, f_title = 
 
 def make_anno(meta_file, image_file, img = None, jgf = None):
 
-    def annotate_stones(f, jgf, cls):
+    def annotate_stones(f, jgf, shape, cls):
         stones = jgf[cls]
         if stones is None:
            return
@@ -88,13 +88,15 @@ def make_anno(meta_file, image_file, img = None, jgf = None):
             r = stones[i]['R']
             r = max_r
 
-            a = r+1
+            a = r + 2
             xmin = x - int(a)
             if xmin <= 0: xmin = 1
             ymin = y - int(a)
             if ymin <= 0: ymin = 1
             xmax = x + int(a)
+            if xmax > shape[1]: xmax = shape[1]
             ymax = y + int(a)
+            if ymax > shape[0]: ymax = shape[0]
 
             bbox[n,0] = xmin
             bbox[n,1] = ymin
@@ -146,8 +148,8 @@ def make_anno(meta_file, image_file, img = None, jgf = None):
     bb_b = None
     bb_w = None
     if not jgf is None:
-        bb_b = annotate_stones(f, jgf, 'black')
-        bb_w = annotate_stones(f, jgf, 'white')
+        bb_b = annotate_stones(f, jgf, (height, width), 'black')
+        bb_w = annotate_stones(f, jgf, (height, width), 'white')
 
     line = "\n</annotation>" + '\n'
     f.write(line)

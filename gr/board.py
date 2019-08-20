@@ -164,24 +164,13 @@ class GrBoard(object):
             self._res = process_img(self._img, self._params)
 
     def show_board(self, f_black = True, f_white = True, f_det = False, f_anno = False):
-        def show_detections(img, stones):
-            for st in stones:
-                x = st[GR_X]
-                y = st[GR_Y]
-                r = st[GR_R]
-                cv2.circle(img, (x,y), r, (0,0,255), 1)
-
         r = self._res.copy()
         if not f_black:
             del r[GR_STONES_B]
         if not f_white:
             del r[GR_STONES_W]
 
-        img = generate_board(shape = self._img.shape, res = r)
-        if f_det:
-            if f_black: show_detections(img, r[GR_STONES_B])
-            if f_white: show_detections(img, r[GR_STONES_W])
-
+        img = generate_board(shape = self._img.shape, res = r, f_show_det = f_det)
         return img
 
     def find_stone(self, coord = None, pos = None):

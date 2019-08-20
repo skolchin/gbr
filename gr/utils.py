@@ -34,7 +34,7 @@ def make_stones_img(shape, points, color = COLOR_BLACK, img = None):
     for i in points:
         x1 = i[GR_X]
         y1 = i[GR_Y]
-        r = 7
+        r = i[GR_R]
         cv2.circle(img, (x1,y1), r, color, -1)
 
     return img

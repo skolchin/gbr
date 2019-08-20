@@ -35,7 +35,7 @@ def find_stones(img, params, res, f_bw):
     # and adopted so it currently uses stone coordinations as an indicators of peaks
     # instead of original "max peak value" method
     # TODO: rewrite to use only OpenCV methods
-    def apply_watershed(img, stones, res, f_bw):
+    def apply_watershed(img, stones, n_thresh, f_bw):
         WS_MIN = 190
         WS_MAX = 255
 
@@ -44,12 +44,12 @@ def find_stones(img, params, res, f_bw):
            # have to be removed with dilation, source image converted to negative
            kernel  = np.ones((3,3),np.uint8)
            img2 = cv2.dilate(img,kernel,iterations=1)
-           img2 = cv2.erode(img2,kernel,iterations=1)
+           #img2 = cv2.erode(img2,kernel,iterations=1)
            img2 = cv2.bitwise_not(img2)
-           ret, t2 = cv2.threshold(img2, WS_MIN, WS_MAX, cv2.THRESH_BINARY)
+           ret, t2 = cv2.threshold(img2, n_thresh, WS_MAX, cv2.THRESH_BINARY)
         else:
            # White stones, normal thresholding
-           ret, t2 = cv2.threshold(img, WS_MIN, WS_MAX, cv2.THRESH_BINARY)
+           ret, t2 = cv2.threshold(img, n_thresh, WS_MAX, cv2.THRESH_BINARY)
 
         # Apply distance transformation
         D = ndimage.distance_transform_edt(t2)
@@ -60,7 +60,7 @@ def find_stones(img, params, res, f_bw):
             x = int(st[0])
             y = int(st[1])
             peaks[y,x] = True
-            if img[y,x] < WS_MIN:
+            if img[y,x] < n_thresh:
                # Central point is not white
                # Move little bit around to find proper point
                for xt in range(7):
@@ -68,7 +68,7 @@ def find_stones(img, params, res, f_bw):
                    f = False
                    for yt in range(7):
                        y1 = y + yt - 3
-                       if img[y1,x1] >= WS_MIN:
+                       if img[y1,x1] >= n_thresh:
                           peaks[y,x] = False
                           peaks[y1,x1] = True
                           f = True
@@ -154,7 +154,7 @@ def find_stones(img, params, res, f_bw):
             return stones
         else:
             # Apply watershed
-            ws_stones = apply_watershed(img, stones, res, f_bw)
+            ws_stones = apply_watershed(img, stones, n_thresh, f_bw)
             ws_stones = convert_xy(ws_stones, res)
 
             # Combine stones from both sources
@@ -343,7 +343,7 @@ def convert_xy(coord, res):
 
             stones[i,0] = int(round(x / space_x, 0)) + 1
             stones[i,1] = int(round(y / space_y, 0)) + 1
-            rd[str(stones[i,0]) + "_" + str(stones[i,1])] = coord[i,2]
+            rd[str(stones[i,0]) + "_" + str(stones[i,1])] = coord[i]
 
         # Remove duplicates
         stones_u = unique_rows(stones)
@@ -352,11 +352,12 @@ def convert_xy(coord, res):
         stones = np.zeros((len(stones_u), 5), dtype = np.uint16)
 
         for i in range(len(stones_u)):
-            stones[i,GR_X] = (stones_u[i, 0]-1) * space_x + edges[0][0]
-            stones[i,GR_Y] = (stones_u[i, 1]-1) * space_y + edges[0][1]
+            old_coord = rd[str(stones_u[i,0]) + "_" + str(stones_u[i,1])]
+            stones[i,GR_X] = old_coord[0]
+            stones[i,GR_Y] = old_coord[1]
             stones[i,GR_A] = stones_u[i, 0]
             stones[i,GR_B] = stones_u[i, 1]
-            stones[i,GR_R] = rd[str(stones_u[i,0]) + "_" + str(stones_u[i,1])]
+            stones[i,GR_R] = old_coord[2]
 
         return stones
 
@@ -409,7 +410,7 @@ def process_img(img, params):
 
 # Creates a board image for given image shape and board size
 # If recognition results are provided, plot them on the board
-def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None):
+def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None, f_show_det = False):
 
     # Prepare params
     if board_size is None:
@@ -439,7 +440,6 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None):
         x2 = x1
         y2 = int(edges[GR_TO][GR_Y])
         cv2.line(img,(x1,y1),(x2,y2),COLOR_BLACK,1)
-        #print("{}: ({},{}) - ({},{})".format(i,x1,y1,x2,y2))
 
     #print("Horizontal")
     for i in range(board_size):
@@ -448,7 +448,6 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None):
         x2 = int(edges[GR_TO][GR_X])
         y2 = y1
         cv2.line(img, (x1,y1), (x2,y2), COLOR_BLACK, 1)
-        #print("{}: ({},{}) - ({},{})".format(i,x1,y1,x2,y2))
 
     # Draw the stones
     if res is not None:
@@ -458,16 +457,28 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None):
 
         if black_stones is not None:
             for i in black_stones:
-                x1 = int(edges[GR_FROM][GR_X] + ((i[2]-1) * space_x))
-                y1 = int(edges[GR_FROM][GR_Y] + ((i[3]-1) * space_y))
+                x1 = int(edges[GR_FROM][GR_X] + (i[GR_A]-1) * space_x)      #int(i[GR_X])
+                y1 = int(edges[GR_FROM][GR_Y] + (i[GR_B]-1) * space_y)      #int(i[GR_Y])
                 cv2.circle(img, (x1,y1), r, COLOR_BLACK, -1)
+
+                if f_show_det:
+                   x2 = i[GR_X]
+                   y2 = i[GR_Y]
+                   r2 = i[GR_R]
+                   cv2.circle(img, (x2,y2), r2, (0,0,255), 1)
 
         if white_stones is not None:
             for i in white_stones:
-                x1 = int(edges[GR_FROM][GR_X] + ((i[2]-1) * space_x))
-                y1 = int(edges[GR_FROM][GR_Y] + ((i[3]-1) * space_y))
+                x1 = int(edges[GR_FROM][GR_X] + (i[GR_A]-1) * space_x)      #int(i[GR_X])
+                y1 = int(edges[GR_FROM][GR_Y] + (i[GR_B]-1) * space_y)      #int(i[GR_Y])
                 cv2.circle(img, (x1,y1), r, COLOR_BLACK, 1)
                 cv2.circle(img, (x1,y1), r-1, COLOR_WHITE, -1)
+
+                if f_show_det:
+                   x2 = i[GR_X]
+                   y2 = i[GR_Y]
+                   r2 = i[GR_R]
+                   cv2.circle(img, (x2,y2), r2, (0,0,255), 1)
 
     return img
 
