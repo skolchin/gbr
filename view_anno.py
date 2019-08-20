@@ -124,11 +124,11 @@ class ViewAnnoGui:
                 print("ERROR: coordinates overlap")
 
               # Draw a bounding box
-              cv2.rectangle(img2,(x1,y1),(x2,y2),(0,255,0),1)
+              cv2.rectangle(img2,(x1,y1),(x2,y2),(0,255,0),2)
               d = max(x2-x1, y2-y1)
               x = int(x1 + d/2)
               y = int(y1 + d/2)
-              cv2.circle(img2, (x,y), int(d/2), (0,0,255), 1)
+              #cv2.circle(img2, (x,y), int(d/2), (0,0,255), 1)
 
           # Display the image
           self.boardImg = img2

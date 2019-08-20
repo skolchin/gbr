@@ -89,13 +89,16 @@ class GrBoard(object):
                 r[key] = p[key]
         return r
 
-    def load_board_info(self, filename, f_use_gen_img = True):
+    def load_board_info(self, filename, f_use_gen_img = True, image_path = None):
         jgf = json.load(open(str(filename)))
         self._res = jgf_to_gres(jgf)
 
         if not f_use_gen_img:
             # Load existing image
             fn = jgf['image_file']
+            if not Path(fn).is_file() and not image_path is None:
+               # W/A to replace wrong path to the image
+               fn = str(Path(image_path).joinpath(Path(fn).name))
             self.load_image(fn, f_process = False)
         else:
             # Use generated image

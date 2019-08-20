@@ -41,9 +41,10 @@ def find_stones(img, params, res, f_bw):
 
         if f_bw == 'B':
            # To have watershed properly determine black stones, board dividers
-           # have to be removed with deilation, source image converted to negative
+           # have to be removed with dilation, source image converted to negative
            kernel  = np.ones((3,3),np.uint8)
            img2 = cv2.dilate(img,kernel,iterations=1)
+           img2 = cv2.erode(img2,kernel,iterations=1)
            img2 = cv2.bitwise_not(img2)
            ret, t2 = cv2.threshold(img2, WS_MIN, WS_MAX, cv2.THRESH_BINARY)
         else:

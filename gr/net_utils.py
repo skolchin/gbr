@@ -9,11 +9,17 @@
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
+import sys
+if sys.version_info[0] < 3:
+    from grdef import *
+else:
+    from gr.grdef import *
+import cv2
+
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 from pathlib import Path
-import math
 
 def show_detections(im, class_name, dets, thresh=0.5, f_label = True, f_title = True, title = None, ptype = "rect"):
     """Draw detected bounding boxes."""
@@ -64,16 +70,25 @@ def make_anno(meta_file, image_file, img = None, jgf = None):
 
     def annotate_stones(f, jgf, cls):
         stones = jgf[cls]
+        if stones is None:
+           return
         bbox = np.empty((len(stones),5), dtype = np.float)
 
+        # Find radius which appears most often
+        rlist = [f[1]['R'] for f in stones.items()]
+        unique, counts = np.unique(rlist, return_counts=True)
+        summary = dict(zip(unique, counts))
+        max_r = max(summary, key = lambda f: summary[f])
+
+        # Proceed
         n = 0
         for i in stones:
             x = stones[i]['X']
             y = stones[i]['Y']
             r = stones[i]['R']
-            if r < 4: continue   # Skip objects too small
+            r = max_r
 
-            a = r+1 #2 * r * math.sqrt(2)
+            a = r+1
             xmin = x - int(a)
             if xmin <= 0: xmin = 1
             ymin = y - int(a)
