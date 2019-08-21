@@ -12,14 +12,13 @@ import sys
 if sys.version_info[0] < 3:
     from grdef import *
     from utils import *
+    from scipy_watershed import apply_watershed
 else:
     from gr.grdef import *
     from gr.utils import *
+    from gr.scipy_watershed import apply_watershed
 import cv2
 import numpy as np
-from skimage.feature import peak_local_max
-from skimage.morphology import watershed
-from scipy import ndimage
 
 # Find stones on a board
 # Takes an image, recognition param dictionary, results dictionary and
@@ -29,69 +28,6 @@ from scipy import ndimage
 # Several analysis parameters are also stored in the results dict
 # The array is stored in the results dictionary and returned
 def find_stones(img, params, res, f_bw):
-
-    # Apply watershed transformation
-    # The algorithm was originally developed by Adrian Rosebrock (PyImageSearch.com)
-    # and adopted so it currently uses stone coordinations as an indicators of peaks
-    # instead of original "max peak value" method
-    # TODO: rewrite to use only OpenCV methods
-    def apply_watershed(img, stones, n_thresh, f_bw):
-        WS_MIN = 190
-        WS_MAX = 255
-
-        if f_bw == 'B':
-           # To have watershed properly determine black stones, board dividers
-           # have to be removed with dilation, source image converted to negative
-           kernel  = np.ones((3,3),np.uint8)
-           img2 = cv2.dilate(img,kernel,iterations=1)
-           #img2 = cv2.erode(img2,kernel,iterations=1)
-           img2 = cv2.bitwise_not(img2)
-           ret, t2 = cv2.threshold(img2, n_thresh, WS_MAX, cv2.THRESH_BINARY)
-        else:
-           # White stones, normal thresholding
-           ret, t2 = cv2.threshold(img, n_thresh, WS_MAX, cv2.THRESH_BINARY)
-
-        # Apply distance transformation
-        D = ndimage.distance_transform_edt(t2)
-
-        # Use stones coordinations as peaks
-        peaks = np.zeros(t2.shape[:2], dtype = np.bool)
-        for st in stones:
-            x = int(st[0])
-            y = int(st[1])
-            peaks[y,x] = True
-            if img[y,x] < n_thresh:
-               # Central point is not white
-               # Move little bit around to find proper point
-               for xt in range(7):
-                   x1 = x + xt - 3
-                   f = False
-                   for yt in range(7):
-                       y1 = y + yt - 3
-                       if img[y1,x1] >= n_thresh:
-                          peaks[y,x] = False
-                          peaks[y1,x1] = True
-                          f = True
-                          break
-                   if f: break
-
-        # Set the markers and apply watershed
-        markers = ndimage.label(peaks, structure=np.ones((3, 3)))[0]
-        labels = watershed(-D, markers, mask=t2)
-
-        # Collect results
-        rt = []
-        for label in np.unique(labels):
-            if label == 0: continue
-
-            mask = np.zeros(t2.shape, dtype="uint8")
-            mask[labels == label] = 255
-            cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
-            c = max(cnts, key=cv2.contourArea)
-            ((x, y), r) = cv2.minEnclosingCircle(c)
-            rt.append ([int(x), int(y), int(r)])
-
-        return np.array(rt)
 
     # Params
     n_thresh = params['STONES_THRESHOLD_' + f_bw]
@@ -154,7 +90,8 @@ def find_stones(img, params, res, f_bw):
             return stones
         else:
             # Apply watershed
-            ws_stones = apply_watershed(img, stones, n_thresh, f_bw)
+            ws_stones, ws_img = apply_watershed(img, stones, n_thresh, f_bw)
+            res['IMG_WATERSHED_' + f_bw] = ws_img
             ws_stones = convert_xy(ws_stones, res)
 
             # Combine stones from both sources
@@ -309,12 +246,12 @@ def find_board(img, params, res):
     space_x, space_y = board_spacing(brd_edges, size)
     res[GR_SPACING] = (space_x, space_y)
 
-    print("Edges:({},{}), ({},{}), crosses: {}, {}, size: {}, spaces: ({}, {})".format(
-                          brd_edges[0][0], brd_edges[0][1],
-                          brd_edges[1][0], brd_edges[1][0],
-                          hcross, vcross,
-                          size,
-                          round(space_x,2), round(space_y,2)))
+##    print("Edges:({},{}), ({},{}), crosses: {}, {}, size: {}, spaces: ({}, {})".format(
+##                          brd_edges[0][0], brd_edges[0][1],
+##                          brd_edges[1][0], brd_edges[1][0],
+##                          hcross, vcross,
+##                          size,
+##                          round(space_x,2), round(space_y,2)))
     return brd_edges
 
 # Converts stone coordinates to stone positions

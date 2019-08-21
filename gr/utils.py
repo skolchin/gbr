@@ -149,10 +149,7 @@ def remove_nearest(a, axis1 = 0, axis2 = None, delta = 5):
 # Convert 1-channel image to 3-channel
 def img1_to_img3(img):
     img3 = np.empty((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-    img3[:,:,0] = img
-    img3[:,:,1] = img
-    img3[:,:,2] = img
-
+    for i in range(3): img3[:,:,i] = gray
     return img3
 
 # Check horizontal and vertical lines are intersecting
