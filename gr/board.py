@@ -227,6 +227,13 @@ class GrBoard(object):
             return self._res[GR_STONES_W]
 
     @property
+    def stones(self):
+        if self._res is None:
+            return None
+        else:
+            return { 'W': self._res[GR_STONES_W], 'B': self._res[GR_STONES_B] }
+
+    @property
     def debug_images(self):
         if self._res is None:
             return None
