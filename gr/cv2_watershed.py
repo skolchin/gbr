@@ -81,6 +81,14 @@ def apply_watershed(gray, stones, n_thresh, f_bw, f_debug = False):
     for i in range(3): img3[:,:,i] = gray
     cv2.watershed(img3, markers)
 
+    if f_debug:
+       mark = markers.astype('uint8')
+       #mark = cv2.bitwise_not(mark)
+       cv2.imshow('Markers_v2', mark)
+       m = img3.copy()
+       m[markers == -1] = [0,0,255]
+       cv2.imshow('Borders', m)
+
     # Collect results
     dst = np.zeros(gray.shape, dtype=np.uint8)
     rt = []
@@ -92,6 +100,7 @@ def apply_watershed(gray, stones, n_thresh, f_bw, f_debug = False):
         cm = max(cnts, key=cv2.contourArea)
         ((x, y), r) = cv2.minEnclosingCircle(cm)
         if f_debug: print("x = {}, y = {}, r = {}".format(x,y,r))
+
         if r <= 20.0:
            rt.append ([int(x), int(y), int(r)])
            cv2.circle(dst, (int(x),int(y)), int(r), (255,255,255), -1)
