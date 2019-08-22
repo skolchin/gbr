@@ -68,7 +68,7 @@ def show_detections(im, class_name, dets, thresh=0.5, f_label = True, f_title = 
 
 def make_anno(meta_file, image_file, img = None, jgf = None):
 
-    def annotate_stones(f, jgf, shape, cls):
+    def annotate_stones(file, jgf, shape, cls):
         stones = jgf[cls]
         if stones is None:
            return
@@ -78,7 +78,7 @@ def make_anno(meta_file, image_file, img = None, jgf = None):
         rlist = [f[1]['R'] for f in stones.items()]
         unique, counts = np.unique(rlist, return_counts=True)
         summary = dict(zip(unique, counts))
-        max_r = max(summary, key = lambda f: summary[f])
+        max_r = max(summary, key = lambda x: summary[x])
 
         # Proceed
         n = 0
@@ -117,7 +117,7 @@ def make_anno(meta_file, image_file, img = None, jgf = None):
 
             line += '\n\t</object>'
 
-            f.write(line)
+            file.write(line)
 
         return bbox
 
