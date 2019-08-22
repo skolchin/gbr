@@ -42,7 +42,7 @@ CLASSES = ["_back_", "white", "black"]
 
 model_file = "models\\test.prototxt"
 weigth_file = "out\\gbr_zf\\train\\gbr_zf_iter_10000.caffemodel"
-img_file = "img\\go_board_1.png"
+img_file = "img\\go_board_8a.png"
 
 cfg.TEST.HAS_RPN = True
 caffe.set_mode_gpu()
