@@ -6,7 +6,7 @@ The project is build on wonderfull [OpenCV](https://opencv.org/) library.
 
 The algorithm per se is the following:
 
-1. Make a gray image from the source image and extract a blue channel. Gray image will be used for lines and black stones detection, while blue channel - for white stones detection.
+1. Make a gray image from the source image.
 
 1. Detect board pararameters (edges, board size):
 
@@ -24,15 +24,12 @@ The algorithm per se is the following:
 
 3. Find stones (black and white):
 
-  * Threshold image to keep only stone-related pixels (for white stone images - also invert it)
+  * Apply pre-filters specified in parameters (channel splitting, thresholding, dilating, eroding, etc)
 
-  * Morph the image (dilate, erode). Add a blur to remove noise
+  * Run HoughCircles to detect circles, convert their X,Y coordinates to board position
 
-  * Run HoughCircles to detect circles which are going to be the stones
+  * Apply post-filters to tune circle radius (watershed)
 
-4. Convert X, Y stone coordinates to board positions
-
-5. Apply watershed, if specified
 
 There are some tuning parameters for each of the steps and they are to be adjusted for each particular board. After the tuning, the program performs quite well on a computer-generated boards.
 
@@ -55,6 +52,11 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 
 ## Changelog
+
+22/08/2019:
+
+* Changed: gr.gr find_stones() refactored to support adding new filters
+* Added: pyrMeanShiftFiltering pre-filter in find_stones()
 
 19/08/2019:
 

@@ -27,88 +27,161 @@ import numpy as np
 # where (X,Y) are image coordinates, (A,B) - stone position, R - radius in pixels
 # Several analysis parameters are also stored in the results dict
 # The array is stored in the results dictionary and returned
-def find_stones(img, params, res, f_bw):
+def find_stones(src_img, params, res, f_bw):
 
-    # Params
-    n_thresh = params['STONES_THRESHOLD_' + f_bw]
-    n_maxval = params['STONES_MAXVAL_' + f_bw]
-    n_iter_d = params['STONES_DILATE_' + f_bw]
-    n_iter_e = params['STONES_ERODE_' + f_bw]
-    n_mindist = params['HC_MINDIST']
-    n_maxrad = params['HC_MAXRADIUS']
-    n_param2 = params['HC_SENSITIVITY_' + f_bw]
-    n_mask = params['HC_MASK_' + f_bw]
-    n_blur = params['BLUR_MASK_' + f_bw]
-    n_watershed = params['WATERSHED_' + f_bw]
-
-    # Create thresholded image
-    thresh = None
-    if (f_bw == 'B'):
-        ret, thresh = cv2.threshold(img, n_thresh, n_maxval, cv2.THRESH_BINARY)
-    else:
-        ret, thresh = cv2.threshold(img, n_thresh, n_maxval, cv2.THRESH_BINARY_INV)
-
-    res['IMG_THRESH_' + f_bw] = thresh
-
-    # Dilate and erode
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(100,100))
-    kernel = cv2.resize(kernel, (n_mask,n_mask))
-
-    stones_img = thresh.copy()
-    if n_iter_d > 0:
-        stones_img = cv2.dilate(stones_img, kernel,
-                                            iterations=n_iter_d,
-                                            borderType = cv2.BORDER_CONSTANT,
-                                            borderValue = COLOR_BLACK)
-    if n_iter_e > 0:
-        stones_img = cv2.erode(stones_img, kernel,
-                                           iterations=n_iter_e,
-                                           borderType = cv2.BORDER_CONSTANT,
-                                           borderValue = COLOR_BLACK)
-
-    # Add some blur and sharpen the image to smooth the edges
-    if n_blur > 0:
-        stones_img = cv2.blur(stones_img, (n_blur, n_blur))
-
-    res['IMG_MORPH_' + f_bw] = stones_img
-
-    # Find stones
-    stones = cv2.HoughCircles(stones_img, cv2.HOUGH_GRADIENT,
-                                          1,
-                                          minDist = n_mindist,
-                                          param1 = 100,
-                                          param2 = n_param2,
-                                          #minRadius = 3,
-                                          maxRadius = n_maxrad)
-
-    if stones is None:
-        return None
-    else:
-        # Determine board positions
-        stones = convert_xy(stones[0], res)
-        if n_watershed == 0:
-            return stones
+    # Pre-filter: pyramid filtering
+    def _apply_pmf(img, params, f_bw):
+        n_pmf = params['PYRAMID_' + f_bw]
+        if n_pmf == 0:
+           return img
         else:
-            # Apply watershed
-            ws_stones, ws_img = apply_watershed(img, stones, n_thresh, f_bw)
-            res['IMG_WATERSHED_' + f_bw] = ws_img
-            ws_stones = convert_xy(ws_stones, res)
+            pmf = cv2.pyrMeanShiftFiltering(img, 21, 51)
+            res['IMG_PMF_' + f_bw] = pmf
+            return pmf
 
-            # Combine stones from both sources
-            st_res = []
-            min_r = sum([i[4] for i in ws_stones]) / float(len(ws_stones) * 2)
-            for s1 in stones:
-                found = False
-                for s2 in ws_stones:
-                    # Use watershed's results only if determined radius is not too small
-                    if s1[GR_A] == s2[GR_A] and s1[GR_B] == s2[GR_B] and s2[GR_R] >= min_r:
-                       st_res.append(s2)
-                       found = True
-                       break
-                if not found:
-                    st_res.append(s1)
+    # Pre-filter: gray out
+    def _apply_gray(img, params, f_bw):
+        return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-            return np.array(st_res)
+    # Pre-filter: extract channel
+    def _apply_channel_mask(img, params, f_bw):
+        b,g,r = cv2.split(img)
+        if f_bw == 'B':
+           return r
+        else:
+           return b
+
+    # Pre-filter: thresholding
+    def _apply_thresh(img, params, f_bw):
+        n_thresh = params['STONES_THRESHOLD_' + f_bw]
+        n_maxval = params['STONES_MAXVAL_' + f_bw]
+        method = cv2.THRESH_BINARY
+        if f_bw == 'W': method = cv2.THRESH_BINARY_INV
+
+        ret, thresh = cv2.threshold(img, n_thresh, n_maxval, method)
+        res['IMG_THRESH_' + f_bw] = thresh
+        return thresh
+
+    # Pre-filter: dilation
+    def _apply_dilate(img, params, f_bw):
+        n_iter = params['STONES_DILATE_' + f_bw]
+        n_mask = params['HC_MASK_' + f_bw]
+        if n_iter == 0:
+           return img
+        else:
+           kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(100,100))
+           kernel = cv2.resize(kernel, (n_mask,n_mask))
+           return cv2.dilate(img, kernel,
+                                  iterations=n_iter,
+                                  borderType = cv2.BORDER_CONSTANT,
+                                  borderValue = COLOR_BLACK)
+
+
+    # Pre-filter: erode
+    def _apply_erode(img, params, f_bw):
+        n_iter = params['STONES_ERODE_' + f_bw]
+        n_mask = params['HC_MASK_' + f_bw]
+        if n_iter == 0:
+           return img
+        else:
+           kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(100,100))
+           kernel = cv2.resize(kernel, (n_mask,n_mask))
+           return cv2.erode(img, kernel,
+                                  iterations=n_iter,
+                                  borderType = cv2.BORDER_CONSTANT,
+                                  borderValue = COLOR_BLACK)
+
+    # Pre-filter: blur
+    def _apply_blur(img, params, f_bw):
+        n_blur = params['BLUR_MASK_' + f_bw]
+        if n_blur == 0:
+           return img
+        else:
+            return cv2.blur(img, (n_blur, n_blur))
+
+    # Post-filter: houghCircle
+    def _apply_houghc(img, filtered_img, params, f_bw, prev_stones):
+        n_mindist = params['HC_MINDIST']
+        n_maxrad = params['HC_MAXRADIUS']
+        n_param2 = params['HC_SENSITIVITY_' + f_bw]
+        return cv2.HoughCircles(filtered_img, cv2.HOUGH_GRADIENT,
+                                       1,
+                                       minDist = n_mindist,
+                                       param1 = 100,
+                                       param2 = n_param2,
+                                       #minRadius = 3,
+                                       maxRadius = n_maxrad)
+
+    # Post-filter: watershed
+    def _apply_watershed(img, filtered_img, params, f_bw, prev_stones):
+        n_ws = params['WATERSHED_' + f_bw]
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        if n_ws == 0 or prev_stones is None:
+           return None
+        else:
+           n_thresh = params['STONES_THRESHOLD_' + f_bw]
+           ws_stones, ws_img = apply_watershed(gray, prev_stones, n_thresh, f_bw)
+           res['IMG_WATERSHED_' + f_bw] = ws_img
+           return ws_stones
+
+    # Utility: combine stones from two arrays
+    def _combine_stones(prev_stones, new_stones):
+        if new_stones is None:
+           return prev_stones
+        if prev_stones is None:
+           return new_stones
+
+        st_res = []
+        min_r = sum([i[4] for i in new_stones]) / float(len(new_stones) * 2)
+        for s1 in prev_stones:
+            found = False
+            for s2 in new_stones:
+                if s1[GR_A] == s2[GR_A] and s1[GR_B] == s2[GR_B] and s2[GR_R] >= min_r:
+                   st_res.append(s2)
+                   found = True
+                   break
+            if not found:
+                st_res.append(s1)
+
+        return np.array(st_res)
+
+    # Initialize filters
+    def _init():
+        return ({
+            "PMF": _apply_pmf,
+            #"GRAY": _apply_gray,
+            "CHANNEL": _apply_channel_mask,
+            "THRESH": _apply_thresh,
+            "STONES_DILATE": _apply_dilate,
+            "STONES_ERODE": _apply_erode,
+            "BLUR_MASK": _apply_blur
+        },
+        {
+            "HOUGH_C": _apply_houghc,
+            "WATERSHED": _apply_watershed
+        })
+
+    # Set up filters list
+    (pre_filters, post_filters) = _init()
+
+    # Process image with pre-filters
+    filtered_img = src_img.copy()
+    for f in pre_filters:
+        filtered_img = pre_filters[f](filtered_img, params, f_bw)
+    res['IMG_MORPH_' + f_bw] = filtered_img
+
+    # Process image with post-filters
+    stones = None
+    for f in post_filters:
+        new_stones = post_filters[f](src_img, filtered_img, params, f_bw, stones)
+        if new_stones is None:
+           break;
+        else:
+            if len(new_stones.shape) == 3: new_stones = new_stones[0]
+            conv_stones = convert_xy(new_stones, res)
+            stones = _combine_stones(stones, conv_stones)
+
+    return stones
 
 # Find board edges, spacing and size
 # Takes an image, recognition param dictionary and results dictionary
@@ -119,11 +192,16 @@ def find_stones(img, params, res, f_bw):
 # Some other analysis parameters are also stored in the results dict
 # Returns board edges
 def find_board(img, params, res):
+
+    # Graying out
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    res[GR_IMG_GRAY] = gray
+
     # Find edges
     n_minval = params['CANNY_MINVAL']
     n_maxval = params['CANNY_MAXVAL']
     n_apsize = params['CANNY_APERTURE']
-    edges = cv2.Canny(img, n_minval, n_maxval, apertureSize = n_apsize)
+    edges = cv2.Canny(gray, n_minval, n_maxval, apertureSize = n_apsize)
 
     # Find lines, 1st pass
     n_rho = params['HL_RHO']
@@ -238,8 +316,8 @@ def find_board(img, params, res):
     res[GR_BOARD_SIZE] = size
 
      # Make a debug image
-    lines_img2 = make_lines_img(img.shape, hpos)
-    lines_img2 = make_lines_img(img.shape, vpos, img = lines_img2)
+    lines_img2 = make_lines_img(gray.shape, hpos)
+    lines_img2 = make_lines_img(gray.shape, vpos, img = lines_img2)
     res[GR_IMG_LINES2] = lines_img2
 
     # Calculate spacing
@@ -260,7 +338,7 @@ def find_board(img, params, res):
 # Board coordinates are stores as first two array items, board position - as 3,4
 def convert_xy(coord, res):
     if (coord is None):
-        return np.empty([0,0,0,0])
+        return None
     else:
          # Make up an empty array
         stones = np.zeros((len(coord), 2), dtype = np.uint16)
@@ -322,19 +400,12 @@ def process_img(img, params):
     res = dict()
     res[GR_IMAGE_SIZE] = img.shape[:2]
 
-    # Graying out
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    res[GR_IMG_GRAY] = gray
-    b,g,r = cv2.split(img)
-    res[GR_IMG_BLUE] = b
-    res[GR_IMG_RED] = r
-
     # Find board edges, spacing, size
-    board_edges = find_board(gray, params, res)
+    board_edges = find_board(img, params, res)
 
     # Find stones
-    black_stones = find_stones(r, params, res, 'B')
-    white_stones = find_stones(b, params, res, 'W')
+    black_stones = find_stones(img, params, res, 'B')
+    white_stones = find_stones(img, params, res, 'W')
 
     # Elminate duplicates
     black_stones, white_stones = eliminate_duplicates(black_stones, white_stones)

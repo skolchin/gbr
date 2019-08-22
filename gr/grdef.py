@@ -54,7 +54,9 @@ DEF_GR_PARAMS = {
     "STONES_ERODE_B": 1,
     "STONES_ERODE_W": 0,
     "WATERSHED_B": 0,
-    "WATERSHED_W": 0
+    "WATERSHED_W": 0,
+    "PYRAMID_B": 0,
+    "PYRAMID_W": 0,
 }
 
 # Parameter properties: min, max, change, block
@@ -81,6 +83,7 @@ GR_PARAMS_PROP = {
     "STONES_ERODE_B": (0, 10, "Black stones detection"),
     "STONES_MAXVAL_B": (1, 255, None),
     "WATERSHED_B": (0, 1, "Black stones detection"),
+    "PYRAMID_B": (0, 1, "Black stones detection"),
 
     "BLUR_MASK_W": (0, 10, "White stones detection"),
     "HC_MASK_W": (1, 10, "White stones detection"),
@@ -89,7 +92,8 @@ GR_PARAMS_PROP = {
     "STONES_DILATE_W": (0, 10, "White stones detection"),
     "STONES_ERODE_W": (0, 10, "White stones detection"),
     "STONES_MAXVAL_W": (1, 255, None),
-    "WATERSHED_W": (0, 1, "White stones detection")
+    "WATERSHED_W": (0, 1, "White stones detection"),
+    "PYRAMID_W": (0, 1, "White stones detection")
 }
 
 # Constants for analysis results
