@@ -130,7 +130,7 @@ class GrBoard(object):
             return node.getElementsByTagName(tag)[0].childNodes[0].data
 
         # Load annotation file
-        with open(fn) as f:
+        with open(filename) as f:
             data = minidom.parseString(f.read())
 
         # Find image file name

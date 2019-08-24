@@ -15,6 +15,7 @@ from PIL import Image, ImageTk
 from pathlib import Path
 import xml.dom.minidom as minidom
 from gr.utils import img_to_imgtk, resize
+from gr.board import GrBoard
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
@@ -75,13 +76,16 @@ class ViewAnnoGui:
 
       def load_files(self):
           g = self.meta_path.glob('*.xml')
+          file_list = []
           for x in g:
-              if x.is_file(): self.fileList.insert(tk.END, x.name)
+              if x.is_file(): file_list.append(x.name)
+
+          file_list = sorted(file_list)
+          self.fileList.insert(tk.END, *file_list)
 
       def lb_changed_callback(self, event):
-          w = event.widget
-          index = int(w.curselection()[0])
-          file = w.get(index)
+          index = int(self.fileList.curselection()[0])
+          file = self.fileList.get(index)
           self.load_anno(file)
 
       def load_anno(self, file):
@@ -138,8 +142,13 @@ class ViewAnnoGui:
           self.imgPanel.configure(image = self.boardImgTk)
 
       def update_callback(self):
-          #make_anno(self.annoFileName, self.boardImgName)
-          pass
+          index = int(self.fileList.curselection()[0])
+          file = self.fileList.get(index)
+          file = str(self.meta_path.joinpath(file))
+          board = GrBoard()
+          board.load_annotation(file)
+          board.save_annotation(file)
+          print("Annotation updated:", file)
 
       def open_callback(self):
           pass
