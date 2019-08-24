@@ -236,7 +236,7 @@ def find_board(img, params, res):
         x2 = i[GR_TO][GR_X]
         y2 = i[GR_TO][GR_Y]
 
-        if (abs(x1 - x2) < 3 or abs(y1 - y2) < 3):
+        if (abs(x1 - x2) < 3 and abs(y1 - y2) > 10) or (abs(y1 - y2) < 3 and abs(x1 - x2) > 10):
             # Vertical or horizontal line
             if (x1 < xmin or xmin == -1):
                 xmin = x1
