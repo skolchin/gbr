@@ -46,7 +46,7 @@ def main():
         if file.endswith('.jgf'):
             # Process JGF file
             print ("Processing file {}".format(src_file))
-            board.load_board_info(str(src_file), f_use_gen_img = False, image_path = str(src_path))
+            board.load_board_info(str(src_file), f_use_gen_img = False, path_override = str(src_path))
             stage = "train"
         elif file.endswith('.jpg') or file.endswith('.png'):
             # Find JGF

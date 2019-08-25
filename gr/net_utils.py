@@ -14,9 +14,10 @@ if sys.version_info[0] < 3:
     from grdef import *
 else:
     from gr.grdef import *
+    from gr.utils import format_stone_pos
 import cv2
+import string as ss
 
-import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 from pathlib import Path
@@ -66,11 +67,11 @@ def show_detections(im, class_name, dets, thresh=0.5, f_label = True, f_title = 
     plt.draw()
 
 
-def make_anno(meta_file, image_file, img = None, jgf = None):
+def make_anno(meta_file, image_file, img = None, jgf = None, shape = None):
 
     def annotate_stones(file, jgf, shape, cls):
         stones = jgf[cls]
-        if stones is None:
+        if stones is None or len(stones) == 0:
            return
         bbox = np.empty((len(stones),5), dtype = np.float)
 
@@ -87,6 +88,7 @@ def make_anno(meta_file, image_file, img = None, jgf = None):
             y = stones[i]['Y']
             r = stones[i]['R']
             r = max_r
+            pos = stones[i]['A'] + stones[i]['B']
 
             a = r + 2
             xmin = x - int(a)
@@ -106,8 +108,10 @@ def make_anno(meta_file, image_file, img = None, jgf = None):
             n += 1
 
             line = '\n\t<object>'
-            line += '\n\t\t<name>' + cls + '</name>\n\t\t<pose>Unspecified</pose>'
+            line += '\n\t\t<name>' + cls + '</name>'
+            line += '\n\t\t<pose>Unspecified</pose>'
             line += '\n\t\t<truncated>Unspecified</truncated>\n\t\t<difficult>Unspecified</difficult>'
+            line += '\n\t\t<position>' + pos + '</position>'
 
             line += '\n\t\t<bndbox>\n\t\t\t<xmin>' + str(xmin) + '</xmin>'
             line += '\n\t\t\t<ymin>' + str(ymin) + '</ymin>'
@@ -121,36 +125,45 @@ def make_anno(meta_file, image_file, img = None, jgf = None):
 
         return bbox
 
-    f = open(str(meta_file),'w')
+    # Image parameters
+    if shape is None:
+        if img is None:
+           img = cv2.imread(str(image_file))
+           if img is None: raise Exception("File not found {}".format(image_file))
+        shape = img.shape
+    (height, width, depth) = shape
 
+    # Source
+    source = ''
+    if not jgf is None and 'source_file' in jgf:
+        source = jgf['source_file']
+
+    # Write header
+    f = open(str(meta_file),'w')
     line = "<annotation>" + '\n'
     f.write(line)
     line = '\t<folder>' + "folder" + '</folder>' + '\n'
     f.write(line)
     line = '\t<filename>' + Path(image_file).name + '</filename>' + '\n'
     f.write(line)
-    line = '\t<path>' + str(Path(image_file)) + '</path>' + '\n'
+    line = '\t<path>' + image_file + '</path>' + '\n'
     f.write(line)
-    line = '\t<source>\n\t\t<database>Source</database>\n\t</source>\n'
+    line = '\t<source>' + source + '</source>' + '\n'
     f.write(line)
-
-    if img is None:
-       img = cv2.imread(str(image_file))
-       if img is None: raise Exception("File not found {}".format(image_file))
-
-    (height, width, depth) = img.shape
     line = '\t<size>\n\t\t<width>'+ str(width) + '</width>\n\t\t<height>' + str(height) + '</height>\n\t'
     line += '\t<depth>' + str(depth) + '</depth>\n\t</size>'
     f.write(line)
     line = '\n\t<segmented>Unspecified</segmented>'
     f.write(line)
 
+    # Write objects (stones)
     bb_b = None
     bb_w = None
     if not jgf is None:
         bb_b = annotate_stones(f, jgf, (height, width), 'black')
         bb_w = annotate_stones(f, jgf, (height, width), 'white')
 
+    # Close
     line = "\n</annotation>" + '\n'
     f.write(line)
     f.close()

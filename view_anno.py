@@ -14,7 +14,7 @@ import sys
 from PIL import Image, ImageTk
 from pathlib import Path
 import xml.dom.minidom as minidom
-from gr.utils import img_to_imgtk, resize
+from gr.utils import img_to_imgtk, resize2
 from gr.board import GrBoard
 
 if sys.version_info[0] < 3:
@@ -30,13 +30,17 @@ from gr.utils import resize, img_to_imgtk
 class ViewAnnoGui:
       def __init__(self, root):
           self.root = root
+          self.zoom = [1.0, 1.0]
 
           # Set paths
           self.root_path = Path(__file__).parent.resolve()
+          self.src_path = self.root_path.joinpath("img")
           self.ds_path = self.root_path.joinpath("gbr_ds")
           if not self.ds_path.exists(): self.ds_path.mkdir(parents = True)
           self.meta_path = self.ds_path.joinpath("data","Annotations")
+          if not self.meta_path.exists(): self.meta_path.mkdir(parents = True)
           self.img_path = self.ds_path.joinpath("data","Images")
+          if not self.img_path.exists(): self.img_path.mkdir(parents = True)
 
           # File list panel
           self.filesFrame = tk.Frame(self.root)
@@ -90,7 +94,15 @@ class ViewAnnoGui:
 
       def load_anno(self, file):
 
-          def get_data_from_tag(node, tag):
+          def get_tag(node, tag):
+                d = node.getElementsByTagName(tag)
+                if d is None: return None
+                else:
+                    d = d[0].firstChild
+                    if d is None: return None
+                    else: return d.data
+
+          def get_child_node(node, tag):
                 return node.getElementsByTagName(tag)[0].childNodes[0].data
 
           # Load annotation file
@@ -101,27 +113,23 @@ class ViewAnnoGui:
           self.annoFileName = fn
 
           # Find image file name
-          fn_list = data.getElementsByTagName('path')
-          if fn_list is None or len(fn_list) == 0:
-             raise Exception('Filename not specified')
-
-          fn = fn_list[0].firstChild.data
+          fn = get_tag(data, 'source')
+          if fn is None: fn = get_tag(data, 'path')
           print("Loading image {}".format(fn))
 
-          # Load and resize the image
+          # Load image
           img = cv2.imread(fn)
           if img is None:
              raise Exception('File not found')
-          img2 = resize(img, np.max(self.defBoardImg.shape[:2]), f_upsize = False)
 
           # Load objects list
           objs = data.getElementsByTagName('object')
           for ix, obj in enumerate(objs):
-              x1 = int(get_data_from_tag(obj, 'xmin'))
-              y1 = int(get_data_from_tag(obj, 'ymin'))
-              x2 = int(get_data_from_tag(obj, 'xmax'))
-              y2 = int(get_data_from_tag(obj, 'ymax'))
-              cls = str(get_data_from_tag(obj, "name")).lower().strip()
+              x1 = int(get_child_node(obj, 'xmin'))
+              y1 = int(get_child_node(obj, 'ymin'))
+              x2 = int(get_child_node(obj, 'xmax'))
+              y2 = int(get_child_node(obj, 'ymax'))
+              cls = str(get_child_node(obj, "name")).lower().strip()
               if x1 <= 0 or y1 <= 0 or x1 >= img.shape[1] or y1 >= img.shape[0]:
                 print("ERROR: coordinate out of boundary")
               if x1 >= x2 or y1 >= y2:
@@ -132,7 +140,10 @@ class ViewAnnoGui:
               d = max(x2-x1, y2-y1)
               x = int(x1 + d/2)
               y = int(y1 + d/2)
-              cv2.circle(img2, (x,y), int(d/2), (0,0,255), 1)
+              cv2.circle(img, (x,y), int(d/2), (0,0,255), 1)
+
+          # Resize the image
+          img2, self.zoom = resize2 (img, np.max(self.defBoardImg.shape[:2]), f_upsize = False)
 
           # Display the image
           self.boardImg = img2
@@ -143,12 +154,14 @@ class ViewAnnoGui:
 
       def update_callback(self):
           index = int(self.fileList.curselection()[0])
-          file = self.fileList.get(index)
-          file = str(self.meta_path.joinpath(file))
+          file_sel = self.fileList.get(index)
+          file = str(self.meta_path.joinpath(file_sel))
+
           board = GrBoard()
-          board.load_annotation(file)
+          board.load_annotation(file, path_override = str(self.src_path))
           board.save_annotation(file)
-          print("Annotation updated:", file)
+          print("Annotation updated: {}".format(file))
+          self.load_anno(file_sel)
 
       def open_callback(self):
           pass

@@ -32,6 +32,7 @@ class GrBoard(object):
         self._res = None
         self._img = None
         self._img_file = None
+        self._src_img_file = None
         self._gen_board = False
 
         if image_file is None or image_file == '':
@@ -48,6 +49,7 @@ class GrBoard(object):
             raise Exception('Image file not found {}'.format(filename))
         self._gen_board = False
         self._img_file = filename
+        self._src_img_file = filename
         self._img = img
 
         # Load params, if requested and file exists
@@ -89,16 +91,15 @@ class GrBoard(object):
                 r[key] = p[key]
         return r
 
-    def load_board_info(self, filename, f_use_gen_img = True, image_path = None):
+    def load_board_info(self, filename, f_use_gen_img = True, path_override = None):
         jgf = json.load(open(str(filename)))
         self._res = jgf_to_gres(jgf)
 
         if not f_use_gen_img:
             # Load existing image
             fn = jgf['image_file']
-            if not Path(fn).is_file() and not image_path is None:
-               # W/A to replace wrong path to the image
-               fn = str(Path(image_path).joinpath(Path(fn).name))
+            if not path_override is None:
+               fn = str(Path(path_override).joinpath(Path(fn).name))
             self.load_image(fn, f_process = False)
         else:
             # Use generated image
@@ -125,21 +126,29 @@ class GrBoard(object):
             json.dump(jgf, f, indent=4, sort_keys=True, ensure_ascii=False)
         return filename
 
-    def load_annotation(self, filename):
-        def get_data_from_tag(node, tag):
-            return node.getElementsByTagName(tag)[0].childNodes[0].data
+    def load_annotation(self, filename, path_override = None):
+        def get_tag(node, tag):
+            d = node.getElementsByTagName(tag)
+            if d is None: return None
+            else:
+                d = d[0].firstChild
+                if d is None: return None
+                else: return d.data
 
         # Load annotation file
         with open(filename) as f:
             data = minidom.parseString(f.read())
 
-        # Find image file name
-        fn_list = data.getElementsByTagName('path')
-        if fn_list is None or len(fn_list) == 0:
-            raise Exception('Filename not specified')
+        # Find image file name (first - from <source>, then - from <path>)
+        fn = get_tag(data, 'source')
+        if fn is None:
+            fn = get_tag(data, 'path')
+            if fn is None:
+                raise Exception('Filename not specified')
 
         # Load image
-        fn = fn_list[0].firstChild.data
+        if not path_override is None:
+           fn = str(Path(path_override).joinpath(Path(fn).name))
         self.load_image(fn, f_process = True)
 
     def save_annotation(self, filename = None, max_size = None):
@@ -152,7 +161,10 @@ class GrBoard(object):
         if not max_size is None: im = resize(im, max_size)
 
         jgf = None
-        if not self._res is None: jgf = gres_to_jgf(self._res)
+        if not self._res is None:
+            jgf = gres_to_jgf(self._res)
+            jgf['image_file'] = self._img_file
+            jgf['source_file'] = self._src_img_file
         make_anno(filename, self._img_file, img = im, jgf = jgf)
 
         return filename
@@ -162,6 +174,10 @@ class GrBoard(object):
             self._res = None
         else:
             self._res = process_img(self._img, self._params)
+            if self._res[GR_STONES_B] is None:
+                self._res[GR_STONES_B] = np.array([])
+            if self._res[GR_STONES_W] is None:
+                self._res[GR_STONES_W] = np.array([])
 
     def show_board(self, f_black = True, f_white = True, f_det = False, f_anno = False):
         r = self._res.copy()

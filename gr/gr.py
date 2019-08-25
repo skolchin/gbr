@@ -119,16 +119,17 @@ def find_stones(src_img, params, res, f_bw):
         if n_ws == 0 or prev_stones is None:
            return None
         else:
-           n_thresh = params['STONES_THRESHOLD_' + f_bw]
+           n_thresh = n_ws
+           if n_thresh == 1: n_thresh = 190         # backward comp.
            ws_stones, ws_img = apply_watershed(gray, prev_stones, n_thresh, f_bw)
            res['IMG_WATERSHED_' + f_bw] = ws_img
            return ws_stones
 
     # Utility: combine stones from two arrays
     def _combine_stones(prev_stones, new_stones):
-        if new_stones is None:
+        if new_stones is None or len(new_stones) == 0:
            return prev_stones
-        if prev_stones is None:
+        if prev_stones is None or len(prev_stones) == 0:
            return new_stones
 
         st_res = []

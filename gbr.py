@@ -455,6 +455,7 @@ def main():
     # Construct interface
     window = tk.Tk()
     window.title("Go board")
+    window.resizable(True, True)
     gui = GbrGUI(window)
 
     # Main loop
