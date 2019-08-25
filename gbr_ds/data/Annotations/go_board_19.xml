@@ -2,9 +2,7 @@
 	<folder>folder</folder>
 	<filename>go_board_19.png</filename>
 	<path>C:\Users\kol\Documents\kol\gbr\gbr_ds\data\Images\go_board_19.png</path>
-	<source>
-		<database>Source</database>
-	</source>
+	<source>C:\Users\kol\Documents\kol\gbr\img\go_board_19.png</source>
 	<size>
 		<width>441</width>
 		<height>441</height>
@@ -16,6 +14,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>D16</position>
 		<bndbox>
 			<xmin>69</xmin>
 			<ymin>345</ymin>
@@ -28,6 +27,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>C14</position>
 		<bndbox>
 			<xmin>46</xmin>
 			<ymin>299</ymin>
@@ -40,6 +40,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>E3</position>
 		<bndbox>
 			<xmin>92</xmin>
 			<ymin>46</ymin>
@@ -52,6 +53,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>C4</position>
 		<bndbox>
 			<xmin>46</xmin>
 			<ymin>69</ymin>
@@ -64,6 +66,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>J16</position>
 		<bndbox>
 			<xmin>207</xmin>
 			<ymin>347</ymin>
@@ -76,6 +79,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>O17</position>
 		<bndbox>
 			<xmin>323</xmin>
 			<ymin>369</ymin>
@@ -88,6 +92,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>Q3</position>
 		<bndbox>
 			<xmin>369</xmin>
 			<ymin>47</ymin>
@@ -100,6 +105,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>F17</position>
 		<bndbox>
 			<xmin>116</xmin>
 			<ymin>369</ymin>

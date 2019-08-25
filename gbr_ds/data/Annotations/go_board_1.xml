@@ -2,9 +2,7 @@
 	<folder>folder</folder>
 	<filename>go_board_1.png</filename>
 	<path>C:\Users\kol\Documents\kol\gbr\gbr_ds\data\Images\go_board_1.png</path>
-	<source>
-		<database>Source</database>
-	</source>
+	<source>C:\Users\kol\Documents\kol\gbr\img\go_board_1.png</source>
 	<size>
 		<width>487</width>
 		<height>487</height>
@@ -16,6 +14,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>E18</position>
 		<bndbox>
 			<xmin>92</xmin>
 			<ymin>391</ymin>
@@ -28,6 +27,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>D13</position>
 		<bndbox>
 			<xmin>69</xmin>
 			<ymin>275</ymin>
@@ -40,6 +40,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>E13</position>
 		<bndbox>
 			<xmin>92</xmin>
 			<ymin>275</ymin>
@@ -52,6 +53,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>S5</position>
 		<bndbox>
 			<xmin>414</xmin>
 			<ymin>92</ymin>
@@ -64,6 +66,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>K3</position>
 		<bndbox>
 			<xmin>230</xmin>
 			<ymin>46</ymin>
@@ -76,6 +79,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>C18</position>
 		<bndbox>
 			<xmin>46</xmin>
 			<ymin>391</ymin>
@@ -88,6 +92,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>K5</position>
 		<bndbox>
 			<xmin>230</xmin>
 			<ymin>92</ymin>
@@ -100,6 +105,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>C13</position>
 		<bndbox>
 			<xmin>46</xmin>
 			<ymin>276</ymin>
@@ -112,6 +118,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>C12</position>
 		<bndbox>
 			<xmin>46</xmin>
 			<ymin>252</ymin>
@@ -124,6 +131,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>R15</position>
 		<bndbox>
 			<xmin>391</xmin>
 			<ymin>322</ymin>
@@ -136,6 +144,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>R13</position>
 		<bndbox>
 			<xmin>391</xmin>
 			<ymin>275</ymin>
@@ -148,6 +157,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>S14</position>
 		<bndbox>
 			<xmin>414</xmin>
 			<ymin>298</ymin>
@@ -160,6 +170,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>A3</position>
 		<bndbox>
 			<xmin>1</xmin>
 			<ymin>44</ymin>
@@ -172,6 +183,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>P13</position>
 		<bndbox>
 			<xmin>345</xmin>
 			<ymin>276</ymin>
@@ -184,6 +196,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>Q13</position>
 		<bndbox>
 			<xmin>368</xmin>
 			<ymin>275</ymin>
@@ -196,6 +209,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>C2</position>
 		<bndbox>
 			<xmin>46</xmin>
 			<ymin>23</ymin>
@@ -208,6 +222,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>C5</position>
 		<bndbox>
 			<xmin>46</xmin>
 			<ymin>92</ymin>
@@ -220,6 +235,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>C4</position>
 		<bndbox>
 			<xmin>46</xmin>
 			<ymin>69</ymin>
@@ -232,6 +248,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>R6</position>
 		<bndbox>
 			<xmin>391</xmin>
 			<ymin>115</ymin>
@@ -244,6 +261,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>I19</position>
 		<bndbox>
 			<xmin>184</xmin>
 			<ymin>414</ymin>
@@ -256,6 +274,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>M17</position>
 		<bndbox>
 			<xmin>276</xmin>
 			<ymin>368</ymin>
@@ -268,6 +287,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>R2</position>
 		<bndbox>
 			<xmin>390</xmin>
 			<ymin>23</ymin>
@@ -280,6 +300,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>R3</position>
 		<bndbox>
 			<xmin>390</xmin>
 			<ymin>46</ymin>
@@ -292,6 +313,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>I17</position>
 		<bndbox>
 			<xmin>184</xmin>
 			<ymin>368</ymin>
@@ -304,6 +326,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>B4</position>
 		<bndbox>
 			<xmin>23</xmin>
 			<ymin>69</ymin>
@@ -316,6 +339,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>B2</position>
 		<bndbox>
 			<xmin>23</xmin>
 			<ymin>23</ymin>
@@ -328,6 +352,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>D2</position>
 		<bndbox>
 			<xmin>69</xmin>
 			<ymin>23</ymin>
@@ -340,6 +365,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>D3</position>
 		<bndbox>
 			<xmin>69</xmin>
 			<ymin>46</ymin>
@@ -352,6 +378,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>Q3</position>
 		<bndbox>
 			<xmin>369</xmin>
 			<ymin>47</ymin>
@@ -364,6 +391,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>Q2</position>
 		<bndbox>
 			<xmin>369</xmin>
 			<ymin>24</ymin>
@@ -376,6 +404,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>D10</position>
 		<bndbox>
 			<xmin>70</xmin>
 			<ymin>208</ymin>
@@ -388,6 +417,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>Q4</position>
 		<bndbox>
 			<xmin>369</xmin>
 			<ymin>70</ymin>
@@ -400,6 +430,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>D12</position>
 		<bndbox>
 			<xmin>70</xmin>
 			<ymin>254</ymin>
@@ -412,6 +443,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>E11</position>
 		<bndbox>
 			<xmin>93</xmin>
 			<ymin>231</ymin>
@@ -424,6 +456,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>K19</position>
 		<bndbox>
 			<xmin>231</xmin>
 			<ymin>415</ymin>
@@ -436,6 +469,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>E12</position>
 		<bndbox>
 			<xmin>93</xmin>
 			<ymin>254</ymin>
@@ -448,6 +482,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>S8</position>
 		<bndbox>
 			<xmin>415</xmin>
 			<ymin>162</ymin>
@@ -460,6 +495,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>M3</position>
 		<bndbox>
 			<xmin>277</xmin>
 			<ymin>47</ymin>
@@ -472,6 +508,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>K17</position>
 		<bndbox>
 			<xmin>231</xmin>
 			<ymin>369</ymin>
@@ -484,6 +521,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>C11</position>
 		<bndbox>
 			<xmin>47</xmin>
 			<ymin>231</ymin>
@@ -496,6 +534,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>R17</position>
 		<bndbox>
 			<xmin>392</xmin>
 			<ymin>369</ymin>
@@ -508,6 +547,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>R12</position>
 		<bndbox>
 			<xmin>392</xmin>
 			<ymin>254</ymin>
@@ -520,6 +560,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>S13</position>
 		<bndbox>
 			<xmin>415</xmin>
 			<ymin>277</ymin>
@@ -532,6 +573,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>S12</position>
 		<bndbox>
 			<xmin>415</xmin>
 			<ymin>254</ymin>
@@ -544,6 +586,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>R19</position>
 		<bndbox>
 			<xmin>392</xmin>
 			<ymin>415</ymin>
@@ -556,6 +599,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>Q12</position>
 		<bndbox>
 			<xmin>369</xmin>
 			<ymin>254</ymin>
@@ -568,6 +612,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>C6</position>
 		<bndbox>
 			<xmin>47</xmin>
 			<ymin>116</ymin>
@@ -580,6 +625,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>E3</position>
 		<bndbox>
 			<xmin>93</xmin>
 			<ymin>47</ymin>
@@ -592,6 +638,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>F4</position>
 		<bndbox>
 			<xmin>116</xmin>
 			<ymin>70</ymin>
@@ -604,6 +651,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>B5</position>
 		<bndbox>
 			<xmin>24</xmin>
 			<ymin>93</ymin>
@@ -616,6 +664,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>M19</position>
 		<bndbox>
 			<xmin>277</xmin>
 			<ymin>415</ymin>
@@ -628,6 +677,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>D7</position>
 		<bndbox>
 			<xmin>70</xmin>
 			<ymin>139</ymin>
@@ -640,6 +690,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>D4</position>
 		<bndbox>
 			<xmin>70</xmin>
 			<ymin>70</ymin>
@@ -652,6 +703,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>D5</position>
 		<bndbox>
 			<xmin>70</xmin>
 			<ymin>93</ymin>

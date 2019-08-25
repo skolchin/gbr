@@ -2,9 +2,7 @@
 	<folder>folder</folder>
 	<filename>go_board_20.png</filename>
 	<path>C:\Users\kol\Documents\kol\gbr\gbr_ds\data\Images\go_board_20.png</path>
-	<source>
-		<database>Source</database>
-	</source>
+	<source>C:\Users\kol\Documents\kol\gbr\img\go_board_20.png</source>
 	<size>
 		<width>441</width>
 		<height>441</height>
@@ -16,6 +14,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>P2</position>
 		<bndbox>
 			<xmin>345</xmin>
 			<ymin>23</ymin>
@@ -28,6 +27,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>D17</position>
 		<bndbox>
 			<xmin>69</xmin>
 			<ymin>368</ymin>
@@ -40,6 +40,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>K3</position>
 		<bndbox>
 			<xmin>230</xmin>
 			<ymin>46</ymin>
@@ -52,6 +53,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>D4</position>
 		<bndbox>
 			<xmin>69</xmin>
 			<ymin>69</ymin>
@@ -64,6 +66,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>N3</position>
 		<bndbox>
 			<xmin>299</xmin>
 			<ymin>46</ymin>
@@ -76,6 +79,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>C15</position>
 		<bndbox>
 			<xmin>46</xmin>
 			<ymin>322</ymin>
@@ -88,6 +92,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>J17</position>
 		<bndbox>
 			<xmin>208</xmin>
 			<ymin>369</ymin>
@@ -100,6 +105,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>Q3</position>
 		<bndbox>
 			<xmin>369</xmin>
 			<ymin>47</ymin>
@@ -112,6 +118,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>P16</position>
 		<bndbox>
 			<xmin>346</xmin>
 			<ymin>346</ymin>
@@ -124,6 +131,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>P4</position>
 		<bndbox>
 			<xmin>346</xmin>
 			<ymin>70</ymin>
@@ -136,6 +144,7 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>Q6</position>
 		<bndbox>
 			<xmin>369</xmin>
 			<ymin>116</ymin>

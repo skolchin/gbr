@@ -26,6 +26,6 @@
     "STONES_MAXVAL_W": 255, 
     "STONES_THRESHOLD_B": 72, 
     "STONES_THRESHOLD_W": 218, 
-    "WATERSHED_B": 0, 
+    "WATERSHED_B": 203, 
     "WATERSHED_W": 1
 }

@@ -2,9 +2,7 @@
 	<folder>folder</folder>
 	<filename>go_board_8a_gen.png</filename>
 	<path>C:\Users\kol\Documents\kol\gbr\gbr_ds\data\Images\go_board_8a_gen.png</path>
-	<source>
-		<database>Source</database>
-	</source>
+	<source></source>
 	<size>
 		<width>498</width>
 		<height>464</height>
