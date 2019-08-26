@@ -13,6 +13,7 @@ go_board_31
 go_board_32
 go_board_33
 go_board_36
+go_board_37
 go_board_5
 go_board_8a_gen
 go_board_9a
