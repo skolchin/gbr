@@ -115,12 +115,15 @@ def find_stones(src_img, params, res, f_bw):
     # Post-filter: watershed
     def _apply_watershed(img, filtered_img, params, f_bw, prev_stones):
         n_ws = params['WATERSHED_' + f_bw]
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
         if n_ws == 0 or prev_stones is None:
            return None
         else:
+           #gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+           gray = _apply_channel_mask(img, params, f_bw)
            n_thresh = n_ws
            if n_thresh == 1: n_thresh = 190         # backward comp.
+
            ws_stones, ws_img = apply_watershed(gray, prev_stones, n_thresh, f_bw)
            res['IMG_WATERSHED_' + f_bw] = ws_img
            return ws_stones

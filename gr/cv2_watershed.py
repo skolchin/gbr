@@ -31,15 +31,49 @@ def apply_watershed(gray, stones, n_thresh, f_bw, f_debug = False):
     _, thresh = cv2.threshold(gray, n_thresh, 255, cv2.THRESH_BINARY)
     if f_debug: cv2.imshow('Threshold', thresh)
 
+    #b = np.zeros(stones.shape, dtype = np.bool)
+    #b[7] = 1
+    #stones = stones[b].reshape(1, stones.shape[1])
+
     # Prepare peaks map
     peaks = np.zeros(thresh.shape, dtype = np.uint8)
     for i in range(len(stones)):
         x = int(stones[i,0])
         y = int(stones[i,1])
-        cv2.circle(peaks, (x,y), 3, (i+1), -1)
+
+        if thresh[y,x] > 0:
+           #cv2.circle(peaks, (x,y), 1, (i+1), -1)
+           peaks[y,x] = (i+1)
+        else:
+           # Circle center falls to black point
+           # Loop around to find white point on thresholded image
+           r = 5
+           r2 = r*2
+           f = False
+           for dy in range(r2+1):
+               for dx in range(r2+1):
+                   vy = y+r-dy
+                   vx = x+r-dx
+                   if vx >= 0 and vy >= 0 and vx < thresh.shape[1] and vy < thresh.shape[0] and thresh[vy, vx] > 0:
+                      f = True
+                      #cv2.circle(peaks, (x+r2-dx,y+r2-dy), 1, (i+1), -1)
+                      peaks[vy, vx] = (i+1)
+                      break
+               if f: break
+           if not f:
+              # Ignore the stone
+              print('Cannot find peak for stone ({},{},{})'.format(x,y,r))
 
     if f_debug:
-       m = np.array(peaks*10000).astype(np.uint8)
+       #m = np.array(peaks*10000).astype(np.uint8)
+       m = np.zeros((thresh.shape[0],thresh.shape[1],3), dtype = np.uint8)
+       for i in range(3): m[:,:,i] = thresh
+       for y in range(peaks.shape[0]):
+           for x in range(peaks.shape[1]):
+               if peaks[y,x] > 0:
+                  for i in range(3):
+                      for j in range(3):
+                          m[y+i-1,x+j-1] = (0,0,255)
        cv2.imshow('Peaks', m)
 
 ##    # Do distance transform
@@ -78,7 +112,7 @@ def apply_watershed(gray, stones, n_thresh, f_bw, f_debug = False):
     # Apply watershed
     markers = peaks.astype(np.int32)
     img3 = np.empty((gray.shape[0], gray.shape[1], 3), dtype=np.uint8)
-    for i in range(3): img3[:,:,i] = gray
+    for i in range(3): img3[:,:,i] = thresh
     cv2.watershed(img3, markers)
 
     if f_debug:
@@ -103,18 +137,19 @@ def apply_watershed(gray, stones, n_thresh, f_bw, f_debug = False):
 
         if r <= 20.0:
            rt.append ([int(x), int(y), int(r)])
+           cv2.circle(dst, (int(x), int(y)), int(r), (255,255,255), -1)
 
     # Filter out outlied R's
-    if len(rt) > 0:
-        rlist = [f[2] for f in rt]
-        mean_r = sum(rlist) / float(len(rlist))
-        rt2 = []
-        for r in rt:
-            if r[2] >= mean_r-3 and r[2] <= mean_r+3:
-                rt2.append(r)
-                cv2.circle(dst, (r[0],r[1]), r[2], (255,255,255), -1)
-
-        rt = rt2
+##    if len(rt) > 0:
+##        rlist = [f[2] for f in rt]
+##        mean_r = sum(rlist) / float(len(rlist))
+##        rt2 = []
+##        for r in rt:
+##            if r[2] >= mean_r-3 and r[2] <= mean_r+3:
+##                rt2.append(r)
+##                cv2.circle(dst, (r[0],r[1]), r[2], (255,255,255), -1)
+##
+##        rt = rt2
 
     dst = cv2.bitwise_not(dst)
     if f_debug: cv2.imshow('Result', dst)
