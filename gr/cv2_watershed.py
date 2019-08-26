@@ -28,7 +28,7 @@ def apply_watershed(gray, stones, n_thresh, f_bw, f_debug = False):
        cv2.imshow('Gray', gray)
 
     # Prepare thresholded image
-    _, thresh = cv2.threshold(gray, n_thresh, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    _, thresh = cv2.threshold(gray, n_thresh, 255, cv2.THRESH_BINARY)
     if f_debug: cv2.imshow('Threshold', thresh)
 
     # Prepare peaks map
@@ -90,6 +90,7 @@ def apply_watershed(gray, stones, n_thresh, f_bw, f_debug = False):
        cv2.imshow('Borders', m)
 
     # Collect results
+    dst = np.zeros(gray.shape, dtype=np.uint8)
     rt = []
     for c in np.unique(markers):
         if c <= 0: continue
@@ -103,15 +104,14 @@ def apply_watershed(gray, stones, n_thresh, f_bw, f_debug = False):
         if r <= 20.0:
            rt.append ([int(x), int(y), int(r)])
 
-    # FIlter out outlineed R's
-    dst = np.zeros(gray.shape, dtype=np.uint8)
+    # Filter out outlied R's
     if len(rt) > 0:
         rlist = [f[2] for f in rt]
         mean_r = sum(rlist) / float(len(rlist))
         rt2 = []
         for r in rt:
             if r[2] >= mean_r-3 and r[2] <= mean_r+3:
-                rt2.append(rt)
+                rt2.append(r)
                 cv2.circle(dst, (r[0],r[1]), r[2], (255,255,255), -1)
 
         rt = rt2

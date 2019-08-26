@@ -12,11 +12,11 @@ import sys
 if sys.version_info[0] < 3:
     from grdef import *
     from utils import *
-    from scipy_watershed import apply_watershed
+    from cv2_watershed import apply_watershed
 else:
     from gr.grdef import *
     from gr.utils import *
-    from gr.scipy_watershed import apply_watershed
+    from gr.cv2_watershed import apply_watershed
 import cv2
 import numpy as np
 
