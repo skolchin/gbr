@@ -78,6 +78,13 @@ class ViewAnnoGui:
                                                         command = self.open_callback)
           self.openBtn.pack(side = tk.LEFT, padx = 5, pady = 5)
 
+          self.showRecVar = tk.IntVar()
+          self.showRecVar.set(1)
+          self.rectCb = tk.Checkbutton(self.buttonFrame, text = "Rectangle",
+                                                            variable = self.showRecVar,
+                                                            command = self.show_rec_callback)
+          self.rectCb.pack(side = tk.LEFT, padx = 5, pady = 5)
+
       def load_files(self):
           g = self.meta_path.glob('*.xml')
           file_list = []
@@ -115,14 +122,17 @@ class ViewAnnoGui:
           # Find image file name
           fn = get_tag(data, 'source')
           if fn is None: fn = get_tag(data, 'path')
+          if not Path(fn).is_file():
+             fn = str(self.src_path.joinpath(Path(fn).name))
           print("Loading image {}".format(fn))
 
           # Load image
           img = cv2.imread(fn)
           if img is None:
-             raise Exception('File not found')
+             raise Exception('File not found {}'.format(fn))
 
           # Load objects list
+          f_rect = self.showRecVar.get() > 0
           objs = data.getElementsByTagName('object')
           for ix, obj in enumerate(objs):
               x1 = int(get_child_node(obj, 'xmin'))
@@ -136,11 +146,13 @@ class ViewAnnoGui:
                 print("ERROR: coordinates overlap")
 
               # Draw a bounding box
-              #cv2.rectangle(img2,(x1,y1),(x2,y2),(0,255,0),1)
-              d = max(x2-x1, y2-y1)
-              x = int(x1 + d/2)
-              y = int(y1 + d/2)
-              cv2.circle(img, (x,y), int(d/2), (0,0,255), 1)
+              if f_rect:
+                 cv2.rectangle(img,(x1,y1),(x2,y2),(0,0,255),1)
+              else:
+                   d = max(x2-x1, y2-y1)
+                   x = int(x1 + d/2)
+                   y = int(y1 + d/2)
+                   cv2.circle(img, (x,y), int(d/2), (0,0,255), 1)
 
           # Resize the image
           img2, self.zoom = resize2 (img, np.max(self.defBoardImg.shape[:2]), f_upsize = False)
@@ -166,6 +178,10 @@ class ViewAnnoGui:
       def open_callback(self):
           pass
 
+      def show_rec_callback(self):
+          index = int(self.fileList.curselection()[0])
+          file = self.fileList.get(index)
+          self.load_anno(file)
 
 def main():
     # Construct interface
