@@ -376,7 +376,7 @@ class GbrGUI:
             c.destroy()
 
         # Add analysis result images
-        for key in debug_img.keys():
+        for key in sorted(debug_img.keys()):
             frame = tk.Frame(root)
             frame.grid(row = nrow, column = ncol, padx = 2, pady = 2, sticky = "nswe")
 
@@ -404,7 +404,7 @@ class GbrGUI:
         lbox.grid(row = 0, column = 0, sticky = "nswe")
         lbox.config(width = int(sx / 8))
 
-        for key in debug_info.keys():
+        for key in sorted(debug_info.keys()):
             lbox.insert(tk.END, "{}: {}".format(key, debug_info[key]))
 
         panel = tk.Label(frame, text = "TEXT_INFO")
@@ -455,8 +455,12 @@ def main():
     # Construct interface
     window = tk.Tk()
     window.title("Go board")
-    window.resizable(True, True)
+
     gui = GbrGUI(window)
+
+    #window.grid_columnconfigure(0, weight=1)
+    #window.grid_rowconfigure(0, weight=1)
+    #window.resizable(True, True)
 
     # Main loop
     window.mainloop()
