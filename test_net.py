@@ -41,8 +41,8 @@ CLASSES = ["_back_", "white", "black"]
 #detections = net.forward()
 
 model_file = "models\\test.prototxt"
-weigth_file = "out\\gbr_zf\\train\\gbr_zf_iter_10000.caffemodel"
-img_file = "img\\go_board_8a.png"
+weigth_file = "out\\gbr_zf\\train\\gbr_zf_iter_20000.caffemodel"
+img_file = "img\\go_board_1.png"
 
 cfg.TEST.HAS_RPN = True
 caffe.set_mode_gpu()
@@ -78,7 +78,7 @@ print("== Detections")
 print("Scores: {}".format(scores))
 print("Boxes: {}".format(boxes))
 
-CONF_THRESH = 0.8
+CONF_THRESH = 0.9
 NMS_THRESH = 0.3
 for cls_ind, cls in enumerate(CLASSES[1:]):
     cls_ind += 1
@@ -91,6 +91,21 @@ for cls_ind, cls in enumerate(CLASSES[1:]):
     show_detections(img, cls, dets, thresh=CONF_THRESH)
 
 plt.show()
+
+##print("== Blobs:")
+##for name, blob in net.blobs.iteritems():
+##    im = blob.data
+##    if len(im.shape) == 2:
+##        continue
+##    if len(im.shape) == 4:
+##        im = im[0,:,:,:]
+##    #a = np.empty((im.shape[1], im.shape[2], im.shape[0]), dtype = np.float32)
+##    a = np.moveaxis(im, [0,1,2], [2,0,1])
+##    print(a.shape)
+##    cv2.imshow(name, a)
+##
+##cv2.waitKey()
+##cv2.destroyAllWindows()
 
 # loop over the detections
 ##for i in np.arange(0, detections.shape[2]):
@@ -114,3 +129,4 @@ plt.show()
 ##cv2.imshow("Output", img)
 ##cv2.waitKey(0)
 ##cv2.destroyAllWindows()
+
