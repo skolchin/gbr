@@ -8,7 +8,7 @@
     "HC_MASK_W": 3,
     "HC_MAXRADIUS": 20,
     "HC_MINDIST": 1,
-    "HC_SENSITIVITY_B": 16,
+    "HC_SENSITIVITY_B": 18,
     "HC_SENSITIVITY_W": 9,
     "HL_RHO": 1,
     "HL_RHO2": 1,
