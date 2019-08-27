@@ -20,6 +20,7 @@ def apply_watershed(gray, stones, n_thresh, f_bw, f_debug = False):
     if f_bw == 'B':
        # To have watershed properly determine black stones, board dividers
        # have to be removed with dilation
+       # Source image is to be converted to negative
        kernel = np.ones((3, 3), dtype = np.uint8)
        gray = cv2.dilate(gray, kernel, iterations = 1)
        gray = cv2.bitwise_not(gray)
