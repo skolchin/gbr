@@ -117,8 +117,7 @@ class ViewAnnoGui:
           self.annoFileName = fn
 
           # Find image file name
-          fn = get_tag(data, 'source')
-          if fn is None: fn = get_tag(data, 'path')
+          fn = get_tag(data, 'path')
           if not Path(fn).is_file():
              fn = str(self.src_path.joinpath(Path(fn).name))
           print("Loading image {}".format(fn))
@@ -138,7 +137,8 @@ class ViewAnnoGui:
               y2 = int(get_child_node(obj, 'ymax'))
               cls = str(get_child_node(obj, "name")).lower().strip()
               if x1 <= 0 or y1 <= 0 or x1 >= img.shape[1] or y1 >= img.shape[0]:
-                print("ERROR: coordinate out of boundary")
+                print("ERROR: point {} coordinates out of boundaries ({},{})-({},{}) <> ({},{})".format(ix, x1, \
+                    y1,x2,y2,img.shape[1],img.shape[0]))
               if x1 >= x2 or y1 >= y2:
                 print("ERROR: coordinates overlap")
 

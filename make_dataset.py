@@ -16,7 +16,7 @@ import math
 import os
 from gr.board import GrBoard
 
-MAX_SIZE = 300
+MAX_SIZE =  { 'test': None, 'train': 2048 }
 
 def main():
     root_path = Path(__file__).parent.resolve()
@@ -59,7 +59,6 @@ def main():
                src_file = src_path.joinpath(src_file.name)
             board.load_image(str(src_file), f_process = False)
             stage = "test"
-            max_size = MAX_SIZE
         else:
             continue
 
@@ -67,7 +66,9 @@ def main():
         image_file = Path(board.image_file).name
         png_file = img_path.joinpath(image_file).with_suffix('.png')
         print("  {} -> {}".format(image_file, png_file))
-        board.save_image(str(png_file), max_size)
+        if not MAX_SIZE[stage] is None:
+            board.resize_board(MAX_SIZE[stage])
+        board.save_image(str(png_file))
 
         # Save annotation
         meta_file = meta_path.joinpath(image_file).with_suffix('.xml')

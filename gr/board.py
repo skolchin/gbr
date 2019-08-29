@@ -11,12 +11,12 @@ import sys
 if sys.version_info[0] < 3:
     from grdef import *
     from gr import process_img, generate_board, find_coord
-    from utils import gres_to_jgf, jgf_to_gres, resize
+    from utils import gres_to_jgf, jgf_to_gres, resize2
     from net_utils import make_anno
 else:
     from gr.grdef import *
     from gr.gr import process_img, generate_board, find_coord
-    from gr.utils import gres_to_jgf, jgf_to_gres, resize
+    from gr.utils import gres_to_jgf, jgf_to_gres, resize2
     from gr.net_utils import make_anno
 
 import xml.dom.minidom as minidom
@@ -151,21 +151,19 @@ class GrBoard(object):
            fn = str(Path(path_override).joinpath(Path(fn).name))
         self.load_image(fn, f_process = True)
 
-    def save_annotation(self, filename = None, max_size = None):
+    def save_annotation(self, filename = None):
         if self._img is None:
             return None
         if filename is None:
             filename = str(Path(self._img_file).with_suffix('.xml'))
-
-        im = self._img
-        if not max_size is None: im = resize(im, max_size)
 
         jgf = None
         if not self._res is None:
             jgf = gres_to_jgf(self._res)
             jgf['image_file'] = self._img_file
             jgf['source_file'] = self._src_img_file
-        make_anno(filename, self._img_file, img = im, jgf = jgf)
+
+        make_anno(filename, self._img_file, img = self._img, jgf = jgf)
 
         return filename
 
@@ -206,6 +204,28 @@ class GrBoard(object):
             return pt, c
         else:
             return None, None
+
+    def resize_board(self, max_size):
+        def resize_stones(stones, scale):
+            ret_stones = []
+            for st in stones:
+                st[GR_X] = int(st[GR_X] * scale[0])
+                st[GR_Y] = int(st[GR_Y] * scale[1])
+                st[GR_R] = int(st[GR_R] * max(scale[0],scale[1]))
+                ret_stones.append(st)
+            return np.array(ret_stones)
+
+        self._img, scale = resize2(self._img, max_size)
+        if not self._res is None:
+            self._res[GR_STONES_B] = resize_stones(self._res[GR_STONES_B], scale)
+            self._res[GR_STONES_W] = resize_stones(self._res[GR_STONES_W], scale)
+            self._res[GR_SPACING] = (self._res[GR_SPACING][0] * scale[0], \
+                                        self._res[GR_SPACING][1] * scale[1])
+            self._res[GR_EDGES] = ((self._res[GR_EDGES][0][0] * scale[0], \
+                                        self._res[GR_EDGES][0][1] * scale[1]), \
+                                        (self._res[GR_EDGES][1][0] * scale[0], \
+                                        self._res[GR_EDGES][1][1] * scale[1]))
+
 
     @property
     def params(self):
