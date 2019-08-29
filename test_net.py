@@ -41,10 +41,11 @@ CLASSES = ["_back_", "white", "black"]
 #detections = net.forward()
 
 model_file = "models\\test.prototxt"
-weigth_file = "out\\gbr_zf\\train\\gbr_zf_iter_20000.caffemodel"
-img_file = "img\\go_board_1.png"
+weigth_file = "out\\gbr_zf\\train\\gbr_zf_iter_10000.caffemodel"
+img_file = "img\\go_board_8a.png"
 
 cfg.TEST.HAS_RPN = True
+cfg.TEST.BBOX_REG = False
 caffe.set_mode_gpu()
 
 net = caffe.Net(model_file, weigth_file, caffe.TEST)
@@ -78,7 +79,7 @@ print("== Detections")
 print("Scores: {}".format(scores))
 print("Boxes: {}".format(boxes))
 
-CONF_THRESH = 0.9
+CONF_THRESH = 0.6
 NMS_THRESH = 0.3
 for cls_ind, cls in enumerate(CLASSES[1:]):
     cls_ind += 1
