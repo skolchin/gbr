@@ -179,7 +179,12 @@ class GrBoard(object):
             if self._res[GR_STONES_W] is None:
                 self._res[GR_STONES_W] = np.array([])
 
-    def show_board(self, f_black = True, f_white = True, f_det = False, f_anno = False):
+    def show_board(self, f_black = True, f_white = True, f_det = False, show_state = None):
+        if not show_state is None:
+           f_black = show_state['black']
+           f_white = show_state['white']
+           f_det = show_state['box']
+
         r = self._res.copy()
         if not f_black:
             del r[GR_STONES_B]
