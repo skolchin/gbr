@@ -111,4 +111,4 @@ t.py
 
 # Net out
 *.caffemodel
-net/out/results/
+/out/*
