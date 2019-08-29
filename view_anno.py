@@ -24,9 +24,6 @@ else:
     import tkinter as tk
     from tkinter import ttk
 
-sys.path.append('..')
-from gr.utils import resize, img_to_imgtk
-
 class ViewAnnoGui:
       def __init__(self, root):
           self.root = root
