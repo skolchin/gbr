@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------------------
 # Name:        Go board recognition project
-# Purpose:     Main and interfaces functions
+# Purpose:     Main functions
 #
 # Author:      skolchin
 #
@@ -35,6 +35,35 @@ class NLabel(tk.Label):
         tk.Label.__init__(self, master, *args, **kwargs)
         self.master, self.tag = master, tag
 
+# ImageButton
+class ImgButton(tk.Label):
+    def __init__(self, master, tag, state, callback, *args, **kwargs):
+        tk.Label.__init__(self, master, *args, **kwargs)
+
+        self._tag = tag
+        self._state = state
+        self._callback = callback
+
+        # Load button images
+        self._images = [ImageTk.PhotoImage(Image.open(self._tag + '_up.png')),
+                        ImageTk.PhotoImage(Image.open(self._tag + '_down.png'))]
+
+        # Update kwargs
+        w = self._images[0].width() + 6
+        self.configure(borderwidth = 1, relief = "groove", width = w)
+        self.configure(image = self._images[self._state])
+
+        self.bind("<Button-1>", self.mouse_click)
+
+    def mouse_click(self, event):
+        new_state = not self._state
+
+        self.configure(image = self._images[new_state])
+        if self._callback(event = event, tag = self._tag, state = new_state):
+           self._state = new_state
+        else:
+           self.configure(image = self._images[self._state])
+
 
 # GUI class
 class GbrGUI:
@@ -43,25 +72,33 @@ class GbrGUI:
 
     def __init__(self, root):
         self.root = root
+        self.showState = { "black": True, "white": "True", "box": False, "edge": False }
 
         # Generate board
         self.board = GrBoard()
-        self.showBlack = True
-        self.showWhite = True
-        self.showBoxes = False
 
         # Preparee images
         self.origImgTk, self.zoom = self.make_imgtk(self.board.image)
         self.genImgTk = self.origImgTk
 
-        # Images panel (original + generated + analysis)
+        # Images panel
         self.imgFrame = tk.Frame(self.root)
         self.imgFrame.grid(row = 0, column = 0, padx = PADX, pady = PADY)
 
-        # Image panel: original image (label + photo)
-        self.origImgLabel = tk.Label(self.imgFrame, text = "Original")
-        self.origImgLabel.grid(row = 0, column = 0, sticky = "nswe")
+        # Image panel: original image header
+        self.origLblFrame = tk.Frame(self.imgFrame)
+        self.origLblFrame.grid(row = 0, column = 0, sticky = "nswe")
+        tk.Grid.columnconfigure(self.origLblFrame, 0, weight = 1)
 
+        # Image panel: generated image header: label + buttons
+        self.origImgLabel = tk.Label(self.origLblFrame, text = "Original")
+        self.origImgLabel.grid(row = 0, column = 0, padx = PADX, pady = PADY, sticky = "nswe")
+
+        # Image panel: set edges button
+        self.setEdgesBtn = ImgButton(self.origLblFrame, "edge", False, self.set_edges_callback)
+        self.setEdgesBtn.grid(row = 0, column = 1, padx = PADX, pady = PADY, sticky = "nswe")
+
+        # Image panel: original image panel
         self.origImgPanel = tk.Label(self.imgFrame, image = self.origImgTk)
         self.origImgPanel.bind('<Button-1>', self.orig_img_mouse_callback)
         self.origImgPanel.grid(row = 1, column = 0, sticky = "nswe", padx = PADX)
@@ -75,31 +112,13 @@ class GbrGUI:
         self.genImgLabel = tk.Label(self.genLblFrame, text = "Generated")
         self.genImgLabel.grid(row = 0, column = 0, padx = PADX, pady = PADY, sticky = "nswe")
 
-        self.blackImgTk = [ImageTk.PhotoImage(Image.open('black_up.png')),
-                           ImageTk.PhotoImage(Image.open('black_down.png'))]
-        self.showBlackBtn = tk.Label(self.genLblFrame, image = self.blackImgTk[1],
-                                                       borderwidth = 1,
-                                                       relief = "groove",
-                                                       width = 30)
-        self.showBlackBtn.bind("<Button-1>", self.show_black_callback)
+        self.showBlackBtn = ImgButton(self.genLblFrame, "black", True, self.show_stones_callback)
         self.showBlackBtn.grid(row = 0, column = 1, padx = PADX, pady = PADY, sticky = "nswe")
 
-        self.whiteImgTk = [ImageTk.PhotoImage(Image.open('white_up.png')),
-                           ImageTk.PhotoImage(Image.open('white_down.png'))]
-        self.showWhiteBtn = tk.Label(self.genLblFrame, image = self.whiteImgTk[1],
-                                                       borderwidth = 1,
-                                                       relief = "groove",
-                                                       width = 30)
-        self.showWhiteBtn.bind("<Button-1>", self.show_white_callback)
+        self.showWhiteBtn = ImgButton(self.genLblFrame, "white", True, self.show_stones_callback)
         self.showWhiteBtn.grid(row = 0, column = 2, padx = PADX, pady = PADY, sticky = "nswe")
 
-        self.boxImgTk = [ImageTk.PhotoImage(Image.open('box_up.png')),
-                         ImageTk.PhotoImage(Image.open('box_down.png'))]
-        self.showBoxBtn = tk.Label(self.genLblFrame, image = self.boxImgTk[0],
-                                                       borderwidth = 1,
-                                                       relief = "groove",
-                                                       width = 30)
-        self.showBoxBtn.bind("<Button-1>", self.show_boxes_callback)
+        self.showBoxBtn = ImgButton(self.genLblFrame, "box", False, self.show_stones_callback)
         self.showBoxBtn.grid(row = 0, column = 3, padx = PADX, pady = PADY, sticky = "nswe")
 
         # Image panel: generated image panel
@@ -286,31 +305,21 @@ class GbrGUI:
         self.dbgFrameCanvas.configure(scrollregion=self.dbgFrameCanvas.bbox('all'))
 
     # Callback for "Show black stones"
-    def show_black_callback(self, event):
+    def show_stones_callback(self, event, tag, state):
         if self.board.is_gen_board:
-            return
+            return False
+        else:
+            self.showState[tag] = state
+            self.update_board(reprocess= False)
+            return True
 
-        self.showBlack = not self.showBlack
-        self.showBlackBtn.configure(image = self.blackImgTk[int(self.showBlack)])
-        self.update_board(reprocess= False)
-
-    # Callback for "Show white stones"
-    def show_white_callback(self, event):
+    # Callback for "Set edges"
+    def set_edges_callback(self, event, tag, state):
         if self.board.is_gen_board:
-            return
-
-        self.showWhite = not self.showWhite
-        self.showWhiteBtn.configure(image = self.whiteImgTk[int(self.showWhite)])
-        self.update_board(reprocess= False)
-
-    # Callback for "Show boxes"
-    def show_boxes_callback(self, event):
-        if self.board.is_gen_board:
-            return
-
-        self.showBoxes = not self.showBoxes
-        self.showBoxBtn.configure(image = self.boxImgTk[int(self.showBoxes)])
-        self.update_board(reprocess= False)
+            return False
+        else:
+            self.showState[tag] = state
+            return True
 
     # Add Scale widgets with board recognition parameters
     def add_switches(self, rootFrame, params, nrow = 0):
@@ -417,7 +426,7 @@ class GbrGUI:
             self.board.process()
 
         # Generate board using analysis results
-        self.genImg = self.board.show_board(self.showBlack, self.showWhite, self.showBoxes)
+        self.genImg = self.board.show_board(show_state = self.showState)
         self.genImgTk, _ = self.make_imgtk(self.genImg)
         self.genImgPanel.configure(image = self.genImgTk)
 
@@ -449,6 +458,7 @@ class GbrGUI:
            img2, z = resize2(img, self.MAX_IMG_SIZE, False)
            imgtk = img_to_imgtk(img2)
         return imgtk, z
+
 
 # Main function
 def main():
