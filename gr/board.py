@@ -27,7 +27,7 @@ import numpy as np
 import json
 
 class GrBoard(object):
-    def __init__(self, image_file = None, board_shape = DEF_IMG_SIZE):
+    def __init__(self, image_file = None, board_shape = None):
         self._params = DEF_GR_PARAMS.copy()
         self._res = None
         self._img = None
@@ -37,6 +37,7 @@ class GrBoard(object):
 
         if image_file is None or image_file == '':
             # Generate default board
+            if board_shape is None: board_shape = DEF_IMG_SIZE
             self.generate(shape = board_shape)
         else:
             # Load board from file
@@ -183,11 +184,13 @@ class GrBoard(object):
            f_white = show_state['white']
            f_det = show_state['box']
 
-        r = self._res.copy()
-        if not f_black:
-            del r[GR_STONES_B]
-        if not f_white:
-            del r[GR_STONES_W]
+        r = None
+        if not self._res is None:
+            r = self._res.copy()
+            if not f_black:
+                del r[GR_STONES_B]
+            if not f_white:
+                del r[GR_STONES_W]
 
         img = generate_board(shape = self._img.shape, res = r, f_show_det = f_det)
         return img

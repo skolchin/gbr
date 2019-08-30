@@ -16,169 +16,186 @@ from pathlib import Path
 import xml.dom.minidom as minidom
 from gr.utils import img_to_imgtk, resize2
 from gr.board import GrBoard
+from gr.ui_extra import *
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
+    import tkFileDialog  as filedialog
     import ttk
 else:
     import tkinter as tk
+    from tkinter import filedialog
     from tkinter import ttk
 
 class ViewAnnoGui:
-      def __init__(self, root):
-          self.root = root
-          self.zoom = [1.0, 1.0]
+    def __init__(self, root, max_size = 500, allow_open = True):
+        self.root = root
+        self.zoom = [1.0, 1.0]
+        self.allow_open = allow_open
+        self.f_rect = True
 
-          # Set paths
-          self.root_path = Path(__file__).parent.resolve()
-          self.src_path = self.root_path.joinpath("img")
-          self.ds_path = self.root_path.joinpath("gbr_ds")
-          if not self.ds_path.exists(): self.ds_path.mkdir(parents = True)
-          self.meta_path = self.ds_path.joinpath("data","Annotations")
-          if not self.meta_path.exists(): self.meta_path.mkdir(parents = True)
-          self.img_path = self.ds_path.joinpath("data","Images")
-          if not self.img_path.exists(): self.img_path.mkdir(parents = True)
+        # Set paths
+        self.root_path = Path(__file__).parent.resolve()
+        self.src_path = self.root_path.joinpath("img")
+        self.ds_path = self.root_path.joinpath("gbr_ds")
+        if not self.ds_path.exists(): self.ds_path.mkdir(parents = True)
+        self.meta_path = self.ds_path.joinpath("data","Annotations")
+        if not self.meta_path.exists(): self.meta_path.mkdir(parents = True)
+        self.img_path = self.ds_path.joinpath("data","Images")
+        if not self.img_path.exists(): self.img_path.mkdir(parents = True)
 
-          # File list panel
-          self.filesFrame = tk.Frame(self.root)
-          self.filesFrame.grid(row = 0, column = 0, padx = 5, pady = 5, sticky = "nswe")
+        # Top frames
+        self.imgFrame = tk.Frame(self.root)
+        self.imgFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX, pady = PADY)
+        self.buttonFrame = tk.Frame(self.root, width = max_size, height = 50, bd = 1, relief = tk.RAISED)
+        self.buttonFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX, pady = PADY)
+        self.statusFrame = tk.Frame(self.root, width = max_size + 2*PADX, bd = 1, relief = tk.SUNKEN)
+        self.statusFrame.pack(side = tk.BOTTOM, fill=tk.BOTH, padx = PADX, pady = PADY)
 
-          # File list listbox
-          self.annoFileName = ''
-          self.fileListSb = tk.Scrollbar(self.filesFrame)
-          self.fileListSb.pack(side=tk.RIGHT, fill=tk.BOTH)
-          self.fileList = tk.Listbox(self.filesFrame, yscrollcommand=self.fileListSb.set)
-          self.fileList.pack(side = tk.TOP, fill=tk.BOTH, expand = True)
-          self.fileListSb.config(command=self.fileList.yview)
-          self.load_files()
-          self.fileList.bind("<<ListboxSelect>>", self.lb_changed_callback)
+        # Image frame
+        self.defBoardImg = GrBoard(board_shape = (max_size, max_size)).image
+        self.boardImg = self.defBoardImg
+        self.boardImgTk = img_to_imgtk(self.boardImg)
+        self.boardImgName = None
+        self.annoName = None
 
-          # Image frame
-          self.imgFrame = tk.Frame(self.root)
-          self.imgFrame.grid(row = 0, column = 1, padx = 5, pady = 5, sticky = "nswe")
-          self.defBoardImg = cv2.imread('def_board.png')
-          self.boardImg = self.defBoardImg
-          self.boardImgTk = img_to_imgtk(self.boardImg)
-          self.boardImgName = ''
-          self.imgPanel = tk.Label(self.imgFrame, image = self.boardImgTk)
-          self.imgPanel.pack(fill=tk.BOTH, anchor='center', expand=True, padx = 3, pady = 3)
+        _, self.imgPanel, _ = add_panel(self.imgFrame,"Dataset image",
+                [["box", True, self.show_rec_callback, "Rectangle/circle"]],
+                self.boardImgTk, self.open_img_callback)
 
-          # Buttons on image frame
-          self.buttonFrame = tk.Frame(self.imgFrame, bd = 1)
-          self.buttonFrame.pack(fill=tk.BOTH, side=tk.BOTTOM, expand=True, padx = 3, pady = 3)
+        # Button frame
+        if self.allow_open:
+            self.openBtn = tk.Button(self.buttonFrame, text = "Open",
+                                                          command = self.open_btn_callback)
+            self.openBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
-          self.updateBtn = tk.Button(self.buttonFrame, text = "Update",
-                                                        command = self.update_callback)
-          self.updateBtn.pack(side = tk.LEFT, padx = 5, pady = 5)
+        self.updateBtn = tk.Button(self.buttonFrame, text = "Update",
+                                                      command = self.update_callback)
+        self.updateBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
-          self.openBtn = tk.Button(self.buttonFrame, text = "Open in GBR",
-                                                        command = self.open_callback)
-          self.openBtn.pack(side = tk.LEFT, padx = 5, pady = 5)
+        self.updateBtn = tk.Button(self.buttonFrame, text = "Update all",
+                                                      command = self.update_all_callback)
+        self.updateBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
-          self.showRecVar = tk.IntVar()
-          self.showRecVar.set(1)
-          self.rectCb = tk.Checkbutton(self.buttonFrame, text = "Rectangle",
-                                                            variable = self.showRecVar,
-                                                            command = self.show_rec_callback)
-          self.rectCb.pack(side = tk.LEFT, padx = 5, pady = 5)
+        # Image info
+        self.imgInfo = tk.StringVar()
+        self.imgInfo .set("")
+        self.imgnfoPanel = tk.Label(self.buttonFrame, textvariable = self.imgInfo)
+        self.imgnfoPanel.pack(side = tk.LEFT, padx = PADX)
 
-      def load_files(self):
-          g = self.meta_path.glob('*.xml')
-          file_list = []
-          for x in g:
-              if x.is_file(): file_list.append(x.name)
+        # Status frame
+        self.statusInfo = tk.StringVar()
+        self.statusInfo.set("")
+        self.stoneInfoPanel = tk.Label(self.statusFrame, textvariable = self.statusInfo)
+        self.stoneInfoPanel.grid(row = 0, column = 0, sticky = tk.W, padx = 5, pady = 2)
 
-          file_list = sorted(file_list)
-          self.fileList.insert(tk.END, *file_list)
+    # Load annotation button callback
+    def open_btn_callback(self):
+        if not self.allow_open: return  # GUI used from other app
 
-      def lb_changed_callback(self, event):
-          index = int(self.fileList.curselection()[0])
-          file = self.fileList.get(index)
-          self.load_anno(file)
+        fn = filedialog.askopenfilename(title = "Select file",
+           filetypes = (("XML files","*.xml"),("All files","*.*")))
+        if fn != "": self.load_annotation(fn)
 
-      def load_anno(self, file):
+    # Image click callback
+    def open_img_callback(self, event):
+        self.open_btn_callback()
 
-          def get_tag(node, tag):
-                d = node.getElementsByTagName(tag)
+    # Board update button callback
+    def update_callback(self):
+        if self.annoName is None:
+            return
+        board = GrBoard()
+        board.load_annotation(self.annoName, path_override = str(self.src_path))
+        board.save_annotation(self.annoName)
+        self.load_annotation(self.annoName)
+        self.statusInfo.set("Annotation updated: {}".format(self.annoName))
+
+    def update_all_callback(self):
+        pass
+
+    def show_rec_callback(self, event, tag, state):
+        if self.annoName is None:
+            return False
+        else:
+            self.f_rect = state
+            self.load_annotation(self.annoName)
+            return True
+
+    def load_annotation(self, file):
+        """Load annotation from file (XML/TXT)"""
+
+        def get_tag(node, tag):
+            d = node.getElementsByTagName(tag)
+            if d is None: return None
+            else:
+                d = d[0].firstChild
                 if d is None: return None
-                else:
-                    d = d[0].firstChild
-                    if d is None: return None
-                    else: return d.data
+                else: return d.data
 
-          def get_child_node(node, tag):
-                return node.getElementsByTagName(tag)[0].childNodes[0].data
+        def get_child_node(node, tag):
+            return node.getElementsByTagName(tag)[0].childNodes[0].data
 
-          # Load annotation file
-          print("Loading annotation {}".format(file))
-          fn = str(self.meta_path.joinpath(file))
-          with open(fn) as f:
+        # Load annotation file
+        with open(file) as f:
             data = minidom.parseString(f.read())
-          self.annoFileName = fn
 
-          # Find image file name
-          fn = get_tag(data, 'path')
-          if not Path(fn).is_file():
-             fn = str(self.src_path.joinpath(Path(fn).name))
-          print("Loading image {}".format(fn))
+        # Find image file name
+        fn = get_tag(data, 'path')
+        if not Path(fn).is_file():
+            fn = str(self.src_path.joinpath(Path(fn).name))
 
-          # Load image
-          img = cv2.imread(fn)
-          if img is None:
-             raise Exception('File not found {}'.format(fn))
+        # Load image
+        img = cv2.imread(fn)
+        if img is None:
+            raise Exception('File not found {}'.format(fn))
 
-          # Load objects list
-          f_rect = self.showRecVar.get() > 0
-          objs = data.getElementsByTagName('object')
-          for ix, obj in enumerate(objs):
-              x1 = int(get_child_node(obj, 'xmin'))
-              y1 = int(get_child_node(obj, 'ymin'))
-              x2 = int(get_child_node(obj, 'xmax'))
-              y2 = int(get_child_node(obj, 'ymax'))
-              cls = str(get_child_node(obj, "name")).lower().strip()
-              if x1 <= 0 or y1 <= 0 or x1 >= img.shape[1] or y1 >= img.shape[0]:
-                print("ERROR: point {} coordinates out of boundaries ({},{})-({},{}) <> ({},{})".format(ix, x1, \
-                    y1,x2,y2,img.shape[1],img.shape[0]))
-              if x1 >= x2 or y1 >= y2:
-                print("ERROR: coordinates overlap")
+        # Resize the image
+        img2, self.zoom = resize2 (img, np.max(self.defBoardImg.shape[:2]), f_upsize = False)
 
-              # Draw a bounding box
-              if f_rect:
-                 cv2.rectangle(img,(x1,y1),(x2,y2),(0,0,255),1)
-              else:
-                   d = max(x2-x1, y2-y1)
-                   x = int(x1 + d/2)
-                   y = int(y1 + d/2)
-                   cv2.circle(img, (x,y), int(d/2), (0,0,255), 1)
+        # Load objects list
+        status = ""
+        objs = data.getElementsByTagName('object')
+        for ix, obj in enumerate(objs):
+            x1 = int(get_child_node(obj, 'xmin'))
+            y1 = int(get_child_node(obj, 'ymin'))
+            x2 = int(get_child_node(obj, 'xmax'))
+            y2 = int(get_child_node(obj, 'ymax'))
+            cls = str(get_child_node(obj, "name")).lower().strip()
+            if x1 <= 0 or y1 <= 0 or x1 >= img.shape[1] or y1 >= img.shape[0]:
+                status = "ERROR: point {} coordinates out of boundaries ({},{})-({},{}) <> ({},{})".format(ix, x1, \
+                    y1,x2,y2,img.shape[1],img.shape[0])
+            if x1 >= x2 or y1 >= y2:
+                status = "ERROR: coordinates overlap"
 
-          # Resize the image
-          img2, self.zoom = resize2 (img, np.max(self.defBoardImg.shape[:2]), f_upsize = False)
+            # Draw a bounding box
+            x1 = int(x1 * self.zoom[0])
+            x2 = int(x2 * self.zoom[0])
+            y1 = int(y1 * self.zoom[1])
+            y2 = int(y2 * self.zoom[1])
+            if self.f_rect:
+                cv2.rectangle(img2,(x1,y1),(x2,y2),(0,0,255),1)
+            else:
+                d = max(x2-x1, y2-y1)
+                x = int(x1 + d/2)
+                y = int(y1 + d/2)
+                cv2.circle(img2, (x,y), int(d/2), (0,0,255), 1)
 
-          # Display the image
-          self.boardImg = img2
-          self.boardImgTk = img_to_imgtk(img2)
-          self.boardImgName = fn
-          self.imgFrame.pack_propagate(False)
-          self.imgPanel.configure(image = self.boardImgTk)
+        # Display the image
+        self.boardImg = img2
+        self.boardImgTk = img_to_imgtk(img2)
+        self.boardImgName = fn
+        self.annoName = file
+        self.imgFrame.pack_propagate(False)
+        self.imgPanel.configure(image = self.boardImgTk)
 
-      def update_callback(self):
-          index = int(self.fileList.curselection()[0])
-          file_sel = self.fileList.get(index)
-          file = str(self.meta_path.joinpath(file_sel))
+        # Update status
+        img_info = "Image size: {}, {}".format(img.shape[1], img.shape[0])
+        self.imgInfo.set(img_info)
 
-          board = GrBoard()
-          board.load_annotation(file, path_override = str(self.src_path))
-          board.save_annotation(file)
-          print("Annotation updated: {}".format(file))
-          self.load_anno(file_sel)
-
-      def open_callback(self):
-          pass
-
-      def show_rec_callback(self):
-          index = int(self.fileList.curselection()[0])
-          file = self.fileList.get(index)
-          self.load_anno(file)
+        if status == '':
+            status = 'Loaded file: {}'.format(self.annoName)
+        self.statusInfo.set(status)
 
 def main():
     # Construct interface
@@ -192,3 +209,4 @@ def main():
 if __name__ == '__main__':
 
     main()
+

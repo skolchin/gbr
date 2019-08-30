@@ -16,7 +16,9 @@ from pathlib import Path
 import xml.dom.minidom as minidom
 from gr.utils import img_to_imgtk, resize2
 from gbr import GbrGUI
+from view_anno import ViewAnnoGui
 import re
+from gr.ui_extra import treeview_sort_columns
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
@@ -24,7 +26,6 @@ if sys.version_info[0] < 3:
 else:
     import tkinter as tk
     from tkinter import ttk
-
 
 # GUI class
 class GrTagGui:
@@ -43,11 +44,7 @@ class GrTagGui:
 
           # File list panel
           self.filesFrame = tk.Frame(self.root)
-          self.filesFrame.pack(side = tk.LEFT, fill=tk.BOTH, expand = True)
-
-          # Separator
-          self.sep = ttk.Separator(self.root, orient = "vertical")
-          self.sep.pack(side = tk.LEFT, fill = tk.Y, expand = True)
+          self.filesFrame.pack(side = tk.LEFT, fill=tk.BOTH, expand = False)
 
           # Notebook panel
           self.nbFrame = tk.Frame(self.root)
@@ -59,7 +56,7 @@ class GrTagGui:
 
           self.fileList = ttk.Treeview(self.filesFrame, height = 30)
           self.fileList["columns"]=("json","jgf", "ds")
-          self.fileList.column("#0", width=200, minwidth=100, stretch=tk.YES)
+          self.fileList.column("#0", width=150, minwidth=50, stretch=tk.YES)
           self.fileList.column("json", width=50, minwidth=30, stretch=tk.YES)
           self.fileList.column("jgf", width=50, minwidth=30, stretch=tk.YES)
           self.fileList.column("ds", width=50, minwidth=30, stretch=tk.YES)
@@ -67,24 +64,28 @@ class GrTagGui:
           self.fileList.heading("json", text="JSON",anchor=tk.W)
           self.fileList.heading("jgf", text="JGF",anchor=tk.W)
           self.fileList.heading("ds", text="DS",anchor=tk.W)
+          #treeview_sort_columns(self.fileList)
+
           self.load_files()
+
           self.fileList.pack(side = tk.TOP, fill=tk.BOTH, expand = True)
           self.fileList.bind("<<TreeviewSelect>>", self.sel_changed_callback)
-
           self.fileListSb.config(command=self.fileList.yview)
 
           # Notebook
           self.nb = ttk.Notebook(self.nbFrame)
           self.nb.pack(side = tk.TOP, fill=tk.BOTH, expand = True)
+          self.nb.bind("<<NotebookTabChanged>>", self.sel_changed_callback)
 
           # GBR GUI
           self.nbFrameTag = tk.Frame(self.nb, width = 400)
           self.nb.add(self.nbFrameTag, text = "Tagging")
-          self.grGui = GbrGUI(self.nbFrameTag, max_img_size = 400, max_dbg_img_size = 150)
+          self.grGui = GbrGUI(self.nbFrameTag, max_img_size = 400, max_dbg_img_size = 150, allow_open = False)
 
+          # ANNO GUI
           self.nbFrameAnno = tk.Frame(self.nb, width = 400)
           self.nb.add(self.nbFrameAnno, text = "Annotation")
-
+          self.annoGui = ViewAnnoGui(self.nbFrameAnno, allow_open = False)
 
       def _add_file(self, file_name, file_list):
           file_state = [ \
@@ -94,13 +95,14 @@ class GrTagGui:
 
           # Load file info
           for f in file_state:
-              if os.path.isfile(f[0]):
-                 m = os.path.getmtime(f[0])
-                 f[1] = "+"
-                 f[2] = m
+            fn = str(f[0])
+            if os.path.isfile(fn):
+                m = os.path.getmtime(fn)
+                f[1] = "+"
+                f[2] = m
 
           # Check dependencies
-          prev_mt = os.path.getmtime(file_name)
+          prev_mt = os.path.getmtime(str(file_name))
           for f in file_state:
               if f[2] > 0:
                  if f[2] < prev_mt: f[1] = '<'
@@ -127,9 +129,17 @@ class GrTagGui:
 
       def sel_changed_callback(self, event):
           sel = self.fileList.selection()
+          if len(sel) == 0: return
+
           item = self.fileList.item(sel)
-          file = self.src_path.joinpath(item['text'])
-          self.grGui.load_image(str(file))
+          file = item['text']
+          nb_index = self.nb.index(self.nb.select())
+          if nb_index == 0:
+            file = self.src_path.joinpath(file)
+            self.grGui.load_image(str(file))
+          else:
+            file = self.meta_path.joinpath(file).with_suffix('.xml')
+            self.annoGui.load_annotation(str(file))
 
 def main():
     window = tk.Tk()
