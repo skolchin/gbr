@@ -28,6 +28,9 @@ else:
 
 PADX = 5
 PADY = 5
+MAX_IMG_SIZE = 550
+MAX_DBG_IMG_SIZE = 200
+DEF_SHOW_STATE = { "black": True, "white": True, "box": False, "edge": False }
 
 # Image frame with additional tag - for debug info
 class NLabel(tk.Label):
@@ -57,100 +60,186 @@ class ImgButton(tk.Label):
 
     def mouse_click(self, event):
         new_state = not self._state
-
         self.configure(image = self._images[new_state])
         if self._callback(event = event, tag = self._tag, state = new_state):
            self._state = new_state
         else:
            self.configure(image = self._images[self._state])
 
+    @property
+    def state(self):
+        return self._state
+
+    @state.setter
+    def state(self, new_state):
+        self._state = new_state
+        self.configure(image = self._images[new_state])
 
 # GUI class
 class GbrGUI:
-    MAX_IMG_SIZE = 550
-    MAX_DBG_IMG_SIZE = 200
 
-    def __init__(self, root):
-        self.root = root
-        self.showState = { "black": True, "white": "True", "box": False, "edge": False }
+    def __init__(self, root, max_img_size = MAX_IMG_SIZE, max_dbg_img_size = MAX_DBG_IMG_SIZE):
+        self.root, self.max_img_size, self.max_dbg_img_size = root, max_img_size, max_dbg_img_size
+        self.showState = DEF_SHOW_STATE.copy()
 
         # Generate board
         self.board = GrBoard()
 
-        # Preparee images
+        # Prepare images
         self.origImgTk, self.zoom = self.make_imgtk(self.board.image)
         self.genImgTk = self.origImgTk
 
-        # Images panel
+        # Top-level frames
         self.imgFrame = tk.Frame(self.root)
-        self.imgFrame.grid(row = 0, column = 0, padx = PADX, pady = PADY)
-
-        # Image panel: original image header
-        self.origLblFrame = tk.Frame(self.imgFrame)
-        self.origLblFrame.grid(row = 0, column = 0, sticky = "nswe")
-        tk.Grid.columnconfigure(self.origLblFrame, 0, weight = 1)
-
-        # Image panel: generated image header: label + buttons
-        self.origImgLabel = tk.Label(self.origLblFrame, text = "Original")
-        self.origImgLabel.grid(row = 0, column = 0, padx = PADX, pady = PADY, sticky = "nswe")
-
-        # Image panel: set edges button
-        self.setEdgesBtn = ImgButton(self.origLblFrame, "edge", False, self.set_edges_callback)
-        self.setEdgesBtn.grid(row = 0, column = 1, padx = PADX, pady = PADY, sticky = "nswe")
-
-        # Image panel: original image panel
-        self.origImgPanel = tk.Label(self.imgFrame, image = self.origImgTk)
-        self.origImgPanel.bind('<Button-1>', self.orig_img_mouse_callback)
-        self.origImgPanel.grid(row = 1, column = 0, sticky = "nswe", padx = PADX)
-
-        # Image panel: generated image header
-        self.genLblFrame = tk.Frame(self.imgFrame)
-        self.genLblFrame.grid(row = 0, column = 1, sticky = "nswe")
-        tk.Grid.columnconfigure(self.genLblFrame, 0, weight = 1)
-
-        # Image panel: generated image header: label + buttons
-        self.genImgLabel = tk.Label(self.genLblFrame, text = "Generated")
-        self.genImgLabel.grid(row = 0, column = 0, padx = PADX, pady = PADY, sticky = "nswe")
-
-        self.showBlackBtn = ImgButton(self.genLblFrame, "black", True, self.show_stones_callback)
-        self.showBlackBtn.grid(row = 0, column = 1, padx = PADX, pady = PADY, sticky = "nswe")
-
-        self.showWhiteBtn = ImgButton(self.genLblFrame, "white", True, self.show_stones_callback)
-        self.showWhiteBtn.grid(row = 0, column = 2, padx = PADX, pady = PADY, sticky = "nswe")
-
-        self.showBoxBtn = ImgButton(self.genLblFrame, "box", False, self.show_stones_callback)
-        self.showBoxBtn.grid(row = 0, column = 3, padx = PADX, pady = PADY, sticky = "nswe")
-
-        # Image panel: generated image panel
-        self.genImgPanel = tk.Label(self.imgFrame, image = self.origImgTk)
-        self.genImgPanel.bind('<Button-1>', self.gen_img_mouse_callback)
-        self.genImgPanel.grid(row = 1, column = 1, sticky = "nswe", padx = PADX)
-
-        # Image panel: analysis images
-        self.dbgImgLabel = tk.Label(self.imgFrame, text = "Information")
-        self.dbgImgLabel.grid(row = 0, column = 2, sticky = "nwe")
-
-        self.dbgFrameRoot = tk.Frame(self.imgFrame)
-        self.dbgFrameRoot.grid(row = 1, column = 2, padx = PADX, sticky = "nswe")
-
-        self.dbgFrameCanvas = tk.Canvas(self.dbgFrameRoot)
-        self.dbgFrameCanvas.pack(side = tk.LEFT)
-        self.dbgFrameScrollY = tk.Scrollbar(self.dbgFrameRoot, command=self.dbgFrameCanvas.yview)
-        self.dbgFrameScrollY.pack(side=tk.LEFT, fill='y')
-
-        self.dbgFrameCanvas.configure(yscrollcommand = self.dbgFrameScrollY.set)
-        self.dbgFrameCanvas.bind('<Configure>', self.on_scroll_configure)
-
-        self.dbgFrame = tk.Frame(self.dbgFrameCanvas)
-        self.dbgFrameCanvas.create_window((0,0), window=self.dbgFrame, anchor='nw')
-
-        # Info frame
+        self.imgFrame.pack(side = tk.TOP, fill=tk.BOTH, expand = True, padx = PADX, pady = PADY)
         self.infoFrame = tk.Frame(self.root, width = self.board.image.shape[CV_WIDTH]*2, height = 300)
-        self.infoFrame.grid(row = 1, column = 0, padx = PADX, pady = PADY, sticky = "nswe")
+        self.infoFrame.pack(fill=tk.BOTH, padx = PADX, pady = PADY)
+        self.statusFrame = tk.Frame(self.root, width = 200, bd = 1, relief = tk.SUNKEN)
+        self.statusFrame.pack(side = tk.BOTTOM, fill=tk.BOTH, padx = PADX, pady = PADY)
 
+        self.__setup_img_frame()
+        self.__setup_info_frame()
+        self.__setup_status_frame()
+
+    def __setup_img_frame(self):
+        def add_panel(parent, caption, btn_params, image, body_callback):
+            # Panel itself
+            panel = tk.Frame(parent)
+            panel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True, padx = PADX, pady = PADY)
+
+            # Header
+            header = tk.Frame(panel)
+            header.pack(side = tk.TOP, fill = tk.X, expand = True, anchor = tk.N)
+
+            # Header label
+            label = tk.Label(header, text = caption)
+            label.pack(side = tk.LEFT, fill = tk.X, expand = True)
+
+            # Header buttons
+            buttons = dict()
+            for b in btn_params:
+                btn = ImgButton(header, b[0], b[1], b[2])
+                buttons[b[0]] = btn
+                btn.pack(side = tk.RIGHT)
+
+            # Body
+            if image is None:
+               body = tk.Frame(panel)
+            else:
+               body = tk.Label(panel, image = image)
+
+            body.pack(fill = tk.BOTH, expand = True)
+            body.bind('<Button-1>', body_callback)
+
+            return panel, body, buttons
+
+        _, self.origImgPanel, self.origImgButtons = \
+                add_panel(self.imgFrame,
+                          "Original",
+                          [["edge", False, self.set_edges_callback]],
+                          self.origImgTk,
+                          self.orig_img_mouse_callback)
+
+        _, self.genImgPanel, self.genImgButtons = \
+                add_panel(self.imgFrame,
+                          "Generated",
+                          [["black", True, self.show_stones_callback],
+                           ["white", True, self.show_stones_callback],
+                           ["box", False, self.show_stones_callback]],
+                          self.genImgTk,
+                          self.gen_img_mouse_callback)
+
+        self.dbgPanel, self.dbgCanvasFrame, _ = \
+                add_panel(self.imgFrame,
+                          "Analysis",
+                          [],
+                          None,
+                          self.dbg_img_mouse_callback)
+
+
+        # Add canvas
+        self.dbgCanvas = tk.Canvas(self.dbgCanvasFrame, width = self.max_dbg_img_size*2+10,
+                                                        height = self.origImgTk.height())
+        scroll = tk.Scrollbar(self.dbgCanvasFrame, command = self.dbgCanvas.yview)
+        scroll.pack(side=tk.RIGHT, fill=tk.Y, pady = PADY)
+        self.dbgCanvas.configure(yscrollcommand = scroll.set)
+        self.dbgCanvas.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
+
+        self.dbgFrame = tk.Frame(self.dbgCanvas)
+        self.dbgCanvas.create_window((0,0), window=self.dbgFrame, anchor='nw')
+        self.dbgFrame.bind('<Configure>', self.on_scroll_configure)
+
+##        # Original image header
+##        self.origLblFrame = tk.Frame(self.imgFrame)
+##        self.origLblFrame.grid(row = 0, column = 0, sticky = "nswe")
+##        tk.Grid.columnconfigure(self.origLblFrame, 0, weight = 1)
+##
+##        # Original image header: label
+##        self.origImgLabel = tk.Label(self.origLblFrame, text = "Original")
+##        self.origImgLabel.grid(row = 0, column = 0, padx = PADX, pady = PADY, sticky = "nswe")
+##
+##        # Original image header: set edges button
+##        self.setEdgesBtn = ImgButton(self.origLblFrame, "edge", False, self.set_edges_callback)
+##        self.setEdgesBtn.grid(row = 0, column = 1, padx = PADX, pady = PADY, sticky = "nswe")
+##
+##        # Original image panel
+##        self.origImgPanel = tk.Label(self.imgFrame, image = self.origImgTk)
+##        self.origImgPanel.bind('<Button-1>', self.orig_img_mouse_callback)
+##        self.origImgPanel.grid(row = 1, column = 0, sticky = "nswe", padx = PADX)
+##
+##        # Generated image header
+##        self.genLblFrame = tk.Frame(self.imgFrame)
+##        self.genLblFrame.grid(row = 0, column = 1, sticky = "nswe")
+##        tk.Grid.columnconfigure(self.genLblFrame, 0, weight = 1)
+##
+##        # Generated image header: label
+##        self.genImgLabel = tk.Label(self.genLblFrame, text = "Generated")
+##        self.genImgLabel.grid(row = 0, column = 0, padx = PADX, pady = PADY, sticky = "nswe")
+##
+##        # Generated image header: buttons
+##        self.showBlackBtn = ImgButton(self.genLblFrame, "black", True, self.show_stones_callback)
+##        self.showBlackBtn.grid(row = 0, column = 1, padx = PADX, pady = PADY, sticky = "nswe")
+##
+##        self.showWhiteBtn = ImgButton(self.genLblFrame, "white", True, self.show_stones_callback)
+##        self.showWhiteBtn.grid(row = 0, column = 2, padx = PADX, pady = PADY, sticky = "nswe")
+##
+##        self.showBoxBtn = ImgButton(self.genLblFrame, "box", False, self.show_stones_callback)
+##        self.showBoxBtn.grid(row = 0, column = 3, padx = PADX, pady = PADY, sticky = "nswe")
+##
+##        # Generated image panel
+##        self.genImgPanel = tk.Label(self.imgFrame, image = self.origImgTk)
+##        self.genImgPanel.bind('<Button-1>', self.gen_img_mouse_callback)
+##        self.genImgPanel.grid(row = 1, column = 1, sticky = "nswe", padx = PADX)
+##
+##        # Analysis images header
+##        self.dbgLblFrame = tk.Frame(self.imgFrame)
+##        self.dbgLblFrame.grid(row = 0, column = 2, sticky = "nswe")
+##        tk.Grid.columnconfigure(self.dbgLblFrame, 0, weight = 1)
+##
+##        # Analysis images header: label
+##        self.dbgImgLabel = tk.Label(self.dbgLblFrame, text = "Analysis")
+##        self.dbgImgLabel.grid(row = 0, column = 0, sticky = "nwe")
+##
+##        # Analysis images panel: canvas panel
+##        self.dbgFrameRoot = tk.Frame(self.imgFrame)
+##        self.dbgFrameRoot.grid(row = 1, column = 2, padx = PADX, sticky = "nswe")
+##
+##        # Analysis images panel: canvas panel: canvas
+##        self.dbgFrameCanvas = tk.Canvas(self.dbgFrameRoot)
+##        self.dbgFrameCanvas.pack(side = tk.LEFT)
+##        self.dbgFrameScrollY = tk.Scrollbar(self.dbgFrameRoot, command=self.dbgFrameCanvas.yview)
+##        self.dbgFrameScrollY.pack(side=tk.LEFT, fill='y')
+##
+##        self.dbgFrameCanvas.configure(yscrollcommand = self.dbgFrameScrollY.set)
+##        self.dbgFrameCanvas.bind('<Configure>', self.on_scroll_configure)
+##
+##        self.dbgFrame = tk.Frame(self.dbgFrameCanvas)
+##        self.dbgFrameCanvas.create_window((0,0), window=self.dbgFrame, anchor='nw')
+
+    def __setup_info_frame(self):
         # Info frame: buttons
         self.buttonFrame = tk.Frame(self.infoFrame, bd = 1, relief = tk.RAISED,
-                                               width = self.board.image.shape[CV_WIDTH]*2+PADX*2, height = 50)
+                                               width = self.max_img_size*2+PADX*2, height = 50)
         self.buttonFrame.grid(row = 0, column = 0, sticky = "nswe")
         self.buttonFrame.grid_propagate(0)
 
@@ -166,7 +255,7 @@ class GbrGUI:
                                                       command = self.save_jgf_callback)
         self.saveBrdBtn.grid(row = 0, column = 2, padx = PADX, pady = PADY)
 
-        self.applyBtn = tk.Button(self.buttonFrame, text = "Apply",
+        self.applyBtn = tk.Button(self.buttonFrame, text = "Detect",
                                                     command = self.apply_callback)
         self.applyBtn.grid(row = 0, column = 3, padx = PADX, pady = PADY)
 
@@ -185,10 +274,8 @@ class GbrGUI:
         self.switchFrame.grid(row = 1, column = 0, sticky = "nswe")
         self.tkVars = self.add_switches(self.switchFrame, self.board.params)
 
+    def __setup_status_frame(self):
         # Status bar
-        self.statusFrame = tk.Frame(self.root, width = 200, bd = 1, relief = tk.SUNKEN)
-        self.statusFrame.grid(row = 2, column = 0, sticky = "nswe")
-
         self.stoneInfo = tk.StringVar()
         self.stoneInfo.set("")
         self.stoneInfoPanel = tk.Label(self.statusFrame, textvariable = self.stoneInfo)
@@ -245,22 +332,7 @@ class GbrGUI:
     def load_img_callback(self):
         fn = filedialog.askopenfilename(title = "Select file",
            filetypes = (("PNG files","*.png"),("JPEG files","*.jpg"),("All files","*.*")))
-        if (fn != ""):
-            # Load the image
-            params_loaded = self.board.load_image(fn, f_with_params = True)
-            self.origImgTk, self.zoom = self.make_imgtk(self.board.image)
-            self.origImgPanel.configure(image = self.origImgTk)
-
-            # Process image
-            self.showBlack = True
-            self.showWhite = True
-            self.showBoxes = False
-            self.update_board(reprocess = False)
-
-            # Update status
-            ftitle = ""
-            if params_loaded: ftitle = " (with params)"
-            self.stoneInfo.set("File loaded{ft}: {fn}".format(ft = ftitle, fn = self.board.image_file))
+        if fn != "": self.load_image(fn)
 
     # Save params button callback
     def save_json_callback(self):
@@ -300,9 +372,7 @@ class GbrGUI:
 
     # Callback for canvas configuration
     def on_scroll_configure(self, event):
-        # update scrollregion after starting 'mainloop'
-        # when all widgets are in canvas
-        self.dbgFrameCanvas.configure(scrollregion=self.dbgFrameCanvas.bbox('all'))
+        self.dbgCanvas.configure(scrollregion = self.dbgFrame.bbox('all'))
 
     # Callback for "Show black stones"
     def show_stones_callback(self, event, tag, state):
@@ -377,7 +447,7 @@ class GbrGUI:
         nrow = 0
         ncol = 0
         sx = int(shape[CV_WIDTH] / 2) - 5
-        if sx > self.MAX_DBG_IMG_SIZE: sx = self.MAX_DBG_IMG_SIZE
+        if sx > self.max_dbg_img_size: sx = self.max_dbg_img_size
         sy = int(float(sx) / float(shape[CV_WIDTH]) * shape[CV_HEIGTH])
 
         # Remove all previously added controls
@@ -452,13 +522,32 @@ class GbrGUI:
     def make_imgtk(self, img):
         imgtk = None
         z = [1.0,1.0]
-        if img.shape[0] <= self.MAX_IMG_SIZE and img.shape[1] <= self.MAX_IMG_SIZE:
+        if img.shape[0] <= self.max_img_size and img.shape[1] <= self.max_img_size:
            imgtk = img_to_imgtk(img)
         else:
-           img2, z = resize2(img, self.MAX_IMG_SIZE, False)
+           img2, z = resize2(img, self.max_img_size, False)
            imgtk = img_to_imgtk(img2)
         return imgtk, z
 
+    # Load specified image
+    def load_image(self, fn):
+        # Load the image
+        params_loaded = self.board.load_image(fn, f_with_params = True)
+        self.origImgTk, self.zoom = self.make_imgtk(self.board.image)
+        self.origImgPanel.configure(image = self.origImgTk)
+
+        # Process image
+        self.showState = DEF_SHOW_STATE.copy()
+        #self.showBlackBtn.state = self.showState['black']
+        #self.showWhiteBtn.state = self.showState['white']
+        #self.showBoxBtn.state = self.showState['box']
+        #self.setEdgesBtn.state = self.showState['edge']
+        self.update_board(reprocess = False)
+
+        # Update status
+        ftitle = ""
+        if params_loaded: ftitle = " (with params)"
+        self.stoneInfo.set("File loaded{ft}: {fn}".format(ft = ftitle, fn = self.board.image_file))
 
 # Main function
 def main():

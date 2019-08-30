@@ -56,7 +56,7 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 22/08/2019:
 
 * Changed: gr.gr find_stones() refactored to support adding new filters
-* Added: pyrMeanShiftFiltering pre-filter in find_stones()
+* Added: pyrMeanShiftFiltering pre-filter to smooth complex stone surface
 
 19/08/2019:
 
@@ -104,7 +104,11 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 - [x] Add stone reconcilation (detection of stones occupying the same position)
 
-- [ ] Adopt the algorithm to the photos of real boards. This might require image transformations (skew, rotation etc) and background removal.
+- [ ] Adopt the algorithm to the photos of real boards (make functions to set edges, rotate board, correct skewness, etc)
+
+- [ ] Make "tagger" interface to simplify image processing
+
+- [ ] Create board capture from web cams functionality
 
 - [ ] Add stones removal/adding/color changing
 
@@ -112,6 +116,10 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 - [ ] Make a web interface and deploy to cloud
 
-- [ ] Add deep network to make it universal
+- [x] Make DLN dataset creation and review interfaces (currently - in PASCAL VOC format)
+
+- [ ] Train DLN model to recognize stones on computer boards
+
+- [ ] Train DLN model to recognize stones on real boards
 
 - [ ] Create a mobile app

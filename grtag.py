@@ -9,12 +9,14 @@
 #-------------------------------------------------------------------------------
 import numpy as np
 import cv2
+import os
 import sys
 from PIL import Image, ImageTk
 from pathlib import Path
 import xml.dom.minidom as minidom
 from gr.utils import img_to_imgtk, resize2
-from gr.board import GrBoard
+from gbr import GbrGUI
+import re
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
@@ -43,37 +45,91 @@ class GrTagGui:
           self.filesFrame = tk.Frame(self.root)
           self.filesFrame.pack(side = tk.LEFT, fill=tk.BOTH, expand = True)
 
+          # Separator
+          self.sep = ttk.Separator(self.root, orient = "vertical")
+          self.sep.pack(side = tk.LEFT, fill = tk.Y, expand = True)
+
+          # Notebook panel
+          self.nbFrame = tk.Frame(self.root)
+          self.nbFrame.pack(side = tk.LEFT, fill=tk.BOTH, expand = True)
+
           # Files table
           self.fileListSb = tk.Scrollbar(self.filesFrame)
           self.fileListSb.pack(side=tk.RIGHT, fill=tk.BOTH)
 
-          self.fileList = ttk.Treeview(self.filesFrame)
+          self.fileList = ttk.Treeview(self.filesFrame, height = 30)
           self.fileList["columns"]=("json","jgf", "ds")
           self.fileList.column("#0", width=200, minwidth=100, stretch=tk.YES)
-          self.fileList.column("json", width=50, minwidth=50, stretch=tk.YES)
-          self.fileList.column("jgf", width=50, minwidth=50, stretch=tk.YES)
-          self.fileList.column("ds", width=50, minwidth=50, stretch=tk.YES)
+          self.fileList.column("json", width=50, minwidth=30, stretch=tk.YES)
+          self.fileList.column("jgf", width=50, minwidth=30, stretch=tk.YES)
+          self.fileList.column("ds", width=50, minwidth=30, stretch=tk.YES)
           self.fileList.heading("#0",text="Name",anchor=tk.W)
           self.fileList.heading("json", text="JSON",anchor=tk.W)
           self.fileList.heading("jgf", text="JGF",anchor=tk.W)
           self.fileList.heading("ds", text="DS",anchor=tk.W)
           self.load_files()
           self.fileList.pack(side = tk.TOP, fill=tk.BOTH, expand = True)
+          self.fileList.bind("<<TreeviewSelect>>", self.sel_changed_callback)
 
           self.fileListSb.config(command=self.fileList.yview)
 
-      def load_files(self):
-          def _add_file(name, file_list):
-              file_list[x.name] = ( '1', '2', '3' )
+          # Notebook
+          self.nb = ttk.Notebook(self.nbFrame)
+          self.nb.pack(side = tk.TOP, fill=tk.BOTH, expand = True)
 
+          # GBR GUI
+          self.nbFrameTag = tk.Frame(self.nb, width = 400)
+          self.nb.add(self.nbFrameTag, text = "Tagging")
+          self.grGui = GbrGUI(self.nbFrameTag, max_img_size = 400, max_dbg_img_size = 150)
+
+          self.nbFrameAnno = tk.Frame(self.nb, width = 400)
+          self.nb.add(self.nbFrameAnno, text = "Annotation")
+
+
+      def _add_file(self, file_name, file_list):
+          file_state = [ \
+                     [file_name.with_suffix('.json'), "-", 0],
+                     [file_name.with_suffix('.jgf'), "-", 0],
+                     [self.meta_path.joinpath(file_name.name).with_suffix('.xml'), "-", 0] ]
+
+          # Load file info
+          for f in file_state:
+              if os.path.isfile(f[0]):
+                 m = os.path.getmtime(f[0])
+                 f[1] = "+"
+                 f[2] = m
+
+          # Check dependencies
+          prev_mt = os.path.getmtime(file_name)
+          for f in file_state:
+              if f[2] > 0:
+                 if f[2] < prev_mt: f[1] = '<'
+                 prev_mt = f[2]
+
+          # Add to file list
+          values = [f[1] for f in file_state]
+          file_list[file_name.name] = values
+
+      def load_files(self):
           file_list = dict()
           for ext in ('*.png', '*.jpg'):
               g = self.src_path.glob(ext)
               for x in g:
-                  if x.is_file(): _add_file(x, file_list)
+                  if x.is_file(): self._add_file(x, file_list)
 
-          for f in sorted(file_list.keys()):
+          def _sort_key(f):
+              r = re.search(r"\d+", f)
+              if r is None: return 0
+              else: return int(r.group())
+
+          for f in sorted(file_list.keys(), key = _sort_key):
               self.fileList.insert("", "end", text = f, values=file_list[f])
+
+      def sel_changed_callback(self, event):
+          sel = self.fileList.selection()
+          item = self.fileList.item(sel)
+          file = self.src_path.joinpath(item['text'])
+          self.grGui.load_image(str(file))
 
 def main():
     window = tk.Tk()
