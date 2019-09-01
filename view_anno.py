@@ -17,6 +17,8 @@ import xml.dom.minidom as minidom
 from gr.utils import img_to_imgtk, resize2
 from gr.board import GrBoard
 from gr.ui_extra import *
+import logging
+from make_dataset import generate_dataset, default_image_size
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
@@ -43,11 +45,13 @@ class ViewAnnoGui:
         if not self.meta_path.exists(): self.meta_path.mkdir(parents = True)
         self.img_path = self.ds_path.joinpath("data","Images")
         if not self.img_path.exists(): self.img_path.mkdir(parents = True)
+        self.sets_path = self.ds_path.joinpath("data","ImageSets")
+        if not self.sets_path.exists(): self.sets_path.mkdir(parents = True)
 
         # Top frames
         self.imgFrame = tk.Frame(self.root)
         self.imgFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX, pady = PADY)
-        self.buttonFrame = tk.Frame(self.root, width = max_size, height = 50, bd = 1, relief = tk.RAISED)
+        self.buttonFrame = tk.Frame(self.root, width = max_size + 10, height = 70, bd = 1, relief = tk.RAISED)
         self.buttonFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX, pady = PADY)
         self.statusFrame = tk.Frame(self.root, width = max_size + 2*PADX, bd = 1, relief = tk.SUNKEN)
         self.statusFrame.pack(side = tk.BOTTOM, fill=tk.BOTH, padx = PADX, pady = PADY)
@@ -59,11 +63,11 @@ class ViewAnnoGui:
         self.boardImgName = None
         self.annoName = None
 
-        _, self.imgPanel, _ = add_panel(self.imgFrame,"Dataset image",
+        _, self.imgPanel, _ = addImagePanel(self.imgFrame,"Dataset image",
                 [["box", True, self.show_rec_callback, "Rectangle/circle"]],
                 self.boardImgTk, self.open_img_callback)
 
-        # Button frame
+        # Buttons
         if self.allow_open:
             self.openBtn = tk.Button(self.buttonFrame, text = "Open",
                                                           command = self.open_btn_callback)
@@ -77,7 +81,24 @@ class ViewAnnoGui:
                                                       command = self.update_all_callback)
         self.updateBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
-        # Image info
+        # MakeDataset params
+        self.sizeFrame = tk.Frame(self.buttonFrame)
+        self.sizeFrame.pack(side = tk.LEFT, padx = PADX, pady = PADY)
+        self.dsImgSize = default_image_size()
+
+        tk.Label(self.sizeFrame, text = "Train image size").grid(row = 0, column = 0)
+        self.trainSize = tk.StringVar()
+        self.trainSize.set(str(self.dsImgSize['train']))
+        self.trainSizeEntry = tk.Entry(self.sizeFrame, textvariable = self.trainSize)
+        self.trainSizeEntry.grid(row = 0, column = 1)
+
+        tk.Label(self.sizeFrame, text = "Test image size").grid(row = 1, column = 0)
+        self.testSize = tk.StringVar()
+        self.testSize.set(str(self.dsImgSize['test']))
+        self.testSizeEntry = tk.Entry(self.sizeFrame, textvariable = self.testSize)
+        self.testSizeEntry.grid(row = 1, column = 1)
+
+        # Img info
         self.imgInfo = tk.StringVar()
         self.imgInfo .set("")
         self.imgnfoPanel = tk.Label(self.buttonFrame, textvariable = self.imgInfo)
@@ -88,6 +109,11 @@ class ViewAnnoGui:
         self.statusInfo.set("")
         self.stoneInfoPanel = tk.Label(self.statusFrame, textvariable = self.statusInfo)
         self.stoneInfoPanel.grid(row = 0, column = 0, sticky = tk.W, padx = 5, pady = 2)
+
+        # Load datasets
+        self.datasets = None
+        self.load_datasets()
+        pass
 
     # Load annotation button callback
     def open_btn_callback(self):
@@ -105,14 +131,47 @@ class ViewAnnoGui:
     def update_callback(self):
         if self.annoName is None:
             return
+
+        # Update sizes
+        self.update_img_size()
+
+        # Get dataset
+        ds = self.find_dataset(self.boardImgName)
+        if ds is None:
+            ds = 'test'
+            if not board.results is None: ds = 'train'
+
+        # Check whether JGF exists
+        # If not - image goes to test dataset, stones should not be stored in annotation
+        jgf_file = self.src_path.joinpath(Path(self.boardImgName).name).with_suffix('.jgf')
+        f_process = jgf_file.is_file()
+
+        # Load board from annotation file
+        # This will find the image and load it to the board
         board = GrBoard()
-        board.load_annotation(self.annoName, path_override = str(self.src_path))
+        board.load_annotation(self.annoName, path_override = str(self.src_path), f_process = f_process)
+
+        # Resize image to dataset preferred size
+        if self.dsImgSize[ds] > 0:
+            board.resize_board(self.dsImgSize[ds])
+
+        # Save image to dataset
+        png_file = self.img_path.joinpath(Path(board.image_file).with_suffix('.png').name)
+        board.save_image(str(png_file))
         board.save_annotation(self.annoName)
+
+        # Refresh
         self.load_annotation(self.annoName)
         self.statusInfo.set("Annotation updated: {}".format(self.annoName))
 
     def update_all_callback(self):
-        pass
+        self.update_img_size()
+
+        logging.basicConfig(format='%(asctime)s %(message)s', level = logging.INFO)
+        generate_dataset(str(self.src_path), str(self.meta_path), str(self.img_path),
+            str(self.sets_path), self.dsImgSize)
+
+        self.statusInfo.set("Dataset regenerated")
 
     def show_rec_callback(self, event, tag, state):
         if self.annoName is None:
@@ -190,12 +249,50 @@ class ViewAnnoGui:
         self.imgPanel.configure(image = self.boardImgTk)
 
         # Update status
-        img_info = "Image size: {}, {}".format(img.shape[1], img.shape[0])
+        ds = self.find_dataset(self.boardImgName)
+        img_info = "DS: {}, size: {}, {}".format(ds, img.shape[1], img.shape[0])
         self.imgInfo.set(img_info)
 
         if status == '':
             status = 'Loaded file: {}'.format(self.annoName)
         self.statusInfo.set(status)
+
+    def update_img_size(self):
+        try:
+            n1 = int(self.trainSize.get())
+            n2 = int(self.testSize.get())
+            if n1 == 0 or n1 > 300:
+                self.dsImgSize['train'] = n1
+            else:
+                raise Exception("Invalid value")
+            if n2 == 0 or n2 > 300:
+                self.dsImgSize['test'] = n2
+            else:
+                raise Exception("Invalid value")
+            return True
+        except:
+            self.statusInfo.set("Image size should be integer equal to zero or greater than 300")
+            return False
+
+    def load_datasets(self):
+        self.datasets = dict()
+        for ds in ('test', 'train'):
+            fn = self.sets_path.joinpath(ds + '.txt')
+            try:
+                with open(str(fn), 'r') as f:
+                    self.datasets[ds] = f.read().splitlines()
+            except:
+                self.datasets[ds] = []
+
+    def find_dataset(self, file):
+        fn = Path(file).name
+        for ds in ('test', 'train'):
+            try:
+                if self.datasets[ds].index(fn) >= 0:
+                    return ds
+            except:
+                pass
+        return None
 
 def main():
     # Construct interface
@@ -207,6 +304,5 @@ def main():
     window.mainloop()
 
 if __name__ == '__main__':
-
     main()
 

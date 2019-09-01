@@ -114,7 +114,7 @@ def createToolTip(widget, text):
 #   [2] button callback
 #   [3] (optional) tooltip
 # Returns created panel, body frame/image and dictionary with buttons
-def add_panel(parent, caption, btn_params, image = None, frame_callback = None):
+def addImagePanel(parent, caption, btn_params, image = None, frame_callback = None):
     """Add a panel with caption and buttons"""
     # Panel itself
     panel = tk.Frame(parent)

@@ -70,6 +70,10 @@ def show_detections(im, class_name, dets, thresh=0.5, f_label = True, f_title = 
 def make_anno(meta_file, image_file, img = None, jgf = None, shape = None):
 
     def annotate_stones(file, jgf, shape, cls):
+        # Init
+        if not cls in jgf:
+            return
+
         stones = jgf[cls]
         if stones is None or len(stones) == 0:
            return

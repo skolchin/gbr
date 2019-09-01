@@ -127,7 +127,7 @@ class GrBoard(object):
             json.dump(jgf, f, indent=4, sort_keys=True, ensure_ascii=False)
         return filename
 
-    def load_annotation(self, filename, path_override = None):
+    def load_annotation(self, filename, path_override = None, f_process = True):
         def get_tag(node, tag):
             d = node.getElementsByTagName(tag)
             if d is None: return None
@@ -150,7 +150,7 @@ class GrBoard(object):
         # Load image
         if not path_override is None:
            fn = str(Path(path_override).joinpath(Path(fn).name))
-        self.load_image(fn, f_process = True)
+        self.load_image(fn, f_process = f_process)
 
     def save_annotation(self, filename = None):
         if self._img is None:
@@ -161,8 +161,10 @@ class GrBoard(object):
         jgf = None
         if not self._res is None:
             jgf = gres_to_jgf(self._res)
-            jgf['image_file'] = self._img_file
-            jgf['source_file'] = self._src_img_file
+        else:
+            jgf = dict()
+        jgf['image_file'] = self._img_file
+        jgf['source_file'] = self._src_img_file
 
         make_anno(filename, self._img_file, img = self._img, jgf = jgf)
 

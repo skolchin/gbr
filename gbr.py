@@ -62,7 +62,7 @@ class GbrGUI(object):
 
     def __setup_img_frame(self):
         _, self.origImgPanel, buttons = \
-                add_panel(self.imgFrame,
+                addImagePanel(self.imgFrame,
                           "Original",
                           [["edge", False, self.set_edges_callback]],
                           self.origImgTk,
@@ -70,7 +70,7 @@ class GbrGUI(object):
         self.imgButtons.update(buttons)
 
         _, self.genImgPanel, buttons = \
-                add_panel(self.imgFrame,
+                addImagePanel(self.imgFrame,
                           "Generated",
                            [["box", False, self.show_stones_callback, "Show/hide detection boxes"],
                            ["white", True, self.show_stones_callback, "Show/hide white stones"],
@@ -80,7 +80,7 @@ class GbrGUI(object):
         self.imgButtons.update(buttons)
 
         self.dbgPanel, self.dbgCanvasFrame, buttons = \
-                add_panel(self.imgFrame,
+                addImagePanel(self.imgFrame,
                           "Analysis",
                            [],
                            None,
@@ -99,72 +99,6 @@ class GbrGUI(object):
         self.dbgCanvas.create_window((0,0), window=self.dbgFrame, anchor='nw')
         self.dbgFrame.bind('<Configure>', self.on_scroll_configure)
 
-##        # Original image header
-##        self.origLblFrame = tk.Frame(self.imgFrame)
-##        self.origLblFrame.grid(row = 0, column = 0, sticky = "nswe")
-##        tk.Grid.columnconfigure(self.origLblFrame, 0, weight = 1)
-##
-##        # Original image header: label
-##        self.origImgLabel = tk.Label(self.origLblFrame, text = "Original")
-##        self.origImgLabel.grid(row = 0, column = 0, padx = PADX, pady = PADY, sticky = "nswe")
-##
-##        # Original image header: set edges button
-##        self.setEdgesBtn = ImgButton(self.origLblFrame, "edge", False, self.set_edges_callback)
-##        self.setEdgesBtn.grid(row = 0, column = 1, padx = PADX, pady = PADY, sticky = "nswe")
-##
-##        # Original image panel
-##        self.origImgPanel = tk.Label(self.imgFrame, image = self.origImgTk)
-##        self.origImgPanel.bind('<Button-1>', self.orig_img_mouse_callback)
-##        self.origImgPanel.grid(row = 1, column = 0, sticky = "nswe", padx = PADX)
-##
-##        # Generated image header
-##        self.genLblFrame = tk.Frame(self.imgFrame)
-##        self.genLblFrame.grid(row = 0, column = 1, sticky = "nswe")
-##        tk.Grid.columnconfigure(self.genLblFrame, 0, weight = 1)
-##
-##        # Generated image header: label
-##        self.genImgLabel = tk.Label(self.genLblFrame, text = "Generated")
-##        self.genImgLabel.grid(row = 0, column = 0, padx = PADX, pady = PADY, sticky = "nswe")
-##
-##        # Generated image header: buttons
-##        self.showBlackBtn = ImgButton(self.genLblFrame, "black", True, self.show_stones_callback)
-##        self.showBlackBtn.grid(row = 0, column = 1, padx = PADX, pady = PADY, sticky = "nswe")
-##
-##        self.showWhiteBtn = ImgButton(self.genLblFrame, "white", True, self.show_stones_callback)
-##        self.showWhiteBtn.grid(row = 0, column = 2, padx = PADX, pady = PADY, sticky = "nswe")
-##
-##        self.showBoxBtn = ImgButton(self.genLblFrame, "box", False, self.show_stones_callback)
-##        self.showBoxBtn.grid(row = 0, column = 3, padx = PADX, pady = PADY, sticky = "nswe")
-##
-##        # Generated image panel
-##        self.genImgPanel = tk.Label(self.imgFrame, image = self.origImgTk)
-##        self.genImgPanel.bind('<Button-1>', self.gen_img_mouse_callback)
-##        self.genImgPanel.grid(row = 1, column = 1, sticky = "nswe", padx = PADX)
-##
-##        # Analysis images header
-##        self.dbgLblFrame = tk.Frame(self.imgFrame)
-##        self.dbgLblFrame.grid(row = 0, column = 2, sticky = "nswe")
-##        tk.Grid.columnconfigure(self.dbgLblFrame, 0, weight = 1)
-##
-##        # Analysis images header: label
-##        self.dbgImgLabel = tk.Label(self.dbgLblFrame, text = "Analysis")
-##        self.dbgImgLabel.grid(row = 0, column = 0, sticky = "nwe")
-##
-##        # Analysis images panel: canvas panel
-##        self.dbgFrameRoot = tk.Frame(self.imgFrame)
-##        self.dbgFrameRoot.grid(row = 1, column = 2, padx = PADX, sticky = "nswe")
-##
-##        # Analysis images panel: canvas panel: canvas
-##        self.dbgFrameCanvas = tk.Canvas(self.dbgFrameRoot)
-##        self.dbgFrameCanvas.pack(side = tk.LEFT)
-##        self.dbgFrameScrollY = tk.Scrollbar(self.dbgFrameRoot, command=self.dbgFrameCanvas.yview)
-##        self.dbgFrameScrollY.pack(side=tk.LEFT, fill='y')
-##
-##        self.dbgFrameCanvas.configure(yscrollcommand = self.dbgFrameScrollY.set)
-##        self.dbgFrameCanvas.bind('<Configure>', self.on_scroll_configure)
-##
-##        self.dbgFrame = tk.Frame(self.dbgFrameCanvas)
-##        self.dbgFrameCanvas.create_window((0,0), window=self.dbgFrame, anchor='nw')
 
     def __setup_info_frame(self):
         # Info frame: buttons
