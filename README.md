@@ -55,7 +55,7 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 01/09/2019:
 
-* New GrTagger module added to support easy image database navigation and usage
+* New GrTag module added to support easy image database navigation and usage
 
 22/08/2019:
 
