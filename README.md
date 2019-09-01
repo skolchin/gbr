@@ -53,6 +53,10 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 ## Changelog
 
+01/09/2019:
+
+* New GrTagger module added to support easy image database navigation and usage
+
 22/08/2019:
 
 * Changed: gr.gr find_stones() refactored to support adding new filters
