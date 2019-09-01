@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------------------
 # Name:        Go board recognition project
-# Purpose:     Deep-learning network testing script
+# Purpose:     Deep-learning network testing module
 #
 # Author:      skolchin
 #
@@ -10,124 +10,178 @@
 #-------------------------------------------------------------------------------
 
 import sys
+import os
 from pathlib import Path
 import cv2
-#import cv2.dnn as dnn
 import caffe
 import numpy as np
-from matplotlib import pyplot as plt
 from fast_rcnn.config import cfg
 from fast_rcnn.test import im_detect
 from fast_rcnn.nms_wrapper import nms
-from gr.net_utils import show_detections
 
+from gr.board import GrBoard
+from gr.utils import img_to_imgtk, resize2
+from gr.grdef import *
+from gr.ui_extra import *
+from gr.net_utils import cv2_show_detections
+
+from PIL import Image, ImageTk
+
+if sys.version_info[0] < 3:
+    import Tkinter as tk
+    import tkFileDialog  as filedialog
+    import ttk
+else:
+    import tkinter as tk
+    from tkinter import filedialog
+    from tkinter import ttk
 
 CLASSES = ["_back_", "white", "black"]
 
-#net = dnn.readNetFromCaffe(ROOT + "\\net\\gbr.prototxt", ROOT + "\\net\\gbr.caffemodel")
+class GrTestNetGui(object):
+    def __init__(self, root, max_size = 500, allow_open = True, num_iter = 10000):
+        self.root = root
+        self.allow_open = allow_open
 
-#img = cv2.imread(ROOT + "\\img\\go_board_13_gen.png")
-#if img is None:
-#    raise Exception("Invalid image")
-#img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-#img = cv2.resize(img, (300,300))
-#blob = dnn.blobFromImage(img)
-#net.setInput(blob)
+        # Set paths
+        self.root_path = Path(__file__).parent.resolve()
+        self.model_file = self.root_path.joinpath("models", "test.prototxt")
+        self.weigth_file = self.root_path.joinpath("out", "gbr_zf", "train", "gbr_zf_iter_" + str(num_iter) + ".caffemodel")
 
-#for i in range(len(net.getLayerNames())+1):
-#    l = net.getLayer(i)
-#    print(l.name, l.type, len(l.blobs))
+        # Top frames
+        self.imgFrame = tk.Frame(self.root)
+        self.imgFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX, pady = PADY)
+        self.buttonFrame = tk.Frame(self.root, width = max_size + 10, height = 70, bd = 1, relief = tk.RAISED)
+        self.buttonFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX, pady = PADY)
+        self.statusFrame = tk.Frame(self.root, width = max_size + 2*PADX, bd = 1, relief = tk.SUNKEN)
+        self.statusFrame.pack(side = tk.BOTTOM, fill=tk.BOTH, padx = PADX, pady = PADY)
 
-#detections = net.forward()
+        # Image frame
+        self.defBoardImg = GrBoard(board_shape = (max_size, max_size)).image
+        self.boardImg = self.defBoardImg
+        self.boardImgTk = img_to_imgtk(self.boardImg)
+        self.boardImgName = None
 
-model_file = "models\\test.prototxt"
-weigth_file = "out\\gbr_zf\\train\\gbr_zf_iter_10000.caffemodel"
-img_file = "img\\go_board_8a.png"
+        _, self.imgPanel, _ = addImagePanel(self.imgFrame,"DLN detection",
+                [],
+                self.boardImgTk, self.open_img_callback)
 
-cfg.TEST.HAS_RPN = True
-cfg.TEST.BBOX_REG = False
-caffe.set_mode_gpu()
+        # Buttons
+        if self.allow_open:
+            self.openBtn = tk.Button(self.buttonFrame, text = "Open",
+                                                          command = self.open_btn_callback)
+            self.openBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
-net = caffe.Net(model_file, weigth_file, caffe.TEST)
+        self.updateBtn = tk.Button(self.buttonFrame, text = "Update",
+                                                      command = self.update_callback)
+        self.updateBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
-print("== Network layers:")
-for name, layer in zip(net._layer_names, net.layers):
-    print("{:<7}: {:17s}({} blobs)".format(name, layer.type, len(layer.blobs)))
+        # Params
+        self.probFrame = tk.Frame(self.buttonFrame)
+        self.probFrame.pack(side = tk.LEFT, padx = PADX, pady = PADY)
+        self.netProb = 0.8
 
-print("== Blobs:")
-for name, blob in net.blobs.iteritems():
-    print("{:<5}:  {}".format(name, blob.data.shape))
+        tk.Label(self.probFrame, text = "Probability").grid(row = 0, column = 0)
+        self.probVar = tk.StringVar()
+        self.probVar.set(str(self.netProb))
+        self.probEntry = tk.Entry(self.probFrame, textvariable = self.probVar)
+        self.probEntry.grid(row = 0, column = 1)
 
-##img = caffe.io.load_image(img_file)
-##transformer = caffe.io.Transformer({'data': net.blobs['data'].data.shape})
-##transformer.set_transpose('data', (2,0,1))
-##transformer.set_raw_scale('data', 255.0)
-##transformer.set_channel_swap('data', (2,1,0))
-##tr_img = transformer.preprocess('data', img)
+        # Status frame
+        self.statusInfo = tk.StringVar()
+        self.statusInfo.set("")
+        self.stoneInfoPanel = tk.Label(self.statusFrame, textvariable = self.statusInfo)
+        self.stoneInfoPanel.grid(row = 0, column = 0, sticky = tk.W, padx = 5, pady = 2)
+
+
+    def open_img_callback(self, event):
+        self.open_btn_callback()
+
+    def open_btn_callback(self):
+        fn = filedialog.askopenfilename(title = "Select file",
+           filetypes = (("PNG files","*.png"),("JPEG files","*.jpg"),("All files","*.*")))
+        if fn != "":
+            self.load_image(fn)
+            self.statusInfo.set("File loaded {}".format(fn))
+
+    def update_callback(self):
+        if not self.boardImgName is None:
+            self.load_image(self.boardImgName)
+            self.statusInfo.set("Detections updated")
+
+    def load_image(self, file_name):
+        # Load image
+        img = cv2.imread(file_name)
+        if img is None:
+            raise Exception('File not found {}'.format(file_name))
+
+        # Do detection and display results on the image
+        self.update_prob()
+        self.show_detection(img, self.netProb)
+
+        # Resize the image
+        img2, self.zoom = resize2 (img, np.max(self.defBoardImg.shape[:2]), f_upsize = False)
+
+        # Display the image
+        self.boardImg = img
+        self.boardImgTk = img_to_imgtk(img)
+        self.boardImgName = file_name
+        self.imgFrame.pack_propagate(False)
+        self.imgPanel.configure(image = self.boardImgTk)
+
+    def show_detection(self, img, det_thresh):
+        cfg.TEST.HAS_RPN = True
+        cfg.TEST.BBOX_REG = False
+        caffe.set_mode_gpu()
+
+        net = caffe.Net(str(self.model_file), str(self.weigth_file), caffe.TEST)
+
+##        print("== Network layers:")
+##        for name, layer in zip(net._layer_names, net.layers):
+##            print("{:<7}: {:17s}({} blobs)".format(name, layer.type, len(layer.blobs)))
 ##
-##net.blobs['data'].data[...] = tr_img
-##detections = net.forward()
+##        print("== Blobs:")
+##        for name, blob in net.blobs.iteritems():
+##            print("{:<5}:  {}".format(name, blob.data.shape))
 ##
-##print("== Detections:")
-##for key in detections:
-##    print("{}: {}".format(key, detections[key]))
-
-img = cv2.imread(img_file)
-scores, boxes = im_detect(net, img)
-
-print("== Detections")
-print("Scores: {}".format(scores))
-print("Boxes: {}".format(boxes))
-
-CONF_THRESH = 0.6
-NMS_THRESH = 0.3
-for cls_ind, cls in enumerate(CLASSES[1:]):
-    cls_ind += 1
-    cls_boxes = boxes[:, 4*cls_ind:4*(cls_ind + 1)]
-    cls_scores = scores[:, cls_ind]
-    dets = np.hstack((cls_boxes,
-                      cls_scores[:, np.newaxis])).astype(np.float32)
-    keep = nms(dets, NMS_THRESH)
-    dets = dets[keep, :]
-    show_detections(img, cls, dets, thresh=CONF_THRESH)
-
-plt.show()
-
-##print("== Blobs:")
-##for name, blob in net.blobs.iteritems():
-##    im = blob.data
-##    if len(im.shape) == 2:
-##        continue
-##    if len(im.shape) == 4:
-##        im = im[0,:,:,:]
-##    #a = np.empty((im.shape[1], im.shape[2], im.shape[0]), dtype = np.float32)
-##    a = np.moveaxis(im, [0,1,2], [2,0,1])
-##    print(a.shape)
-##    cv2.imshow(name, a)
+##        img = cv2.imread(img_file)
+##        scores, boxes = im_detect(net, img)
 ##
-##cv2.waitKey()
-##cv2.destroyAllWindows()
+##        print("== Detections")
+##        print("Scores: {}".format(scores))
+##        print("Boxes: {}".format(boxes))
 
-# loop over the detections
-##for i in np.arange(0, detections.shape[2]):
-##    confidence = detections[0, 0, i, 2]
-##    print("Confidence:", confidence)
-##    if confidence > MAX_CONF:
-##        idx = int(detections[0, 0, i, 1])
-##        box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-##        (startX, startY, endX, endY) = box.astype("int")
-##
-##        # display the prediction
-##        label = "{}: {:.2f}%".format(CLASSES[idx], confidence * 100)
-##        print("[INFO] {}".format(label))
-##        cv2.rectangle(img, (startX, startY), (endX, endY),
-##                COLORS[idx], 2)
-##        y = startY - 15 if startY - 15 > 15 else startY + 15
-##        cv2.putText(img, label, (startX, y),
-##                cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)
-##
-### show the output image
-##cv2.imshow("Output", img)
-##cv2.waitKey(0)
-##cv2.destroyAllWindows()
+        # Detection
+        scores, boxes = im_detect(net, img)
+
+        # Draw results
+        NMS_THRESH = 0.3
+        colors = (0, (0,0,255), (255,0,0))
+        for cls_ind, cls in enumerate(CLASSES[1:]):
+            cls_ind += 1
+            cls_boxes = boxes[:, 4*cls_ind:4*(cls_ind + 1)]
+            cls_scores = scores[:, cls_ind]
+            dets = np.hstack((cls_boxes,
+                              cls_scores[:, np.newaxis])).astype(np.float32)
+            keep = nms(dets, NMS_THRESH)
+            dets = dets[keep, :]
+            cv2_show_detections(img, cls, dets, thresh=det_thresh, f_label = False, color = colors[cls_ind])
+
+    def update_prob(self):
+        try:
+            self.netProb = float(self.probVar.get())
+        except:
+            pass
+
+def main():
+    # Construct interface
+    window = tk.Tk()
+    window.title("View annotaitons")
+    gui = GrTestNetGui(window)
+
+    # Main loop
+    window.mainloop()
+
+if __name__ == '__main__':
+    main()
 
