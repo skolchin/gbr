@@ -77,9 +77,9 @@ class ViewAnnoGui:
                                                       command = self.update_callback)
         self.updateBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
-        self.updateBtn = tk.Button(self.buttonFrame, text = "Update all",
+        self.updateAllBtn = tk.Button(self.buttonFrame, text = "Dataset update",
                                                       command = self.update_all_callback)
-        self.updateBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
+        self.updateAllBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
         # MakeDataset params
         self.sizeFrame = tk.Frame(self.buttonFrame)

@@ -19,6 +19,7 @@ from gbr import GbrGUI
 from view_anno import ViewAnnoGui
 import re
 from gr.ui_extra import treeview_sort_columns
+import importlib
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
@@ -87,6 +88,19 @@ class GrTagGui:
           self.nb.add(self.nbFrameAnno, text = "Annotation")
           self.annoGui = ViewAnnoGui(self.nbFrameAnno, allow_open = False)
 
+          # Detections GUI (if Caffe installed)
+          self.testNetGui = None
+          self.nbFrameTestNet = None
+          if 'CAFFE_ROOT' in os.environ:
+            #try:
+                mod = importlib.import_module('test_net')
+                gui_class = getattr(mod, 'GrTestNetGui')
+                self.nbFrameTestNet = tk.Frame(self.nb, width = 400)
+                self.nb.add(self.nbFrameTestNet, text = "Test DLN")
+                self.testNetGui = gui_class(self.nbFrameTestNet, allow_open = False)
+            #except:
+            #    pass
+
       def _add_file(self, file_name, file_list):
           file_state = [ \
                      [file_name.with_suffix('.json'), "-", 0],
@@ -137,9 +151,13 @@ class GrTagGui:
           if nb_index == 0:
             file = self.src_path.joinpath(file)
             self.grGui.load_image(str(file))
-          else:
+          elif nb_index == 1:
             file = self.meta_path.joinpath(file).with_suffix('.xml')
             self.annoGui.load_annotation(str(file))
+          elif nb_index == 2:
+            if self.testNetGui is not None:
+                file = self.src_path.joinpath(file)
+                self.testNetGui.load_image(str(file))
 
 def main():
     window = tk.Tk()
