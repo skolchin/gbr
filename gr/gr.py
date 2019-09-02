@@ -153,8 +153,8 @@ def find_stones(src_img, params, res, f_bw):
     def _init():
         return ({
             "PMF": _apply_pmf,
-            #"GRAY": _apply_gray,
             "CHANNEL": _apply_channel_mask,
+            #"GRAY": _apply_gray,
             "THRESH": _apply_thresh,
             "STONES_DILATE": _apply_dilate,
             "STONES_ERODE": _apply_erode,
@@ -196,6 +196,71 @@ def find_stones(src_img, params, res, f_bw):
 # Some other analysis parameters are also stored in the results dict
 # Returns board edges
 def find_board(img, params, res):
+    MIN_LINE_LEN = 10
+    MIN_EDGE_DIST = 6
+
+    def is_horizontal(line):
+        """ Check whether the line is horizontal """
+        return abs(line[GR_FROM][GR_Y] - line[GR_TO][GR_Y]) < 3 \
+                    and abs(line[GR_FROM][GR_X] - line[GR_TO][GR_X]) > MIN_LINE_LEN
+
+    def is_vertical(line):
+        """ Check whether the line is vertical """
+        return abs(line[GR_FROM][GR_X] - line[GR_TO][GR_X]) < 3 \
+                    and abs(line[GR_FROM][GR_Y] - line[GR_TO][GR_Y]) > MIN_LINE_LEN
+
+    def cmp_less(pt, line, axis):
+        """ Returns a line with min origin amoung the two """
+        if pt is None:
+            return line[GR_FROM]
+        elif line[GR_FROM][axis] < pt[axis]:
+            return line[GR_FROM]
+        else:
+            return pt
+
+    def cmp_greater(pt, line, axis):
+        """ Returns a line with max ending amoung the two """
+        if pt is None:
+            return line[GR_TO]
+        elif line[GR_TO][axis] > pt[axis]:
+            return line[GR_TO]
+        else:
+            return pt
+
+    def find_line(lines, axis, orient_fun, cmp_fun):
+        """ Find a line of given orientation and matching functions """
+        found = None
+        for line in lines:
+            if orient_fun(line):
+                found = cmp_fun(found, line, axis)
+        return found
+
+    def houghp_to_lines(lines):
+        """ Transform HoughP results to lines array """
+        ret = []
+        for i in lines:
+            ret.append(((i[0][0],i[0][1]),(i[0][2],i[0][3])))
+        return ret
+
+    def hough_to_lines(lines, shape):
+        """ Transform Hough results to lines array """
+        ret = []
+        for i in lines:
+            rho,theta = i[0]
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a*rho
+            y0 = b*rho
+
+            x1 = int(x0 + shape[0]*(-b))
+            y1 = int(y0 + shape[1]*(a))
+            x2 = int(x0 - shape[0]*(-b))
+            y2 = int(y0 - shape[1]*(a))
+
+            ret.append(((x1,y1),(x2,y2)))
+        return ret
+
+    # Main function starts here
 
     # Graying out
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -207,54 +272,64 @@ def find_board(img, params, res):
     n_apsize = params['CANNY_APERTURE']
     edges = cv2.Canny(gray, n_minval, n_maxval, apertureSize = n_apsize)
 
-    # Find lines, 1st pass
+    # Eliminate area close to edges in order not to give false line detections
+    dx = int(MIN_EDGE_DIST/2)
+    edges = cv2.rectangle(edges, (dx,dx),
+                (edges.shape[CV_WIDTH]-dx, edges.shape[CV_HEIGTH]-dx), COLOR_BLACK, MIN_EDGE_DIST)
+
+    # Detect lines with HoughLinesP
+    # This function returns line segments as (N,4) array
+    # It might split a line to several segments thus not allowing to find its
+    # true origin or ending
     n_rho = params['HL_RHO']
     n_theta = params['HL_THETA'] * np.pi / 180
     n_thresh = params['HL_THRESHOLD']
-
-    #n_iter = params['HL_DILATE']
-    #if n_iter > 0:
-    #   kernel = np.ones((3,3),np.uint8)
-    #   edges = cv2.dilate(edges, kernel, iterations=n_iter)
-
     lines = cv2.HoughLinesP(edges, n_rho, n_theta, n_thresh)
     lines = houghp_to_lines(lines)
 
-    # Remove lines too close to board edges
-    lines = clear_lines(edges.shape, lines)
+    # Find first and last horizontal and vertical line
+    hl = (find_line(lines, GR_Y, is_horizontal, cmp_less),
+            find_line(lines, GR_Y, is_horizontal, cmp_greater))
+    vl = (find_line(lines, GR_X, is_vertical, cmp_less),
+            find_line(lines, GR_X, is_vertical, cmp_greater))
+
+    # Determine edges
+    if hl[0] is None:
+        corner1 = (vl[0][0], vl[1][1])
+        corner2 = (vl[0][1], vl[1][0])
+    else:
+        corner1 = (min(hl[0][0], vl[0][0]), min(hl[0][1], vl[0][1]))
+        corner2 = (max(hl[1][0], vl[1][0]), max(hl[1][1], vl[1][1]))
+
+    brd_edges = (corner1, corner2)
+    res[GR_EDGES] = brd_edges
+
+##    for i in lines:
+##        x1 = i[GR_FROM][GR_X]
+##        y1 = i[GR_FROM][GR_Y]
+##        x2 = i[GR_TO][GR_X]
+##        y2 = i[GR_TO][GR_Y]
+##
+##        if (abs(x1 - x2) < 3 and abs(y1 - y2) > 10) or (abs(y1 - y2) < 3 and abs(x1 - x2) > 10):
+##            # Vertical or horizontal line
+##            if (x1 < xmin or xmin == -1):
+##                xmin = x1
+##            if (y1 < ymin or ymin == -1):
+##                ymin = y1
+##            if (x2 > xmax or xmax == -1):
+##                xmax = x2
+##            if (y2 > ymax or ymax == -1):
+##                ymax = y2
+##
+##    brd_edges = ((int(xmin), int(ymin)), (int(xmax), int(ymax)))
+
+    # Redraw the image to contain only lines detected by HoughLineP
     lines_img = make_lines_img(edges.shape, lines)
     nlin = len(lines)
-
     res[GR_NUM_LINES] = nlin
     res[GR_IMG_LINES] = lines_img
 
-    # Find min/max coordinates - which are edges
-    xmin = -1
-    xmax = -1
-    ymin = -1
-    ymax = -1
-
-    for i in lines:
-        x1 = i[GR_FROM][GR_X]
-        y1 = i[GR_FROM][GR_Y]
-        x2 = i[GR_TO][GR_X]
-        y2 = i[GR_TO][GR_Y]
-
-        if (abs(x1 - x2) < 3 and abs(y1 - y2) > 10) or (abs(y1 - y2) < 3 and abs(x1 - x2) > 10):
-            # Vertical or horizontal line
-            if (x1 < xmin or xmin == -1):
-                xmin = x1
-            if (y1 < ymin or ymin == -1):
-                ymin = y1
-            if (x2 > xmax or xmax == -1):
-                xmax = x2
-            if (y2 > ymax or ymax == -1):
-                ymax = y2
-
-    brd_edges = ((int(xmin), int(ymin)), (int(xmax), int(ymax)))
-    res[GR_EDGES] = brd_edges
-
-    # Detecting board size
+    # Detecting board size using HoughLine
     n_rho = params['HL_RHO2']
     n_theta = params['HL_THETA2'] * np.pi / 180
     n_thresh = params['HL_THRESHOLD2']

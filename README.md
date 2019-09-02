@@ -53,9 +53,10 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 ## Changelog
 
-01/09/2019:
+02/09/2019:
 
 * New GrTag module added to support easy image database navigation and usage
+* gr.find_board() rewritten to better recognize board edges/net
 
 22/08/2019:
 
@@ -108,17 +109,19 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 - [x] Add stone reconcilation (detection of stones occupying the same position)
 
+- [ ] Add logging during board processing
+
 - [ ] Adopt the algorithm to the photos of real boards (make functions to set edges, rotate board, correct skewness, etc)
 
-- [ ] Make "tagger" interface to simplify image processing
+- [x] Make "tagger" interface to simplify image processing
 
-- [ ] Create board capture from web cams functionality
+- [ ] Implement board capture from webcam (new interface)
 
 - [ ] Add stones removal/adding/color changing
 
 - [ ] Add SGF file creation
 
-- [ ] Make a web interface and deploy to cloud
+- [ ] Make a web interface with (probably) cloud deployment
 
 - [x] Make DLN dataset creation and review interfaces (currently - in PASCAL VOC format)
 

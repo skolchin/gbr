@@ -160,56 +160,6 @@ def has_intersection(lh, lv):
     f = min_y <= y and max_y >= y
     return f
 
-# Remove lines too close to board edges
-def clear_lines(shape, lines, delta = 3):
-    res = []
-    for i in lines:
-        x1 = i[GR_FROM][GR_X]
-        y1 = i[GR_FROM][GR_Y]
-        x2 = i[GR_TO][GR_X]
-        y2 = i[GR_TO][GR_Y]
-        if (x1 > delta
-           and y1 > delta
-           and x2 < shape[CV_WIDTH] - delta
-           and y2 < shape[CV_HEIGTH] - delta):
-           res.append(i)
-
-    return res
-
-# Transform HoughP lines results to array with coordinate tuples
-# HoughP returns lines as array (N, 4)
-def houghp_to_lines(lines):
-    res = []
-    for i in lines:
-        x1 = i[0][0]
-        y1 = i[0][1]
-        x2 = i[0][2]
-        y2 = i[0][3]
-        res.append(((x1,y1),(x2,y2)))
-
-    return res
-
-# Transform HoughP lines results to array with coordinate tuples
-# Hough returns rho and theta but not actual coordinates
-def hough_to_lines(lines, shape):
-    res = []
-    for i in lines:
-        rho,theta = i[0]
-        a = np.cos(theta)
-        b = np.sin(theta)
-        x0 = a*rho
-        y0 = b*rho
-
-        #if a != 0 and b != 0:
-        x1 = int(x0 + shape[0]*(-b))
-        y1 = int(y0 + shape[1]*(a))
-        x2 = int(x0 - shape[0]*(-b))
-        y2 = int(y0 - shape[1]*(a))
-
-        res.append(((x1,y1),(x2,y2)))
-
-    return res
-
 def format_stone_pos(stone, axis = None):
     if axis is None:
          return ss.ascii_uppercase[stone[GR_A]-1] + str(stone[GR_B])
