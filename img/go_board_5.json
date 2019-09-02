@@ -17,7 +17,7 @@
     "HL_THRESHOLD": 100, 
     "HL_THRESHOLD2": 22, 
     "PYRAMID_B": 1, 
-    "PYRAMID_W": 1, 
+    "PYRAMID_W": 0, 
     "STONES_DILATE_B": 2, 
     "STONES_DILATE_W": 1, 
     "STONES_ERODE_B": 3, 
@@ -27,5 +27,5 @@
     "STONES_THRESHOLD_B": 84, 
     "STONES_THRESHOLD_W": 154, 
     "WATERSHED_B": 1, 
-    "WATERSHED_W": 205
+    "WATERSHED_W": 138
 }
