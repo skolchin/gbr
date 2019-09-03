@@ -19,6 +19,7 @@ from gr.board import GrBoard
 from gr.ui_extra import *
 import logging
 from make_dataset import generate_dataset, default_image_size
+from gr.grlog import setupGrLog, showGrLog, clearGrLog
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
@@ -81,6 +82,10 @@ class ViewAnnoGui:
                                                       command = self.update_all_callback)
         self.updateAllBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
+        self.showLogBtn = tk.Button(self.buttonFrame, text = "Show log",
+                                                      command = self.show_log_callback)
+        self.showLogBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
+
         # MakeDataset params
         self.sizeFrame = tk.Frame(self.buttonFrame)
         self.sizeFrame.pack(side = tk.LEFT, padx = PADX, pady = PADY)
@@ -99,10 +104,10 @@ class ViewAnnoGui:
         self.testSizeEntry.grid(row = 1, column = 1)
 
         # Img info
-        self.imgInfo = tk.StringVar()
-        self.imgInfo .set("")
-        self.imgnfoPanel = tk.Label(self.buttonFrame, textvariable = self.imgInfo)
-        self.imgnfoPanel.pack(side = tk.LEFT, padx = PADX)
+##        self.imgInfo = tk.StringVar()
+##        self.imgInfo .set("")
+##        self.imgnfoPanel = tk.Label(self.buttonFrame, textvariable = self.imgInfo)
+##        self.imgnfoPanel.pack(side = tk.LEFT, padx = PADX)
 
         # Status frame
         self.statusInfo = tk.StringVar()
@@ -146,19 +151,25 @@ class ViewAnnoGui:
         jgf_file = self.src_path.joinpath(Path(self.boardImgName).name).with_suffix('.jgf')
         f_process = jgf_file.is_file()
 
-        # Load board from annotation file
-        # This will find the image and load it to the board
-        board = GrBoard()
-        board.load_annotation(self.annoName, path_override = str(self.src_path), f_process = f_process)
+        # Processing
+        clearGrLog()
+        try:
+            # Load board from annotation file
+            # This will find the image and load it to the board
+            board = GrBoard()
+            board.load_annotation(self.annoName, path_override = str(self.src_path), f_process = f_process)
 
-        # Resize image to dataset preferred size
-        if self.dsImgSize[ds] > 0:
-            board.resize_board(self.dsImgSize[ds])
+            # Resize image to dataset preferred size
+            if self.dsImgSize[ds] > 0:
+                board.resize_board(self.dsImgSize[ds])
 
-        # Save image to dataset
-        png_file = self.img_path.joinpath(Path(board.image_file).with_suffix('.png').name)
-        board.save_image(str(png_file))
-        board.save_annotation(self.annoName)
+            # Save image to dataset
+            png_file = self.img_path.joinpath(Path(board.image_file).with_suffix('.png').name)
+            board.save_image(str(png_file))
+            board.save_annotation(self.annoName)
+        except:
+            self.statusInfo.set("ERROR: {}".format(sys.exc_info()[1]))
+            return
 
         # Refresh
         self.load_annotation(self.annoName)
@@ -167,11 +178,14 @@ class ViewAnnoGui:
     def update_all_callback(self):
         self.update_img_size()
 
-        logging.basicConfig(format='%(asctime)s %(message)s', level = logging.INFO)
-        generate_dataset(str(self.src_path), str(self.meta_path), str(self.img_path),
-            str(self.sets_path), self.dsImgSize)
-
-        self.statusInfo.set("Dataset regenerated")
+        clearGrLog()
+        try:
+            generate_dataset(str(self.src_path), str(self.meta_path), str(self.img_path),
+                str(self.sets_path), self.dsImgSize)
+            self.statusInfo.set("Dataset regenerated")
+        except:
+            self.statusInfo.set("ERROR: {}".format(sys.exc_info()[1]))
+            return
 
     def show_rec_callback(self, event, tag, state):
         if self.annoName is None:
@@ -180,6 +194,9 @@ class ViewAnnoGui:
             self.f_rect = state
             self.load_annotation(self.annoName)
             return True
+
+    def show_log_callback(self):
+        showGrLog(self.root)
 
     def load_annotation(self, file):
         """Load annotation from file (XML/TXT)"""
@@ -250,8 +267,8 @@ class ViewAnnoGui:
 
         # Update status
         ds = self.find_dataset(self.boardImgName)
-        img_info = "DS: {}, size: {}, {}".format(ds, img.shape[1], img.shape[0])
-        self.imgInfo.set(img_info)
+        #img_info = "DS: {}, size: {}, {}".format(ds, img.shape[1], img.shape[0])
+        #self.imgInfo.set(img_info)
 
         if status == '':
             status = 'Loaded file: {}'.format(self.annoName)
@@ -295,12 +312,11 @@ class ViewAnnoGui:
         return None
 
 def main():
-    # Construct interface
     window = tk.Tk()
     window.title("View annotaitons")
     gui = ViewAnnoGui(window)
+    setupGrLog()
 
-    # Main loop
     window.mainloop()
 
 if __name__ == '__main__':

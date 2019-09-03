@@ -15,7 +15,7 @@ import logging
 if sys.version_info[0] < 3:
     import Tkinter as tk
     import ttk
-    from Tkinter import simpledialog
+    import tkSimpleDialog as simpledialog
     from cStringIO import StringIO
 else:
     import tkinter as tk
@@ -36,19 +36,22 @@ class GrLogWindow(simpledialog.Dialog):
           simpledialog.Dialog.__init__(self, parent, "Log")
 
       def body(self, master):
-        self.sbr = tk.Scrollbar(master)
-        self.sbr.pack(side=tk.RIGHT, fill=tk.Y)
+        self.bodyMaster = master
 
-        self.sbb = tk.Scrollbar(master, orient=tk.HORIZONTAL)
-        self.sbb.pack(side=tk.BOTTOM, fill=tk.X)
+        sbr = tk.Scrollbar(master)
+        sbr.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.lbox = tk.Listbox(master, yscrollcommand=self.sbr.set, xscrollcommand=self.sbb.set)
+        sbb = tk.Scrollbar(master, orient=tk.HORIZONTAL)
+        sbb.pack(side=tk.BOTTOM, fill=tk.X)
+
+        max_len = min(len(max(self._log, key = lambda f: len(f))),50)
+
+        self.lbox = tk.Listbox(master, yscrollcommand=sbr.set, xscrollcommand=sbb.set, width=max_len)
         self.lbox.insert(tk.END, *self._log)
-        self.lbox.config(width = 50)
-        self.lbox.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
+        self.lbox.pack(fill = tk.BOTH, expand = True, padx = 5, pady = 5)
 
-        self.sbr.config(command=self.lbox.yview)
-        self.sbb.config(command=self.lbox.xview)
+        sbr.config(command=self.lbox.yview)
+        sbb.config(command=self.lbox.xview)
 
         return self.lbox
 
@@ -56,12 +59,13 @@ class GrLogWindow(simpledialog.Dialog):
         box = tk.Frame(self)
 
         w = tk.Button(box, text="Close", width=10, command=self.ok, default=tk.ACTIVE)
-        w.pack(side=tk.LEFT, padx=5, pady=5)
+        w.pack(side=tk.TOP, padx=5, pady=5)
 
         self.bind("<Return>", self.ok)
         self.bind("<Escape>", self.ok)
 
-        box.pack()
+        box.pack(side = tk.TOP, fill = tk.Y, expand = True)
+        self.bodyMaster.pack_configure(fill = tk.BOTH, expand = True)
 
 
 log_stream = None

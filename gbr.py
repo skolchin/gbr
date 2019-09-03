@@ -11,7 +11,7 @@ from gr.board import GrBoard
 from gr.utils import img_to_imgtk, resize2, format_stone_pos
 from gr.grdef import *
 from gr.ui_extra import *
-from gr.grlog import setupGrLog, showGrLog
+from gr.grlog import setupGrLog, showGrLog, clearGrLog
 
 import numpy as np
 import cv2
@@ -267,6 +267,7 @@ class GbrGUI(object):
 
     # Callback for "Set edges"
     def set_edges_callback(self, event, tag, state):
+        return False
         if self.board.is_gen_board:
             return False
         else:
@@ -375,6 +376,7 @@ class GbrGUI(object):
     def update_board(self, reprocess = True):
         # Process original image
         if self.board.results is None or reprocess:
+           clearGrLog()
            try:
                self.board.process()
            except:
@@ -418,6 +420,7 @@ class GbrGUI(object):
     # Load specified image
     def load_image(self, fn):
         # Load the image
+        clearGrLog()
         try:
             params_loaded = self.board.load_image(fn, f_with_params = True)
         except:

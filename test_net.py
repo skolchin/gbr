@@ -6,7 +6,6 @@
 #
 # Created:     19.07.2019
 # Copyright:   (c) skolchin 2019
-# Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
 import sys
@@ -39,14 +38,17 @@ else:
 CLASSES = ["_back_", "white", "black"]
 
 class GrTestNetGui(object):
-    def __init__(self, root, max_size = 500, allow_open = True, num_iter = 10000):
+    def __init__(self, root, max_size = 500, allow_open = True):
         self.root = root
         self.allow_open = allow_open
 
         # Set paths
         self.root_path = Path(__file__).parent.resolve()
-        self.model_file = self.root_path.joinpath("models", "test.prototxt")
-        self.weigth_file = self.root_path.joinpath("out", "gbr_zf", "train", "gbr_zf_iter_" + str(num_iter) + ".caffemodel")
+        self.model_path = self.root_path.joinpath("models")
+        self.model_file = 'test.prototxt'
+        self.weigth_path = self.root_path.joinpath("out", "gbr_zf", "train")
+        self.weigth_file = None #'gbr_zf_iter_10000.caffemodel'
+        self.netProb = 0.8
 
         # Top frames
         self.imgFrame = tk.Frame(self.root)
@@ -79,13 +81,24 @@ class GrTestNetGui(object):
         # Params
         self.probFrame = tk.Frame(self.buttonFrame)
         self.probFrame.pack(side = tk.LEFT, padx = PADX, pady = PADY)
-        self.netProb = 0.8
 
-        tk.Label(self.probFrame, text = "Probability").grid(row = 0, column = 0)
+        self.modelVar = tk.StringVar()
+        tk.Label(self.probFrame, text = "Model").grid(row = 0, column = 0)
+        self.cbModel = ttk.Combobox(self.probFrame, state="readonly", textvariable = self.modelVar)
+        self.cbModel.grid(row = 0, column = 1)
+        self.load_models()
+
+        self.weigthVar = tk.StringVar()
+        tk.Label(self.probFrame, text = "Weights").grid(row = 1, column = 0)
+        self.cbWeight = ttk.Combobox(self.probFrame, state="readonly", textvariable = self.weigthVar)
+        self.cbWeight.grid(row = 1, column = 1)
+        self.load_weights()
+
+        tk.Label(self.probFrame, text = "Threshold").grid(row = 0, column = 3)
         self.probVar = tk.StringVar()
         self.probVar.set(str(self.netProb))
         self.probEntry = tk.Entry(self.probFrame, textvariable = self.probVar)
-        self.probEntry.grid(row = 0, column = 1)
+        self.probEntry.grid(row = 0, column = 4)
 
         # Status frame
         self.statusInfo = tk.StringVar()
@@ -116,8 +129,8 @@ class GrTestNetGui(object):
             raise Exception('File not found {}'.format(file_name))
 
         # Do detection and display results on the image
-        self.update_prob()
-        self.show_detection(img, self.netProb)
+        if self.update_net_params():
+            self.show_detection(img, self.netProb)
 
         # Resize the image
         img2, self.zoom = resize2 (img, np.max(self.defBoardImg.shape[:2]), f_upsize = False)
@@ -128,6 +141,24 @@ class GrTestNetGui(object):
         self.boardImgName = file_name
         self.imgFrame.pack_propagate(False)
         self.imgPanel.configure(image = self.boardImgTk)
+
+    def load_models(self):
+        file_list = []
+        g = self.model_path.glob('*.prototxt')
+        for x in g:
+          if x.is_file(): file_list.append(str(x.name))
+        self.cbModel['values'] = sorted(file_list)
+        if not self.model_file is None:
+            self.modelVar.set(self.model_file)
+
+    def load_weights(self):
+        file_list = []
+        g = self.weigth_path.glob('*.caffemodel')
+        for x in g:
+          if x.is_file(): file_list.append(str(x.name))
+        self.cbWeight['values'] = sorted(file_list)
+        if not self.weigth_file is None:
+            self.weigthVar.set(self.weigth_file)
 
     def show_detection(self, img, det_thresh):
         cfg.TEST.HAS_RPN = True
@@ -167,11 +198,20 @@ class GrTestNetGui(object):
             dets = dets[keep, :]
             cv2_show_detections(img, cls, dets, thresh=det_thresh, f_label = False, color = colors[cls_ind])
 
-    def update_prob(self):
+    def update_net_params(self):
         try:
             self.netProb = float(self.probVar.get())
+
+            self.model_file = self.modelVar.get()
+            self.weigth_file = self.weigthVar.get()
+            if self.model_file is None or self.model_file == '': return False
+            if self.weigth_file is None or self.weigth_file == '': return False
+
+            self.model_file = str(self.model_path.joinpath(self.model_file))
+            self.weigth_file = str(self.weigth_path.joinpath(self.weigth_file))
+            return True
         except:
-            pass
+            return False
 
 def main():
     # Construct interface
