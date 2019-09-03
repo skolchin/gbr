@@ -25,9 +25,15 @@ from pathlib import Path
 import cv2
 import numpy as np
 import json
+import logging
 
 class GrBoard(object):
+    """ Go board """
     def __init__(self, image_file = None, board_shape = None):
+        """ Create new instance.
+        image_file is name of file to open and process.
+        board_shape - desired board shape for generated board generation.
+        If neither provided, board with default shape is generated. """
         self._params = DEF_GR_PARAMS.copy()
         self._res = None
         self._img = None
@@ -44,10 +50,17 @@ class GrBoard(object):
             self.load_image(image_file)
 
     def load_image(self, filename, f_with_params = True, f_process = True):
+        """ Loads a new image from file.
+        If f_with_params is True, also loads image recognition params from <filename>.JSON file.
+        If f_process is True, starts image recongition.
+        """
         # Load image
+        logging.info('Loading {}'.format(filename))
         img = cv2.imread(str(filename))
         if img is None:
-            raise Exception('Image file not found {}'.format(filename))
+           logging.error('Image file not found {}'.format(filename))
+           raise Exception('Image file not found {}'.format(filename))
+
         self._gen_board = False
         self._img_file = filename
         self._src_img_file = filename
@@ -66,11 +79,13 @@ class GrBoard(object):
         return f_params_loaded
 
     def generate(self, shape = DEF_IMG_SIZE):
+        """Generates a new board image with given shape"""
         self._img = generate_board(shape, res = self._res)
         self._img_file = None
         self._gen_board = True
 
     def save_image(self, filename = None, max_size = None):
+        """Saves image under new name. If max_size provided, resizes before"""
         if self._img is None:
            raise Exception('Image was not loaded')
 
@@ -78,7 +93,12 @@ class GrBoard(object):
         im = self._img
         if not max_size is None: im = resize(im, max_size)
 
-        cv2.imwrite(str(filename), im)
+        logging.info('Saving to {}'.format(filename))
+        try:
+            cv2.imwrite(str(filename), im)
+        except:
+            logging.error(sys.exc_info()[1])
+            raise
 
         self._img_file = filename
         self._gen_board = False

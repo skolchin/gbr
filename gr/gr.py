@@ -19,6 +19,7 @@ else:
     from gr.cv2_watershed import apply_watershed
 import cv2
 import numpy as np
+import logging
 
 # Find stones on a board
 # Takes an image, recognition param dictionary, results dictionary and
@@ -26,13 +27,18 @@ import numpy as np
 # Recognized stones are saved in a list in form of (X, Y, A, B, R),
 # where (X,Y) are image coordinates, (A,B) - stone position, R - radius in pixels
 # Several analysis parameters are also stored in the results dict
-# The array is stored in the results dictionary and returned
+# The array is stored in the results dictionary (res)
 def find_stones(src_img, params, res, f_bw):
+    """Find stones on a board
+    params: recognition parameters (see grdef.DEF_GR_PARAMS)
+    res: results dictionary (see grdef.GR_xxx)
+    f_bw: either B or W for black and white stones"""
 
     # Pre-filter: pyramid filtering
     def _apply_pmf(img, params, f_bw):
         n_pmf = params['PYRAMID_' + f_bw]
         if n_pmf == 0:
+           logging.info("Filter skipped")
            return img
         else:
             pmf = cv2.pyrMeanShiftFiltering(img, 21, 51)
@@ -67,6 +73,7 @@ def find_stones(src_img, params, res, f_bw):
         n_iter = params['STONES_DILATE_' + f_bw]
         n_mask = params['HC_MASK_' + f_bw]
         if n_iter == 0:
+           logging.info("Filter skipped")
            return img
         else:
            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(100,100))
@@ -82,6 +89,7 @@ def find_stones(src_img, params, res, f_bw):
         n_iter = params['STONES_ERODE_' + f_bw]
         n_mask = params['HC_MASK_' + f_bw]
         if n_iter == 0:
+           logging.info("Filter skipped")
            return img
         else:
            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(100,100))
@@ -95,6 +103,7 @@ def find_stones(src_img, params, res, f_bw):
     def _apply_blur(img, params, f_bw):
         n_blur = params['BLUR_MASK_' + f_bw]
         if n_blur == 0:
+           logging.info("Filter skipped")
            return img
         else:
             return cv2.blur(img, (n_blur, n_blur))
@@ -117,6 +126,7 @@ def find_stones(src_img, params, res, f_bw):
         n_ws = params['WATERSHED_' + f_bw]
 
         if n_ws == 0 or prev_stones is None:
+           logging.info("Filter skipped")
            return None
         else:
            #gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -171,19 +181,24 @@ def find_stones(src_img, params, res, f_bw):
     # Process image with pre-filters
     filtered_img = src_img.copy()
     for f in pre_filters:
+        logging.info("Applying pre-filter {} for {}".format(f, f_bw))
         filtered_img = pre_filters[f](filtered_img, params, f_bw)
     res['IMG_MORPH_' + f_bw] = filtered_img
 
     # Process image with post-filters
     stones = None
     for f in post_filters:
+        logging.info("Applying post-filter {} for {}".format(f, f_bw))
         new_stones = post_filters[f](src_img, filtered_img, params, f_bw, stones)
         if new_stones is None:
+           logging.info("No stones found after applying post-filter")
            break;
         else:
-            if len(new_stones.shape) == 3: new_stones = new_stones[0]
-            conv_stones = convert_xy(new_stones, res)
-            stones = _combine_stones(stones, conv_stones)
+           if len(new_stones.shape) == 3: new_stones = new_stones[0]
+           logging.info("Stones found: {}".format(len(new_stones)))
+
+           conv_stones = convert_xy(new_stones, res)
+           stones = _combine_stones(stones, conv_stones)
 
     return stones
 
@@ -196,6 +211,10 @@ def find_stones(src_img, params, res, f_bw):
 # Some other analysis parameters are also stored in the results dict
 # Returns board edges
 def find_board(img, params, res):
+    """Determine board parameters
+    params: recognition parameters (see grdef.DEF_GR_PARAMS)
+    res: results dictionary (see grdef.GR_xxx)"""
+
     MIN_LINE_LEN = 10
     MIN_EDGE_DIST = 6
 
@@ -238,6 +257,8 @@ def find_board(img, params, res):
     def houghp_to_lines(lines):
         """ Transform HoughP results to lines array """
         ret = []
+        if lines is None:
+           return ret
         for i in lines:
             ret.append(((i[0][0],i[0][1]),(i[0][2],i[0][3])))
         return ret
@@ -245,6 +266,8 @@ def find_board(img, params, res):
     def hough_to_lines(lines, shape):
         """ Transform Hough results to lines array """
         ret = []
+        if lines is None:
+           return ret
         for i in lines:
             rho,theta = i[0]
             a = np.cos(theta)
@@ -287,6 +310,10 @@ def find_board(img, params, res):
     lines = cv2.HoughLinesP(edges, n_rho, n_theta, n_thresh)
     lines = houghp_to_lines(lines)
 
+    nlin = len(lines)
+    res[GR_NUM_LINES] = nlin
+    logging.info("Number of lines after HoughLinesP: {}".format(nlin))
+
     # Find first and last horizontal and vertical line
     hl = (find_line(lines, GR_Y, is_horizontal, cmp_less),
             find_line(lines, GR_Y, is_horizontal, cmp_greater))
@@ -303,6 +330,7 @@ def find_board(img, params, res):
 
     brd_edges = (corner1, corner2)
     res[GR_EDGES] = brd_edges
+    logging.info("Edges detected: {}".format(brd_edges))
 
 ##    for i in lines:
 ##        x1 = i[GR_FROM][GR_X]
@@ -325,8 +353,6 @@ def find_board(img, params, res):
 
     # Redraw the image to contain only lines detected by HoughLineP
     lines_img = make_lines_img(edges.shape, lines)
-    nlin = len(lines)
-    res[GR_NUM_LINES] = nlin
     res[GR_IMG_LINES] = lines_img
 
     # Detecting board size using HoughLine
@@ -337,23 +363,14 @@ def find_board(img, params, res):
     lines_img2 = cv2.bitwise_not(lines_img)
     lines2 = cv2.HoughLines(lines_img2, n_rho, n_theta, n_thresh)
     lines2 = hough_to_lines(lines2, lines_img2.shape)
+    logging.info("Number of lines after HoughLines: {}".format(len(lines2)))
 
+    # Collect horizontal/vertical lines
     hlin = []
     vlin = []
-
     for i in lines2:
-        x1 = i[0][0]
-        y1 = i[0][1]
-        x2 = i[1][0]
-        y2 = i[1][1]
-
-        # Collect all horizontal and vertical lines
-        if abs(x1 - x2) < 3 and y1 != y2:
-            # vertical
-            vlin.append(i)
-        elif abs(y1 - y2) < 3 and x1 != x2:
-            # horizontal
-            hlin.append(i)
+        if is_vertical(i): vlin.append(i)
+        if is_horizontal(i): hlin.append(i)
 
     # Get unique vertical line positions
     vpos = remove_nearest(vlin, axis1 = 0, axis2 = 0)
@@ -389,10 +406,11 @@ def find_board(img, params, res):
 
     if size is None:
         # Oops, take a default one
-        print("Cannot properly determine board size, fall back to default one")
+        logging.error("Cannot properly determine board size, fall back to default")
         size = DEF_BOARD_SIZE
 
     res[GR_BOARD_SIZE] = size
+    logging.info("Detected board size: {}".format(size))
 
      # Make a debug image
     lines_img2 = make_lines_img(gray.shape, hpos)
@@ -401,14 +419,10 @@ def find_board(img, params, res):
 
     # Calculate spacing
     space_x, space_y = board_spacing(brd_edges, size)
-    res[GR_SPACING] = (space_x, space_y)
+    spacing = (space_x, space_y)
+    res[GR_SPACING] = spacing
+    logging.info("Detected spacing: {}".format(spacing))
 
-##    print("Edges:({},{}), ({},{}), crosses: {}, {}, size: {}, spaces: ({}, {})".format(
-##                          brd_edges[0][0], brd_edges[0][1],
-##                          brd_edges[1][0], brd_edges[1][0],
-##                          hcross, vcross,
-##                          size,
-##                          round(space_x,2), round(space_y,2)))
     return brd_edges
 
 # Converts stone coordinates to stone positions
@@ -416,53 +430,52 @@ def find_board(img, params, res):
 # Returns an array containg stones positions as well as board coordinates
 # Board coordinates are stores as first two array items, board position - as 3,4
 def convert_xy(coord, res):
-    if (coord is None):
+    """Convert stone coordinates to board positions"""
+    if coord is None:
         return None
-    else:
-         # Make up an empty array
-        stones = np.zeros((len(coord), 2), dtype = np.uint16)
 
-        # Get edges and spacing
-        edges = res[GR_EDGES]
-        size = res[GR_BOARD_SIZE]
-        space_x, space_y = res[GR_SPACING]
+     # Make up an empty array
+    stones = np.zeros((len(coord), 2), dtype = np.uint16)
 
-        # Loop through, converting board coordinates to integer positions
-        # Radius is stored in dictiotary to retrieve later
-        # This is kinda dumb way but I cannot find other one
-        rd = dict()
-        for i in range(len(coord)):
-            x = coord[i,0] - edges[0][0]
-            y = coord[i,1] - edges[0][1]
+    # Get edges and spacing
+    edges = res[GR_EDGES]
+    size = res[GR_BOARD_SIZE]
+    space_x, space_y = res[GR_SPACING]
 
-            stones[i,0] = int(round(x / space_x, 0)) + 1
-            stones[i,1] = int(round(y / space_y, 0)) + 1
-            rd[str(stones[i,0]) + "_" + str(stones[i,1])] = coord[i]
+    # Loop through, converting board coordinates to integer positions
+    # Radius is stored in dictiotary to retrieve later. This is kinda dumb way but I cannot find other one
+    rd = dict()
+    for i in range(len(coord)):
+        x = coord[i,0] - edges[0][0]
+        y = coord[i,1] - edges[0][1]
 
-        # Remove duplicates
-        stones_u = unique_rows(stones)
+        stones[i,0] = int(round(x / space_x, 0)) + 1
+        stones[i,1] = int(round(y / space_y, 0)) + 1
+        rd[str(stones[i,0]) + "_" + str(stones[i,1])] = coord[i]
 
-        # Calculate coordinates for stones left in the list
-        stones = np.zeros((len(stones_u), 5), dtype = np.uint16)
+    # Remove duplicates
+    stones_u = unique_rows(stones)
 
-        for i in range(len(stones_u)):
-            old_coord = rd[str(stones_u[i,0]) + "_" + str(stones_u[i,1])]
-            stones[i,GR_X] = old_coord[0]
-            stones[i,GR_Y] = old_coord[1]
-            stones[i,GR_A] = stones_u[i, 0]
-            stones[i,GR_B] = stones_u[i, 1]
-            stones[i,GR_R] = old_coord[2]
+    # Calculate coordinates for stones left in the list
+    stones = np.zeros((len(stones_u), 5), dtype = np.uint16)
 
-        return stones
+    for i in range(len(stones_u)):
+        old_coord = rd[str(stones_u[i,0]) + "_" + str(stones_u[i,1])]
+        stones[i,GR_X] = old_coord[0]
+        stones[i,GR_Y] = old_coord[1]
+        stones[i,GR_A] = stones_u[i, 0]
+        stones[i,GR_B] = stones_u[i, 1]
+        stones[i,GR_R] = old_coord[2]
+
+    return stones
 
 # Find a stone for given image coordinates
 # Takes X and Y in image coordinates and a list of stones created by convert_xy
-def find_coord(x, y, coord):
-    for i in coord:
-        min_x = int(i[GR_X]) - int(i[GR_R])
-        if min_x < 1: min_x = 1
-        min_y = int(i[GR_Y]) - int(i[GR_R])
-        if min_y < 1: min_y = 1
+def find_coord(x, y, stones):
+    """Returns index of a stone at given (X,Y) or None"""
+    for i in stones:
+        min_x = max(1, int(i[GR_X]) - int(i[GR_R]))
+        min_y = max(1, int(i[GR_Y]) - int(i[GR_R]))
         max_x = i[GR_X] + i[GR_R]
         max_y = i[GR_Y] + i[GR_R]
         if (x >= min_x and x <= max_x and y >= min_y and y <= max_y):
@@ -470,24 +483,48 @@ def find_coord(x, y, coord):
 
     return None
 
-
 # Board image processing main function
 # Takes board image and recognition params
 # Returns a dictionary containing recognition results
 # Dict keys are defined in grdef module
 def process_img(img, params):
+    """Main image processing function
+    img: image to process
+    params: recognition parameters (see grdef.DEF_GR_PARAMS)
+    returns results dictionary (see grdef.GR_xxx)"""
+
+    # Internal function: duplicate elimination
+    def eliminate_duplicates(bs, ws):
+        if ws is None or bs is None:
+            return bs, ws
+
+        # Priority for white stones
+        for st in ws:
+            px = st[GR_A]
+            py = st[GR_B]
+            for i in range(len(bs)):
+                if px == bs[i,GR_A] and py == bs[i, GR_B]:
+                    bs = np.delete(bs, i, axis = 0)
+                    break;
+        return bs, ws
+
     res = dict()
     res[GR_IMAGE_SIZE] = img.shape[:2]
+    logging.info("Image size is {}".format(res[GR_IMAGE_SIZE]))
 
-    # Find board edges, spacing, size
-    board_edges = find_board(img, params, res)
+    try:
+        # Find board edges, spacing, size
+        board_edges = find_board(img, params, res)
 
-    # Find stones
-    black_stones = find_stones(img, params, res, 'B')
-    white_stones = find_stones(img, params, res, 'W')
+        # Find stones
+        black_stones = find_stones(img, params, res, 'B')
+        white_stones = find_stones(img, params, res, 'W')
 
-    # Elminate duplicates
-    black_stones, white_stones = eliminate_duplicates(black_stones, white_stones)
+        # Elminate duplicates
+        black_stones, white_stones = eliminate_duplicates(black_stones, white_stones)
+    except:
+        logging.error(sys.exc_info()[1])
+        raise
 
     # Store the results
     res[GR_STONES_B] = black_stones
@@ -498,6 +535,10 @@ def process_img(img, params):
 # Creates a board image for given image shape and board size
 # If recognition results are provided, plot them on the board
 def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None, f_show_det = False):
+    """Creates a board image for given image shape and board size
+       If recognition results are provided, plot them on the board
+       if f_show_det is True, also plots detections
+       Returns generated image"""
 
     # Prepare params
     if board_size is None:
@@ -569,17 +610,4 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None, f_show_d
 
     return img
 
-def eliminate_duplicates(bs, ws):
-    if ws is None or bs is None:
-        return bs, ws
-
-    # Priority for white stones
-    for st in ws:
-        px = st[GR_A]
-        py = st[GR_B]
-        for i in range(len(bs)):
-            if px == bs[i,GR_A] and py == bs[i, GR_B]:
-                bs = np.delete(bs, i, axis = 0)
-                break;
-    return bs, ws
 

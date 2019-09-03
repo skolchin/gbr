@@ -11,6 +11,7 @@ from gr.board import GrBoard
 from gr.utils import img_to_imgtk, resize2, format_stone_pos
 from gr.grdef import *
 from gr.ui_extra import *
+from gr.grlog import setupGrLog, showGrLog
 
 import numpy as np
 import cv2
@@ -128,6 +129,10 @@ class GbrGUI(object):
                                                        command = self.apply_def_callback)
         self.applyDefBtn.pack(side = tk.LEFT, padx = PADX, pady = PADY)
 
+        self.showLogBtn = tk.Button(self.buttonFrame, text = "Show log",
+                                                       command = self.show_log_callback)
+        self.showLogBtn.pack(side = tk.LEFT, padx = PADX, pady = PADY)
+
         # Info frame: stones info
         self.boardInfo = tk.StringVar()
         self.boardInfo.set("No stones found")
@@ -223,6 +228,9 @@ class GbrGUI(object):
 
     # Apply button callback
     def apply_callback(self):
+        if self.board.is_gen_board:
+           return
+
         p = dict()
         for key in self.tkVars.keys():
             p[key] = self.tkVars[key].get()
@@ -231,11 +239,18 @@ class GbrGUI(object):
 
     # Apply defaults button callback
     def apply_def_callback(self):
+        if self.board.is_gen_board:
+           return
+
         p = DEF_GR_PARAMS.copy()
         self.board.params = p
         for key in self.tkVars.keys():
             self.tkVars[key].set(p[key])
         self.update_board(reprocess = True)
+
+    # Show log button callback
+    def show_log_callback(self):
+        if not self.board.is_gen_board: showGrLog(self.root)
 
     # Callback for canvas configuration
     def on_scroll_configure(self, event):
@@ -360,7 +375,11 @@ class GbrGUI(object):
     def update_board(self, reprocess = True):
         # Process original image
         if self.board.results is None or reprocess:
-            self.board.process()
+           try:
+               self.board.process()
+           except:
+               self.stoneInfo.set("ERROR: {}".format(sys.exc_info()[1]))
+               return
 
         # Generate board using analysis results
         self.genImg = self.board.show_board(show_state = self.buttonState)
@@ -399,7 +418,12 @@ class GbrGUI(object):
     # Load specified image
     def load_image(self, fn):
         # Load the image
-        params_loaded = self.board.load_image(fn, f_with_params = True)
+        try:
+            params_loaded = self.board.load_image(fn, f_with_params = True)
+        except:
+            self.stoneInfo.set("ERROR: {}".format(sys.exc_info()[1]))
+            return
+
         self.origImgTk, self.zoom = self.make_imgtk(self.board.image)
         self.origImgPanel.configure(image = self.origImgTk)
 
@@ -423,6 +447,7 @@ def main():
     window.title("Go board")
 
     gui = GbrGUI(window)
+    setupGrLog()
 
     #window.grid_columnconfigure(0, weight=1)
     #window.grid_rowconfigure(0, weight=1)
