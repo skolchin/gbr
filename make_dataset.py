@@ -66,7 +66,7 @@ def generate_dataset(src_path, meta_path, img_path, sets_path, img_size = DEF_DS
         board.save_annotation(meta_file)
 
         # Add to file list
-        file_list[stage].append(os.path.basename(png_file))
+        file_list[stage].append(os.path.splitext(os.path.basename(png_file))[0])
 
     # Save datasets
     for mode in file_list:
@@ -81,6 +81,8 @@ def generate_dataset(src_path, meta_path, img_path, sets_path, img_size = DEF_DS
         logging.info("{} entries written".format(count))
 
 def main():
+    logging.basicConfig(format='%(levelname)s: %(message)s', level = logging.INFO)
+
     root_path = Path(__file__).parent.resolve()
     ds_path = root_path.joinpath("gbr_ds")
     if not ds_path.exists(): ds_path.mkdir(parents = True)
