@@ -42,8 +42,9 @@ class ImgButton(tk.Label):
                         ImageTk.PhotoImage(Image.open(os.path.join(UI_DIR, self._tag + '_down.png')))]
 
         # Update kwargs
-        w = self._images[0].width() + 6
-        self.configure(borderwidth = 1, relief = "groove", width = w)
+        w = self._images[0].width() + 4
+        h = self._images[0].height() + 4
+        self.configure(borderwidth = 1, relief = "groove", width = w, height = h)
         self.configure(image = self._images[self._state])
 
         self.bind("<Button-1>", self.mouse_click)
@@ -51,10 +52,15 @@ class ImgButton(tk.Label):
     def mouse_click(self, event):
         new_state = not self._state
         self.configure(image = self._images[new_state])
+        if new_state: self._root().update()
         if self._callback(event = event, tag = self._tag, state = new_state):
            self._state = new_state
         else:
-           self.configure(image = self._images[self._state])
+           if new_state:
+              # Unpress after small delay
+              self.after(300, lambda: self.configure(image = self._images[self._state]))
+           else:
+              self.configure(image = self._images[self._state])
 
     @property
     def state(self):
@@ -136,7 +142,7 @@ def addImagePanel(parent, caption, btn_params, image = None, frame_callback = No
         if len(b) > 3:
             createToolTip(btn, b[3])
         buttons[b[0]] = btn
-        btn.pack(side = tk.RIGHT)
+        btn.pack(side = tk.RIGHT, padx = 2, pady = 2)
 
     # Body
     if image is None:
