@@ -46,7 +46,7 @@ Examples of source and generated images:
 
 ## Requirements
 
-Python 2.7/3.5, numpy, opencv2, tkinter, pathlib
+Python 2.7/3.5, numpy, opencv2. It seems any recent version works fine.
 
 For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-faster-rcnn) or any other fork)
 

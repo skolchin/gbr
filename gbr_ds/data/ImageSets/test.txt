@@ -1,8 +1,6 @@
 go_board_13_gen.png
 go_board_15_large.png
 go_board_1_gen.png
-go_board_25.png
-go_board_28.png
 go_board_33.png
 go_board_36.png
 go_board_38.png
@@ -14,6 +12,5 @@ go_board_43.png
 go_board_44.png
 go_board_45.png
 go_board_46.png
-go_board_5.png
 go_board_8a_gen.png
 go_board_9a.png

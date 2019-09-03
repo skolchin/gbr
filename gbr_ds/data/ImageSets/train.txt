@@ -14,8 +14,10 @@ go_board_21.png
 go_board_22.png
 go_board_23.png
 go_board_24.png
+go_board_25.png
 go_board_26.png
 go_board_27.png
+go_board_28.png
 go_board_29.png
 go_board_3.png
 go_board_30.png
@@ -24,6 +26,7 @@ go_board_32.png
 go_board_35.png
 go_board_37.png
 go_board_4.png
+go_board_5.png
 go_board_6.png
 go_board_7.png
 go_board_8a.png
