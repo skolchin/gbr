@@ -271,7 +271,7 @@ class ViewAnnoGui:
         #self.imgInfo.set(img_info)
 
         if status == '':
-            status = 'Loaded file: {}'.format(self.annoName)
+            status = 'File: {}, dataset: {}'.format(self.annoName, ds)
         self.statusInfo.set(status)
 
     def update_img_size(self):
@@ -302,7 +302,7 @@ class ViewAnnoGui:
                 self.datasets[ds] = []
 
     def find_dataset(self, file):
-        fn = Path(file).name
+        fn = Path(file).stem
         for ds in ('test', 'train'):
             try:
                 if self.datasets[ds].index(fn) >= 0:
