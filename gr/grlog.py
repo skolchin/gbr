@@ -71,16 +71,30 @@ class GrLogWindow(simpledialog.Dialog):
 class GrLog(object):
     """GBR logging system"""
 
+    class GrLogFilter(logging.Filter):
+        """ Enclosed log filter class"""
+        def __init__(self, name=''):
+            logging.Filter.__init__(self, name)
+            self.n_errors = 0
+
+        def filter(self, record):
+            f = logging.Filter.filter(self, record)
+            if f and record.levelno == logging.ERROR:
+                self.n_errors += 1
+            return f
+
     def __init__(self, level = logging.INFO):
         """Initialize logging system"""
         self.log_stream = StringIO()
+        self.log_filter = self.GrLogFilter()
         logging.basicConfig (stream=self.log_stream, format='%(levelname)s: %(message)s', level=level)
+        logging.getLogger().addFilter(self.log_filter)
 
-    def getLog(self):
+    def _get(self):
         """Returns current log entries as array of strings"""
         return self.log_stream.getvalue().splitlines()
 
-    def showLog(self, root):
+    def _show(self, root):
         """Show Log info dialog. If no log written, returns False"""
         log = self.log_stream.getvalue()
         if not log is None and len(log) > 0:
@@ -89,11 +103,17 @@ class GrLog(object):
         else:
            return False
 
-    def clearLog(self):
+    def _clear(self):
         """Clear log"""
         self.log_stream.truncate(0)
         self.log_stream.seek(0)
+        self.log_filter.n_errors = 0
 
+    def _getNumErrors(self):
+        """Returns number of errros passed to the log"""
+        return self.log_filter.n_errors
+
+    # Static methods
     __log = None
 
     @staticmethod
@@ -103,13 +123,17 @@ class GrLog(object):
 
     @staticmethod
     def get():
-        return GrLog.__log.getLog()
+        return GrLog.__log._get()
 
     @staticmethod
     def show(root):
-        return GrLog.__log.showLog(root)
+        return GrLog.__log._show(root)
 
     @staticmethod
     def clear():
-        GrLog.__log.clearLog()
+        GrLog.__log._clear()
+
+    @staticmethod
+    def numErrors():
+        return GrLog.__log._getNumErrors()
 

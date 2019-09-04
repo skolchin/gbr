@@ -30,9 +30,12 @@ import logging
 # The array is stored in the results dictionary (res)
 def find_stones(src_img, params, res, f_bw):
     """Find stones on a board
-    params: recognition parameters (see grdef.DEF_GR_PARAMS)
-    res: results dictionary (see grdef.GR_xxx)
-    f_bw: either B or W for black and white stones"""
+
+    params  recognition parameters (see grdef.DEF_GR_PARAMS)
+    res     results dictionary (see grdef.GR_xxx)
+    f_bw    either B or W for black and white stones
+    returns list of stones in form of (X, Y, A, B, R)
+    """
 
     # Pre-filter: pyramid filtering
     def _apply_pmf(img, params, f_bw):

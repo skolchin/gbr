@@ -185,8 +185,13 @@ class ViewAnnoGui:
                self.save_datasets()
                logging.info('New dataset {}'.format(ds))
 
+            if GrLog.numErrors() > 0:
+                self.stoneInfo.set("Errors during processing, see the log")
+            else:
+                self.statusInfo.set("Dataset updated")
         except:
-            self.statusInfo.set("ERROR: {}".format(sys.exc_info()[1]))
+            logging.exception('Error')
+            self.statusInfo.set("Errors during processing, see the log")
             return
 
         # Refresh
@@ -200,9 +205,13 @@ class ViewAnnoGui:
         try:
             generate_dataset(str(self.src_path), str(self.meta_path), str(self.img_path),
                 str(self.sets_path), self.dsImgSize)
-            self.statusInfo.set("Dataset regenerated")
+            if GrLog.numErrors() > 0:
+                self.stoneInfo.set("Errors during processing, see the log")
+            else:
+                self.statusInfo.set("Dataset updated")
         except:
-            self.statusInfo.set("ERROR: {}".format(sys.exc_info()[1]))
+            logging.exception('Error')
+            self.statusInfo.set("Errors during processing, see the log")
             return
 
     def show_rec_callback(self, event, tag, state):
@@ -248,6 +257,7 @@ class ViewAnnoGui:
                 raise Exception('File not found {}'.format(fn))
 
             # Resize the image
+            logging.info('Image size {}'.format(img.shape[:2]))
             img2, self.zoom = resize2 (img, np.max(self.defBoardImg.shape[:2]), f_upsize = False)
             logging.info('Zooming to {}'.format(self.zoom))
 
@@ -297,10 +307,13 @@ class ViewAnnoGui:
             img_info = "Size: ({}, {}), dataset: {}".format(img.shape[1], img.shape[0], ds)
             self.imgInfo.set(img_info)
 
-            self.statusInfo.set('File loaded: {}'.format(self.annoName))
+            if GrLog.numErrors() > 0:
+                self.stoneInfo.set("Errors during processing, see the log")
+            else:
+                self.statusInfo.set('File loaded: {}'.format(self.annoName))
         except:
-            logging.error(sys.exc_info()[1])
-            self.statusInfo.set("ERROR: {}".format(sys.exc_info()[1]))
+            logging.exception('Error')
+            self.statusInfo.set("Errors during processing, see the log")
 
     def update_img_size(self):
         try:

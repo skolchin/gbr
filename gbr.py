@@ -174,17 +174,17 @@ class GbrGUI(object):
         p, f = self.board.find_stone(coord = (x,y))
 
         if not p is None:
-           fs = "Black"
-           if f == GR_STONES_W: fs = "White"
-           ct = "{f} {a}{b} at ({x},{y}):{r}".format(
-               f = fs,
-               a = format_stone_pos(p, GR_A),
-               b = format_stone_pos(p, GR_B),
-               x = round(p[GR_X],0),
-               y = round(p[GR_Y],0),
-               r = round(p[GR_R],0))
-           print(ct)
-           self.stoneInfo.set(ct)
+            fs = "Black"
+            if f == GR_STONES_W: fs = "White"
+            ct = "{f} {a}{b} at ({x},{y}):{r}".format(
+                f = fs,
+                a = format_stone_pos(p, GR_A),
+                b = format_stone_pos(p, GR_B),
+                x = round(p[GR_X],0),
+                y = round(p[GR_Y],0),
+                r = round(p[GR_R],0))
+            print(ct)
+            self.stoneInfo.set(ct)
 
     # Callback for mouse events on original image
     def orig_img_mouse_callback(self, event):
@@ -193,7 +193,7 @@ class GbrGUI(object):
     # Callback for mouse event on debug image
     def dbg_img_mouse_callback(self, event):
         if self.board.is_gen_board:
-           return
+            return
 
         w = event.widget
         k = w.tag
@@ -230,7 +230,7 @@ class GbrGUI(object):
     # Apply button callback
     def apply_callback(self):
         if self.board.is_gen_board:
-           return
+            return
 
         p = dict()
         for key in self.tkVars.keys():
@@ -241,7 +241,7 @@ class GbrGUI(object):
     # Apply defaults button callback
     def apply_def_callback(self):
         if self.board.is_gen_board:
-           return
+            return
 
         p = DEF_GR_PARAMS.copy()
         self.board.params = p
@@ -251,8 +251,7 @@ class GbrGUI(object):
 
     # Show log button callback
     def show_log_callback(self):
-        if not self.board.is_gen_board:
-           GrLog.show(self.root)
+        GrLog.show(self.root)
 
     # Callback for canvas configuration
     def on_scroll_configure(self, event):
@@ -378,12 +377,15 @@ class GbrGUI(object):
     def update_board(self, reprocess = True):
         # Process original image
         if self.board.results is None or reprocess:
-           GrLog.clear()
-           try:
-               self.board.process()
-           except:
-               self.stoneInfo.set("ERROR: {}".format(sys.exc_info()[1]))
-               return
+            GrLog.clear()
+            try:
+                self.board.process()
+                if GrLog.numErrors() > 0:
+                    self.stoneInfo.set("Errors during processing, see the log")
+            except:
+                logging.exception("Error")
+                self.stoneInfo.set("Error during processing, see the log")
+                return
 
         # Generate board using analysis results
         self.genImg = self.board.show_board(show_state = self.buttonState)
@@ -401,7 +403,7 @@ class GbrGUI(object):
         p = self.board.params
         for key in p.keys():
             if key in self.tkVars.keys():
-               self.tkVars[key].set(p[key])
+                self.tkVars[key].set(p[key])
 
         # Update debug info
         self.add_debug_info(self.dbgFrame, self.board.board_shape,
@@ -413,10 +415,10 @@ class GbrGUI(object):
         imgtk = None
         z = [1.0,1.0]
         if img.shape[0] <= self.max_img_size and img.shape[1] <= self.max_img_size:
-           imgtk = img_to_imgtk(img)
+            imgtk = img_to_imgtk(img)
         else:
-           img2, z = resize2(img, self.max_img_size, False)
-           imgtk = img_to_imgtk(img2)
+            img2, z = resize2(img, self.max_img_size, False)
+            imgtk = img_to_imgtk(img2)
         return imgtk, z
 
     # Load specified image
@@ -438,13 +440,16 @@ class GbrGUI(object):
             self.update_board(reprocess = False)
 
             # Update status
-            ftitle = ""
-            if params_loaded: ftitle = " (with params)"
-            self.stoneInfo.set("File loaded{ft}: {fn}".format(ft = ftitle, fn = self.board.image_file))
+            if GrLog.numErrors() > 0:
+                self.stoneInfo.set("Errors during file loading, see the log")
+            else:
+                ftitle = ""
+                if params_loaded: ftitle = " (with params)"
+                self.stoneInfo.set("File loaded{ft}: {fn}".format(ft = ftitle, fn = self.board.image_file))
 
         except:
-            logging.error(sys.exc_info()[1])
-            self.stoneInfo.set("ERROR: {}".format(sys.exc_info()[1]))
+            logging.exception("Error")
+            self.stoneInfo.set("Error when loading image, see the log")
 
 
 # Main function
