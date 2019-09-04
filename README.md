@@ -10,17 +10,17 @@ The algorithm per se is the following:
 
 2. Detect board pararameters (edges, board size):
 
-..* Run HoughLinesP lines detection which would return multiple line segments
+⋅⋅* Run HoughLinesP lines detection which would return multiple line segments
 
-..* Remove lines which are too close to image borders
+⋅⋅* Remove lines which are too close to image borders
 
-..* Find board edges (minimum/maximum X and Y of line segments)
+⋅⋅* Find board edges (minimum/maximum X and Y of line segments)
 
-..* HoughLines which would return all lines (it returns line orientation but not line origin)
+⋅⋅* HoughLines which would return all lines (it returns line orientation but not line origin)
 
-..* Find horizontal and vertical lines and remove lines too close to each other
+⋅⋅* Find horizontal and vertical lines and remove lines too close to each other
 
-..* Assume a board size as number of horizontal/vertical lines
+⋅⋅* Assume a board size as number of horizontal/vertical lines
 
 3. Find stones (black and white):
 
