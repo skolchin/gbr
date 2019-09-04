@@ -29,7 +29,7 @@ Currently, the following filters are implemented:
   * Blur
   * Pyramid mean filtering (useful when stones have textured faces or extensive glare)
   * Watershed (post-filter).
-  
+
 Filter and board detection parameters can be changed through the interface and saved to property file (.JSON). The property file is loaded automatically when an image is loaded for processing. Board recognition parameters can also be saved in another JSON file with .JGF extension.
 
 Currently, the program performs quite well on a computer-generated boards. In complex cases, additional parameter tuning might be needed.
@@ -54,11 +54,13 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 ## Changelog
 
-03/09/2019:
+04/09/2019:
 
 * New GrTag module added to support easy image database navigation and usage
 * gr.find_board() rewritten to better recognize board edges/net
-* Added: logging in gr and grboard modules, "Show Log" button in GbrGui()
+* Added: logging in gr and grboard modules, log processing and "Show Log" button in user interfaces
+* Added: watershed morphing parameter WS_MORPH_(B|W). If set, image is dilated/eroded before applying watershed allowing to separate connected stone circles
+* Changed: ViewAnno GUI layout
 
 22/08/2019:
 

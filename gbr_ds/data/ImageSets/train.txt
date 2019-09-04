@@ -26,7 +26,11 @@ go_board_32
 go_board_35
 go_board_37
 go_board_4
+go_board_44
+go_board_45
+go_board_46
 go_board_5
 go_board_6
 go_board_7
 go_board_8a
+go_board_43

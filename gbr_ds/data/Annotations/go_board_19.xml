@@ -1,27 +1,14 @@
 <annotation>
 	<folder>folder</folder>
 	<filename>go_board_19.png</filename>
-	<path>C:\Users\kol\Documents\kol\gbr\gbr_ds\data\Images\go_board_19.png</path>
-	<source>C:\Users\kol\Documents\kol\gbr\img\go_board_19.png</source>
+	<path>C:\Users\skolchin\Documents\kol\gbr\gbr_ds\data\Images\go_board_19.png</path>
+	<source>C:\Users\skolchin\Documents\kol\gbr\img\go_board_19.png</source>
 	<size>
 		<width>2048</width>
 		<height>2048</height>
 		<depth>3</depth>
 	</size>
 	<segmented>Unspecified</segmented>
-	<object>
-		<name>black</name>
-		<pose>Unspecified</pose>
-		<truncated>Unspecified</truncated>
-		<difficult>Unspecified</difficult>
-		<position>D16</position>
-		<bndbox>
-			<xmin>327</xmin>
-			<ymin>1609</ymin>
-			<xmax>433</xmax>
-			<ymax>1715</ymax>
-		</bndbox>
-	</object>
 	<object>
 		<name>black</name>
 		<pose>Unspecified</pose>
@@ -40,6 +27,32 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
+		<position>C4</position>
+		<bndbox>
+			<xmin>220</xmin>
+			<ymin>327</ymin>
+			<xmax>326</xmax>
+			<ymax>433</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>black</name>
+		<pose>Unspecified</pose>
+		<truncated>Unspecified</truncated>
+		<difficult>Unspecified</difficult>
+		<position>D16</position>
+		<bndbox>
+			<xmin>327</xmin>
+			<ymin>1609</ymin>
+			<xmax>433</xmax>
+			<ymax>1715</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>black</name>
+		<pose>Unspecified</pose>
+		<truncated>Unspecified</truncated>
+		<difficult>Unspecified</difficult>
 		<position>E3</position>
 		<bndbox>
 			<xmin>434</xmin>
@@ -49,16 +62,16 @@
 		</bndbox>
 	</object>
 	<object>
-		<name>black</name>
+		<name>white</name>
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
-		<position>C4</position>
+		<position>F17</position>
 		<bndbox>
-			<xmin>220</xmin>
-			<ymin>327</ymin>
-			<xmax>326</xmax>
-			<ymax>433</ymax>
+			<xmin>546</xmin>
+			<ymin>1721</ymin>
+			<xmax>642</xmax>
+			<ymax>1817</ymax>
 		</bndbox>
 	</object>
 	<object>
@@ -98,19 +111,6 @@
 			<ymin>225</ymin>
 			<xmax>1817</xmax>
 			<ymax>321</ymax>
-		</bndbox>
-	</object>
-	<object>
-		<name>white</name>
-		<pose>Unspecified</pose>
-		<truncated>Unspecified</truncated>
-		<difficult>Unspecified</difficult>
-		<position>F17</position>
-		<bndbox>
-			<xmin>546</xmin>
-			<ymin>1721</ymin>
-			<xmax>642</xmax>
-			<ymax>1817</ymax>
 		</bndbox>
 	</object>
 </annotation>
