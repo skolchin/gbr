@@ -6,25 +6,33 @@ The project is build on wonderfull [OpenCV](https://opencv.org/) library.
 
 The algorithm per se is the following:
 
-1. Make a gray image from the source image.
-2. Detect board pararameters (edges, board size):
-    * Run HoughLinesP lines detection which would return multiple line segments
-    * Remove lines which are too close to image borders
-    * Find board edges (minimum/maximum X and Y of line segments)
-    * HoughLines which would return all lines (it returns line orientation but not line origin)
-    * Find horizontal and vertical lines and remove lines too close to each other
-    * Assume a board size as number of horizontal/vertical lines
+1. Detect board properties (board edges, spacing and board size):
+    * Remove parts of image close to border
+    * Run HoughLinesP detection and determine line segments
+    * Calculate board edges as minimum and maximum coordinates of horizontal/vertical line segments
+    * Make up a new image and draw all line segments (thus removing any noise)
+    * Run HoughLines to determine lines (it returns line orientation but not line origin)
+    * Assume a board size as number of horizontal/vertical lines found
 
-3. Find stones (black and white):
+2. Find stones (black and white):
+    * Apply pre-filters with parameters specified through the interface
+    * Run HoughCircles to detect circles and convert found X,Y coordinates to board position
+    * Apply post-filters to tune stone radius
 
-  * Apply pre-filters specified in parameters (channel splitting, thresholding, dilating, eroding, etc)
+3. Eliminate duplicates where black and white stones occupy the same board position
 
-  * Run HoughCircles to detect circles, convert their X,Y coordinates to board position
+Currently, the following filters are implemented:
+  * Channel splitting (red channel is used in white stone detections, blue - in black one)
+  * Thresholding
+  * Dilating
+  * Eroding
+  * Blur
+  * Pyramid mean filtering (useful when stones have textured faces or extensive glare)
+  * Watershed (post-filter).
+  
+Filter and board detection parameters can be changed through the interface and saved to property file (.JSON). The property file is loaded automatically when an image is loaded for processing. Board recognition parameters can also be saved in another JSON file with .JGF extension.
 
-  * Apply post-filters to tune circle radius (watershed)
-
-
-There are some tuning parameters for each of the steps and they are to be adjusted for each particular board. After the tuning, the program performs quite well on a computer-generated boards.
+Currently, the program performs quite well on a computer-generated boards. In complex cases, additional parameter tuning might be needed.
 
 As for real board images, they have to be manually adjusted to have all edges to be equal to abount 90 degree and board lines - to be horizontal/vertical. After that, they are processed satisfactory, but more tuning on parameters might be required.
 
