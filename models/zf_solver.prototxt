@@ -1,4 +1,4 @@
-train_net: "./models/train.prototxt"
+train_net: "./models/zf_train.prototxt"
 
 base_lr: 0.0001
 lr_policy: "step"
