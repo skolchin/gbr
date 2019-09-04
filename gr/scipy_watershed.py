@@ -18,14 +18,14 @@ from scipy import ndimage
 # and adopted so it currently uses stone coordinations as an indicators of peaks
 # instead of original "max peak value" method
 # TODO: rewrite to use only OpenCV methods
-def apply_watershed(img, stones, n_thresh, f_bw, f_debug = False):
+def apply_watershed(img, stones, n_thresh, f_bw, n_morph = 0, f_debug = False):
     WS_MAX = 255
 
+    kernel  = np.ones((3,3),np.uint8)
     if f_bw == 'B':
        # To have watershed properly determine black stones, board dividers
        # have to be removed with dilation, source image converted to negative
-       kernel  = np.ones((3,3),np.uint8)
-       img2 = cv2.dilate(img,kernel,iterations=1)
+       img2 = cv2.dilate(img,kernel,iterations=n_morph+1)
        img2 = cv2.erode(img2,kernel,iterations=1)
        img2 = cv2.bitwise_not(img2)
        ret, t2 = cv2.threshold(img2, n_thresh, WS_MAX, cv2.THRESH_BINARY)

@@ -20,6 +20,7 @@ from view_anno import ViewAnnoGui
 import re
 from gr.ui_extra import treeview_sort_columns
 import importlib
+from gr.grlog import GrLog
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
@@ -65,8 +66,9 @@ class GrTagGui:
           self.fileList.heading("json", text="JSON",anchor=tk.W)
           self.fileList.heading("jgf", text="JGF",anchor=tk.W)
           self.fileList.heading("ds", text="DS",anchor=tk.W)
-          #treeview_sort_columns(self.fileList)
+          treeview_sort_columns(self.fileList)
 
+          self.last_sel = None
           self.load_files()
 
           self.fileList.pack(side = tk.TOP, fill=tk.BOTH, expand = True)
@@ -101,7 +103,8 @@ class GrTagGui:
             #except:
             #    pass
 
-      def _add_file(self, file_name, file_list):
+      def _get_file_prop(self, file_name):
+          """Returns list of properties (display column values) for given file"""
           file_state = [ \
                      [file_name.with_suffix('.json'), "-", 0],
                      [file_name.with_suffix('.jgf'), "-", 0],
@@ -122,31 +125,44 @@ class GrTagGui:
                  if f[2] < prev_mt: f[1] = '<'
                  prev_mt = f[2]
 
-          # Add to file list
           values = [f[1] for f in file_state]
-          file_list[file_name.name] = values
+          return values
+
 
       def load_files(self):
-          file_list = dict()
-          for ext in ('*.png', '*.jpg'):
-              g = self.src_path.glob(ext)
-              for x in g:
-                  if x.is_file(): self._add_file(x, file_list)
-
+          """Loads list of images to the files table"""
           def _sort_key(f):
               r = re.search(r"\d+", f)
               if r is None: return 0
               else: return int(r.group())
 
+          file_list = dict()
+          for ext in ('*.png', '*.jpg'):
+              g = self.src_path.glob(ext)
+              for x in g:
+                  if x.is_file():
+                     file_list[x.name] = self._get_file_prop(x)
+
           for f in sorted(file_list.keys(), key = _sort_key):
               self.fileList.insert("", "end", text = f, values=file_list[f])
+
+      def update_item(self, sel):
+          """Updates item properties"""
+          if sel is None: return
+          file = self.fileList.item(sel)['text']
+          props = self._get_file_prop(self.src_path.joinpath(file))
+          self.fileList.item(sel, values = props)
+
 
       def sel_changed_callback(self, event):
           sel = self.fileList.selection()
           if len(sel) == 0: return
 
+          self.update_item(self.last_sel)
+
           item = self.fileList.item(sel)
           file = item['text']
+
           nb_index = self.nb.index(self.nb.select())
           if nb_index == 0:
             file = self.src_path.joinpath(file)
@@ -158,21 +174,17 @@ class GrTagGui:
             if self.testNetGui is not None:
                 file = self.src_path.joinpath(file)
                 self.testNetGui.load_image(str(file))
+          self.last_sel = sel
 
 def main():
     window = tk.Tk()
-    window.title("Go tagging")
+    window.title("Go board tagging")
 
+    log = GrLog.init()
     gui = GrTagGui(window)
 
-    #window.grid_columnconfigure(0, weight=1)
-    #window.grid_rowconfigure(0, weight=1)
-    #window.resizable(True, True)
-
-    # Main loop
     window.mainloop()
 
-    # Clean up
     cv2.destroyAllWindows()
 
 

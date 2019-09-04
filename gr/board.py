@@ -85,7 +85,7 @@ class GrBoard(object):
         self._gen_board = True
 
     def save_image(self, filename = None, max_size = None):
-        """Saves image under new name. If max_size provided, resizes before"""
+        """Saves image under new name. If max_size provided, resizes image before"""
         if self._img is None:
            raise Exception('Image was not loaded')
 
@@ -93,7 +93,7 @@ class GrBoard(object):
         im = self._img
         if not max_size is None: im = resize(im, max_size)
 
-        logging.info('Saving to {}'.format(filename))
+        logging.info('Saving image to {}'.format(filename))
         try:
             cv2.imwrite(str(filename), im)
         except:
@@ -104,6 +104,7 @@ class GrBoard(object):
         self._gen_board = False
 
     def load_params(self, filename):
+        """Loads recognition parameters from specified file (JSON)"""
         p = json.load(open(str(filename)))
         r = dict()
         for key in self._params.keys():
@@ -113,6 +114,7 @@ class GrBoard(object):
         return r
 
     def load_board_info(self, filename, f_use_gen_img = True, path_override = None):
+        """Loads board information from specified file (JGF)"""
         jgf = json.load(open(str(filename)))
         self._res = jgf_to_gres(jgf)
 
@@ -130,6 +132,7 @@ class GrBoard(object):
             self.generate(shape)
 
     def save_params(self, filename = None):
+        """Saves recognition parameters to specified file (JSON)"""
         if filename is None:
             filename = str(Path(self._img_file).with_suffix('.json'))
         with open(filename, "w") as f:
@@ -137,6 +140,7 @@ class GrBoard(object):
         return filename
 
     def save_board_info(self, filename = None):
+        """Saves board information to specified file (JGF)"""
         if filename is None:
             filename = str(Path(self._img_file).with_suffix('.jgf'))
 
@@ -173,6 +177,7 @@ class GrBoard(object):
         self.load_image(fn, f_process = f_process)
 
     def save_annotation(self, filename = None):
+        """Save annotation (XML) to specified file"""
         if self._img is None:
             return None
         if filename is None:
@@ -316,7 +321,8 @@ class GrBoard(object):
         else:
             r = dict()
             r[GR_EDGES] = self._res[GR_EDGES]
-            r[GR_SPACING] = self._res[GR_SPACING]
+            r[GR_SPACING] = (round(self._res[GR_SPACING][0],2), \
+                             round(self._res[GR_SPACING][1],2))
             r[GR_NUM_CROSS_H] = self._res[GR_NUM_CROSS_H]
             r[GR_NUM_CROSS_W] = self._res[GR_NUM_CROSS_W]
             r[GR_BOARD_SIZE] = self._res[GR_BOARD_SIZE]

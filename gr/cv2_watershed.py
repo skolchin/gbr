@@ -10,20 +10,35 @@
 
 import cv2
 import numpy as np
+import logging
 
 # Apply watershed transformation
 # The algorithm derived from OpenCV's publication 'Image Segmentation with Watershed Algorithm'
-# and adopted to use stone coordinations as an indicators of peaks
-# instead of original "max peak value" method
-def apply_watershed(gray, stones, n_thresh, f_bw, f_debug = False):
-    # Prepare gray image
+# and adopted to use stone coordinations as an indicators of peaks instead of original "max peak value" method
+def apply_watershed(gray, stones, n_thresh, f_bw, n_morph = 0, f_debug = False):
+    """Apply watershed transformation to given board image
+    gray: source image (either gray or one of channels)
+    stones: array of board stone X,Y coordinations determined by some other method
+    n_thresh: threshold level
+    f_bw: either B for black stones or W for white
+    n_morph: number of iterations of morphological transformation (0 if not needed)
+    f_debug: if True, debug images are to be shown with cv2.imshow() call
+    Returns: array of stones in X,Y,R format and a debug image with stones plotted
+    """
+
+    # Preprocess image
+    kernel = np.ones((3, 3), dtype = np.uint8)
     if f_bw == 'B':
-       # To have watershed properly determine black stones, board dividers
-       # have to be removed with dilation
-       # Source image is to be converted to negative
-       kernel = np.ones((3, 3), dtype = np.uint8)
-       gray = cv2.dilate(gray, kernel, iterations = 1)
+       # To have watershed properly determine black stones, board dividers have to be removed
+       # Therefore, dilate() is applied n_morph+1 times
+       n_morph += 1
+       gray = cv2.dilate(gray, kernel, iterations = n_morph)
+
+       # Converted source image to negative
        gray = cv2.bitwise_not(gray)
+    elif n_morph > 0:
+       # White images should be eroded, not dilated
+       gray = cv2.erode(gray, kernel, iterations = n_morph)
 
     if f_debug:
        cv2.imshow('Gray', gray)
@@ -62,11 +77,10 @@ def apply_watershed(gray, stones, n_thresh, f_bw, f_debug = False):
                       break
                if f: break
            if not f:
-              # Ignore the stone
-              print('Cannot find peak for stone ({},{},{})'.format(x,y,r))
+              # Ignore the stone, but save an error
+              logging.error('Cannot find peak for stone ({},{},{})'.format(x,y,r))
 
     if f_debug:
-       #m = np.array(peaks*10000).astype(np.uint8)
        m = np.zeros((thresh.shape[0],thresh.shape[1],3), dtype = np.uint8)
        for i in range(3): m[:,:,i] = thresh
        for y in range(peaks.shape[0]):
@@ -134,10 +148,11 @@ def apply_watershed(gray, stones, n_thresh, f_bw, f_debug = False):
         cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cm = max(cnts, key=cv2.contourArea)
         ((x, y), r) = cv2.minEnclosingCircle(cm)
-        if f_debug: print("x = {}, y = {}, r = {}".format(x,y,r))
+        if f_debug: logging.debug("CV2_WATERSHED: x = {}, y = {}, r = {}".format(x,y,r))
 
         if r <= 20.0:
-           rt.append ([int(x), int(y), int(r)])
+           # Radius increased to number of pixels removed with erode/dilate
+           rt.append ([int(x), int(y), int(r + n_morph)])
            cv2.circle(dst, (int(x), int(y)), int(r), (255,255,255), -1)
 
     # Filter out outlied R's

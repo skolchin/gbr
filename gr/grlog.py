@@ -68,42 +68,48 @@ class GrLogWindow(simpledialog.Dialog):
         self.bodyMaster.pack_configure(fill = tk.BOTH, expand = True)
 
 
-log_stream = None
+class GrLog(object):
+    """GBR logging system"""
 
-def setupGrLog(lvl = logging.INFO):
-    """Initialize GBR logging"""
-    global log_stream
+    def __init__(self, level = logging.INFO):
+        """Initialize logging system"""
+        self.log_stream = StringIO()
+        logging.basicConfig (stream=self.log_stream, format='%(levelname)s: %(message)s', level=level)
 
-    if log_stream is None:
-       log_stream = StringIO()
-       logging.basicConfig (stream=log_stream, format='%(levelname)s: %(message)s', level=lvl)
+    def getLog(self):
+        """Returns current log entries as array of strings"""
+        return self.log_stream.getvalue().splitlines()
 
-def getGrLog():
-    """Get log as a list of strings"""
-    global log_stream
+    def showLog(self, root):
+        """Show Log info dialog. If no log written, returns False"""
+        log = self.log_stream.getvalue()
+        if not log is None and len(log) > 0:
+           dlg = GrLogWindow(root, log_string = log)
+           return True
+        else:
+           return False
 
-    if log_stream is None:
-       return None
-    else:
-       return log_stream.getvalue().splitlines()
+    def clearLog(self):
+        """Clear log"""
+        self.log_stream.truncate(0)
+        self.log_stream.seek(0)
 
-def showGrLog(root):
-    """Show Log info dialog"""
-    global log_stream
+    __log = None
 
-    if not log_stream is None:
-       log = log_stream.getvalue()
-       if not log is None and len(log) > 0:
-          dlg = GrLogWindow(root, log_string = log)
-          return True
+    @staticmethod
+    def init():
+        if GrLog.__log is None: GrLog.__log = GrLog()
+        return GrLog.__log
 
-    return False
+    @staticmethod
+    def get():
+        return GrLog.__log.getLog()
 
-def clearGrLog():
-    """Clear log"""
-    global log_stream
-    if not log_stream is None:
-       log_stream.truncate(0)
-       log_stream.seek(0)
+    @staticmethod
+    def show(root):
+        return GrLog.__log.showLog(root)
 
+    @staticmethod
+    def clear():
+        GrLog.__log.clearLog()
 
