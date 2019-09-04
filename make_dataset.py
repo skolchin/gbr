@@ -14,8 +14,8 @@ import json
 import numpy as np
 import math
 import os
-from gr.board import GrBoard
 import logging
+from gr.board import GrBoard
 
 DEF_DS_IMG_SIZE =  { 'test': 0, 'train': 2048 }
 DS_FORMAT_PASCAL = "pascal"
@@ -38,7 +38,6 @@ def generate_dataset(src_path, meta_path, img_path, sets_path, img_size = DEF_DS
 
         if file.endswith('.jgf'):
             # Process JGF file. Images with JGF would go training dataset
-            logging.info ("Loading file {} to training dataset".format(src_file))
             board.load_board_info(src_file, f_use_gen_img = False, path_override = src_path)
             stage = "train"
         elif file.endswith('.jpg') or file.endswith('.png'):
@@ -53,10 +52,11 @@ def generate_dataset(src_path, meta_path, img_path, sets_path, img_size = DEF_DS
         else:
             continue
 
+        logging.info ("Appending to dataset {}".format(stage))
+
         # Convert to PNG
         image_file = os.path.basename(board.image_file)
         png_file = os.path.splitext(os.path.join(img_path,image_file))[0] + '.png'
-        logging.info("Converting {} to {}".format(board.image_file, png_file))
         if not img_size[stage] is None and img_size[stage] > 0:
             board.resize_board(img_size[stage])
         board.save_image(str(png_file))
@@ -66,7 +66,7 @@ def generate_dataset(src_path, meta_path, img_path, sets_path, img_size = DEF_DS
         board.save_annotation(meta_file)
 
         # Add to file list
-        file_list[stage].append(os.path.basename(png_file))
+        file_list[stage].append(os.path.splitext(os.path.basename(png_file))[0])
 
     # Save datasets
     for mode in file_list:
@@ -81,7 +81,7 @@ def generate_dataset(src_path, meta_path, img_path, sets_path, img_size = DEF_DS
         logging.info("{} entries written".format(count))
 
 def main():
-    logging.basicConfig(format='%(asctime)s %(message)s', level = logging.INFO)
+    logging.basicConfig(format='%(levelname)s: %(message)s', level = logging.INFO)
 
     root_path = Path(__file__).parent.resolve()
     ds_path = root_path.joinpath("gbr_ds")

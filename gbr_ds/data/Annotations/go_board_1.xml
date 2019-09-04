@@ -274,12 +274,12 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
-		<position>B2</position>
+		<position>M17</position>
 		<bndbox>
-			<xmin>107</xmin>
-			<ymin>107</ymin>
-			<xmax>195</xmax>
-			<ymax>195</ymax>
+			<xmin>1171</xmin>
+			<ymin>1558</ymin>
+			<xmax>1259</xmax>
+			<ymax>1646</ymax>
 		</bndbox>
 	</object>
 	<object>
@@ -339,12 +339,12 @@
 		<pose>Unspecified</pose>
 		<truncated>Unspecified</truncated>
 		<difficult>Unspecified</difficult>
-		<position>M17</position>
+		<position>B2</position>
 		<bndbox>
-			<xmin>1171</xmin>
-			<ymin>1558</ymin>
-			<xmax>1259</xmax>
-			<ymax>1646</ymax>
+			<xmin>107</xmin>
+			<ymin>107</ymin>
+			<xmax>195</xmax>
+			<ymax>195</ymax>
 		</bndbox>
 	</object>
 	<object>

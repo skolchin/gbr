@@ -124,12 +124,12 @@ def addImagePanel(parent, caption, btn_params, image = None, frame_callback = No
     """Add a panel with caption and buttons"""
     # Panel itself
     panel = tk.Frame(parent)
-    panel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True, padx = PADX, pady = PADY)
+    panel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
     # Header
     header = tk.Frame(panel)
     #header.pack(side = tk.TOP, fill = tk.X, expand = True, anchor = tk.N)
-    header.grid(row = 0, column = 0, padx = PADX, pady = PADY, sticky = "nwe")
+    header.grid(row = 0, column = 0, padx = 2, pady = 2, sticky = "nwe")
 
     # Header label
     label = tk.Label(header, text = caption)
