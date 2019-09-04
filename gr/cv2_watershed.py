@@ -16,14 +16,16 @@ import logging
 # The algorithm derived from OpenCV's publication 'Image Segmentation with Watershed Algorithm'
 # and adopted to use stone coordinations as an indicators of peaks instead of original "max peak value" method
 def apply_watershed(gray, stones, n_thresh, f_bw, n_morph = 0, f_debug = False):
-    """Apply watershed transformation to given board image
-    gray: source image (either gray or one of channels)
-    stones: array of board stone X,Y coordinations determined by some other method
-    n_thresh: threshold level
-    f_bw: either B for black stones or W for white
-    n_morph: number of iterations of morphological transformation (0 if not needed)
-    f_debug: if True, debug images are to be shown with cv2.imshow() call
-    Returns: array of stones in X,Y,R format and a debug image with stones plotted
+    """Apply watershed transformation to given board image.
+
+    gray        source image (either gray or one of channels)
+    stones      array of board stone X,Y coordinations determined by some other method
+    n_thresh    threshold level
+    f_bw        either B for black stones or W for white
+    n_morph     number of iterations of morphological transformation (0 if not needed)
+    f_debug     if True, debug images are to be shown with cv2.imshow() call
+
+    Returns     array of stones in X,Y,R format and a debug image with stones plotted
     """
 
     # Preprocess image
@@ -61,8 +63,8 @@ def apply_watershed(gray, stones, n_thresh, f_bw, n_morph = 0, f_debug = False):
            #cv2.circle(peaks, (x,y), 1, (i+1), -1)
            peaks[y,x] = (i+1)
         else:
-           # Circle center falls to black point
-           # Loop around to find white point on thresholded image
+           # Circle center falls to a black point
+           # Look around to find a white point within small radius
            r = 5
            r2 = r*2
            f = False
@@ -77,8 +79,8 @@ def apply_watershed(gray, stones, n_thresh, f_bw, n_morph = 0, f_debug = False):
                       break
                if f: break
            if not f:
-              # Ignore the stone, but save an error
-              logging.error('Cannot find peak for stone ({},{},{})'.format(x,y,r))
+              # No white found. Ignore the stone, but save an error
+              logging.error('WATERSHED: Cannot find peak for stone ({},{},{})'.format(x,y,r))
 
     if f_debug:
        m = np.zeros((thresh.shape[0],thresh.shape[1],3), dtype = np.uint8)
@@ -148,10 +150,12 @@ def apply_watershed(gray, stones, n_thresh, f_bw, n_morph = 0, f_debug = False):
         cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cm = max(cnts, key=cv2.contourArea)
         ((x, y), r) = cv2.minEnclosingCircle(cm)
-        if f_debug: logging.debug("CV2_WATERSHED: x = {}, y = {}, r = {}".format(x,y,r))
+        if f_debug: logging.info("CV2_WATERSHED: marker {}: ({}, {}, {})".format(c,x,y,r))
 
-        if r <= 20.0:
-           # Radius increased to number of pixels removed with erode/dilate
+        if r > 20.0:
+            logging.info("WATERSHED: Ignoring marker {}: ({}, {}, {})".format(c,x,y,r))
+        else:
+           # Increase radius to number of pixels removed with erode/dilate
            rt.append ([int(x), int(y), int(r + n_morph)])
            cv2.circle(dst, (int(x), int(y)), int(r), (255,255,255), -1)
 
