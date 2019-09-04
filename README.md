@@ -110,7 +110,7 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 - [x] Add stone reconcilation (detection of stones occupying the same position)
 
-- [x] Add logging during board processing
+- [x] Add logging during board processing/dataset generation
 
 - [ ] Adopt the algorithm to the photos of real boards (make functions to set edges, rotate board, correct skewness, etc)
 
