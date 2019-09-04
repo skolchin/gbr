@@ -132,9 +132,12 @@ def find_stones(src_img, params, res, f_bw):
            #gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
            gray = _apply_channel_mask(img, params, f_bw)
            n_thresh = n_ws
-           if n_thresh == 1: n_thresh = 190         # backward comp.
+           if n_thresh == 1: n_thresh = 190         # backward compatibility
+           n_morph = params['WS_MORPH_' + f_bw]
 
-           ws_stones, ws_img = apply_watershed(gray, prev_stones, n_thresh, f_bw)
+           ws_stones, ws_img = apply_watershed(gray = gray, stones = prev_stones, \
+                      n_thresh = n_thresh, f_bw = f_bw, n_morph = n_morph)
+
            res['IMG_WATERSHED_' + f_bw] = ws_img
            return ws_stones
 
@@ -181,14 +184,14 @@ def find_stones(src_img, params, res, f_bw):
     # Process image with pre-filters
     filtered_img = src_img.copy()
     for f in pre_filters:
-        logging.info("Applying pre-filter {} for {}".format(f, f_bw))
+        logging.info("Applying pre-filter {} for {} color".format(f, f_bw))
         filtered_img = pre_filters[f](filtered_img, params, f_bw)
     res['IMG_MORPH_' + f_bw] = filtered_img
 
     # Process image with post-filters
     stones = None
     for f in post_filters:
-        logging.info("Applying post-filter {} for {}".format(f, f_bw))
+        logging.info("Applying post-filter {} for {} color".format(f, f_bw))
         new_stones = post_filters[f](src_img, filtered_img, params, f_bw, stones)
         if new_stones is None:
            logging.info("No stones found after applying post-filter")
@@ -322,11 +325,11 @@ def find_board(img, params, res):
 
     # Determine edges
     if hl[0] is None:
-        corner1 = (vl[0][0], vl[1][1])
-        corner2 = (vl[0][1], vl[1][0])
+        corner1 = (int(vl[0][0]), int(vl[1][1]))
+        corner2 = (int(vl[0][1]), int(vl[1][0]))
     else:
-        corner1 = (min(hl[0][0], vl[0][0]), min(hl[0][1], vl[0][1]))
-        corner2 = (max(hl[1][0], vl[1][0]), max(hl[1][1], vl[1][1]))
+        corner1 = (int(min(hl[0][0], vl[0][0])), int(min(hl[0][1], vl[0][1])))
+        corner2 = (int(max(hl[1][0], vl[1][0])), int(max(hl[1][1], vl[1][1])))
 
     brd_edges = (corner1, corner2)
     res[GR_EDGES] = brd_edges
@@ -396,18 +399,12 @@ def find_board(img, params, res):
                 break
 
     if size is None:
-        # Take size which is more than minimum one
-        if hcross > DEF_AVAIL_SIZES[0] and vcross > DEF_AVAIL_SIZES[0]:
-            size = min(hcross, vcross)
-        elif hcross > DEF_AVAIL_SIZES[0]:
-            size = hcross
-        elif vcross > DEF_AVAIL_SIZES[0]:
-            size = vcross
-
-    if size is None:
-        # Oops, take a default one
-        logging.error("Cannot properly determine board size, fall back to default")
-        size = DEF_BOARD_SIZE
+        # Take size which is more than minimum one (9)
+        size = max(min(hcross, vcross),DEF_AVAIL_SIZES[0])
+        if size > MAX_BOARD_SIZE:
+            # Oops, take a default one
+            logging.error("Cannot properly determine board size, fall back to default")
+            size = DEF_BOARD_SIZE
 
     res[GR_BOARD_SIZE] = size
     logging.info("Detected board size: {}".format(size))

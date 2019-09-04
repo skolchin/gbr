@@ -11,13 +11,14 @@ from gr.board import GrBoard
 from gr.utils import img_to_imgtk, resize2, format_stone_pos
 from gr.grdef import *
 from gr.ui_extra import *
-from gr.grlog import setupGrLog, showGrLog, clearGrLog
+from gr.grlog import GrLog
 
 import numpy as np
 import cv2
 import sys
 import os
 from PIL import Image, ImageTk
+import logging
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
@@ -250,7 +251,8 @@ class GbrGUI(object):
 
     # Show log button callback
     def show_log_callback(self):
-        if not self.board.is_gen_board: showGrLog(self.root)
+        if not self.board.is_gen_board:
+           GrLog.show(self.root)
 
     # Callback for canvas configuration
     def on_scroll_configure(self, event):
@@ -376,7 +378,7 @@ class GbrGUI(object):
     def update_board(self, reprocess = True):
         # Process original image
         if self.board.results is None or reprocess:
-           clearGrLog()
+           GrLog.clear()
            try:
                self.board.process()
            except:
@@ -420,28 +422,30 @@ class GbrGUI(object):
     # Load specified image
     def load_image(self, fn):
         # Load the image
-        clearGrLog()
+        GrLog.clear()
         try:
             params_loaded = self.board.load_image(fn, f_with_params = True)
+
+            self.origImgTk, self.zoom = self.make_imgtk(self.board.image)
+            self.origImgPanel.configure(image = self.origImgTk)
+
+            # Reset button state to default
+            self.buttonState = DEF_BTN_STATE.copy()
+            for key in self.buttonState:
+                self.imgButtons[key].state = self.buttonState[key]
+
+            # Process image
+            self.update_board(reprocess = False)
+
+            # Update status
+            ftitle = ""
+            if params_loaded: ftitle = " (with params)"
+            self.stoneInfo.set("File loaded{ft}: {fn}".format(ft = ftitle, fn = self.board.image_file))
+
         except:
+            logging.error(sys.exc_info()[1])
             self.stoneInfo.set("ERROR: {}".format(sys.exc_info()[1]))
-            return
 
-        self.origImgTk, self.zoom = self.make_imgtk(self.board.image)
-        self.origImgPanel.configure(image = self.origImgTk)
-
-        # Reset button state to default
-        self.buttonState = DEF_BTN_STATE.copy()
-        for key in self.buttonState:
-            self.imgButtons[key].state = self.buttonState[key]
-
-        # Process image
-        self.update_board(reprocess = False)
-
-        # Update status
-        ftitle = ""
-        if params_loaded: ftitle = " (with params)"
-        self.stoneInfo.set("File loaded{ft}: {fn}".format(ft = ftitle, fn = self.board.image_file))
 
 # Main function
 def main():
@@ -449,8 +453,8 @@ def main():
     window = tk.Tk()
     window.title("Go board")
 
+    log = GrLog.init()
     gui = GbrGUI(window)
-    setupGrLog()
 
     #window.grid_columnconfigure(0, weight=1)
     #window.grid_rowconfigure(0, weight=1)

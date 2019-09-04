@@ -171,7 +171,7 @@ def treeview_sort_columns(tv):
         # reverse sort next time
         tv.heading(col, command = lambda: _sort(tv, col, not reverse))
 
-    for col in range(3):
-        tv.heading(col, command = lambda: _sort(tv, col, False))
+    for col in range(len(tv['columns'])):
+        tv.heading(col, command = lambda _col=col: _sort(tv, _col, col == 0))
 
 

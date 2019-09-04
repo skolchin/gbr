@@ -9,22 +9,23 @@
 #-------------------------------------------------------------------------------
 
 # Constants
-COLOR_WHITE = (255, 255, 255)
-COLOR_BLACK = (0,0, 0)
-DEF_IMG_SIZE = (500, 500)
-DEF_IMG_COLOR = (80, 145, 210)
-DEF_BOARD_SIZE = 19
-DEF_AVAIL_SIZES = [9, 13, 19]
-CV_HEIGTH = 0
-CV_WIDTH = 1
-CV_CHANNEL = 2
-GR_X = 0
-GR_Y = 1
-GR_A = 2
-GR_B = 3
-GR_R = 4
-GR_FROM = 0
-GR_TO = 1
+COLOR_WHITE = (255, 255, 255)     # white
+COLOR_BLACK = (0,0, 0)            # black
+DEF_IMG_SIZE = (500, 500)         # default shape for board generation
+DEF_IMG_COLOR = (80, 145, 210)    # default generated board color
+DEF_BOARD_SIZE = 19               # default board size
+DEF_AVAIL_SIZES = [9, 13, 19]     # available standard board sizes
+MAX_BOARD_SIZE = 21               # maximum board size
+CV_HEIGTH = 0                     # index of height dimension of OpenCv image
+CV_WIDTH = 1                      # index of width dimension of OpenCv image
+CV_CHANNEL = 2                    # index of channel dimension of OpenCv image
+GR_X = 0                          # index of X coordinate dimension in stones array
+GR_Y = 1                          # index of Y coordinate dimension in stones array
+GR_A = 2                          # index of X board position dimension in stones array
+GR_B = 3                          # index of Y board position dimension in stones array
+GR_R = 4                          # index of stone radius dimension in stones array
+GR_FROM = 0                       # index of line start in lines array
+GR_TO = 1                         # index of line end in lines array
 
 # Default parameter values
 DEF_GR_PARAMS = {
@@ -54,7 +55,9 @@ DEF_GR_PARAMS = {
     "STONES_ERODE_B": 1,
     "STONES_ERODE_W": 0,
     "WATERSHED_B": 0,
+    "WS_MORPH_B": 0,
     "WATERSHED_W": 0,
+    "WS_MORPH_W": 0,
     "PYRAMID_B": 0,
     "PYRAMID_W": 0,
 }
@@ -83,6 +86,7 @@ GR_PARAMS_PROP = {
     "STONES_ERODE_B": (0, 10, "Black stones detection"),
     "STONES_MAXVAL_B": (1, 255, None),
     "WATERSHED_B": (0, 255, "Black stones detection"),
+    "WS_MORPH_B": (0, 10, "Black stones detection"),
     "PYRAMID_B": (0, 1, "Black stones detection"),
 
     "BLUR_MASK_W": (0, 10, "White stones detection"),
@@ -93,6 +97,7 @@ GR_PARAMS_PROP = {
     "STONES_ERODE_W": (0, 10, "White stones detection"),
     "STONES_MAXVAL_W": (1, 255, None),
     "WATERSHED_W": (0, 255, "White stones detection"),
+    "WS_MORPH_W": (0, 10, "White stones detection"),
     "PYRAMID_W": (0, 1, "White stones detection")
 }
 
