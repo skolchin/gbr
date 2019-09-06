@@ -220,7 +220,7 @@ def find_board(img, params, res):
     params: recognition parameters (see grdef.DEF_GR_PARAMS)
     res: results dictionary (see grdef.GR_xxx)"""
 
-    MIN_LINE_LEN = 10
+    MIN_LINE_LEN = 5        # TODO: dynamic calc dep on board size
     MIN_EDGE_DIST = 6
 
     def is_horizontal(line):

@@ -155,7 +155,7 @@ class GrPascalDataset(GrDataset):
                 x = stones[i]['X']
                 y = stones[i]['Y']
                 r = stones[i]['R']
-                r = max_r
+                #r = max_r
                 pos = stones[i]['A'] + stones[i]['B']
 
                 a = r + 2
