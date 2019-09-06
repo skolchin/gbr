@@ -10,27 +10,29 @@
 import sys
 import os
 from PIL import Image, ImageTk
+from pathlib import Path
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
     import ttk
+    import tkFont as font
 else:
     import tkinter as tk
-    from tkinter import ttk
+    from tkinter import ttk, font
 
 UI_DIR = 'ui'    # directory containing ImgButton images
 PADX = 5
 PADY = 5
 
 class NLabel(tk.Label):
-    """Image frame with additional tag attached"""
+    """Label with additional tag"""
     def __init__(self, master, tag=None, *args, **kwargs):
         tk.Label.__init__(self, master, *args, **kwargs)
         self.master, self.tag = master, tag
 
 # ImageButton
 class ImgButton(tk.Label):
-    """Button with image as face"""
+    """Button with image face"""
     def __init__(self, master, tag, state, callback, *args, **kwargs):
         """Creates new ImgButton. Parameters:
 
@@ -83,6 +85,7 @@ class ImgButton(tk.Label):
         self._state = new_state
         self.configure(image = self._images[new_state])
 
+# Tooltip
 class ToolTip(object):
     """ToolTip class (see https://stackoverflow.com/questions/3221956/how-do-i-display-tooltips-in-tkinter)"""
 
@@ -125,8 +128,89 @@ def createToolTip(widget, text):
     widget.bind('<Enter>', enter)
     widget.bind('<Leave>', leave)
 
+class StatusPanel(tk.Frame):
+    """Status panel class"""
+    def __init__(self, master, max_width, *args, **kwargs):
+        tk.Frame.__init__(self, master, *args, **kwargs)
+
+        self._max_width = max_width
+        self._var = tk.StringVar()
+        self._var.set("")
+
+        self._label = tk.Label(self, textvariable = self._var)
+        self._label.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
+
+    @property
+    def status(self):
+        """Status text"""
+        return self._var.get()
+
+    @status.setter
+    def status(self, text):
+        """Status text"""
+        self.set(text)
+
+    @property
+    def max_width(self):
+        """Max status panel width in pixels"""
+        return self._max_width
+
+    @max_width.setter
+    def max_width(self, v):
+        """Max status panel width in pixels"""
+        self._max_width = v
+
+    def set(self, text):
+        """Set status as text"""
+        f = font.Font(font = self._label['font'])
+        chw = f.measure('W')
+
+        maxw = self._max_width
+        if maxw == 0:
+           maxw = self.winfo_width()
+           if maxw < 20:
+              # Window not updated yet
+              self._var.set(text)
+              return
+
+        curw = f.measure(text)
+        maxw -= chw*3
+        if curw > maxw:
+           strip_len = int((curw - maxw) / chw) + 3
+           text = text[:-strip_len] + '...'
+
+        self._var.set(text)
+
+    def set_file(self, text, file):
+        """Set status as text + file name"""
+        f = font.Font(font = self._label['font'])
+        chw = f.measure('W')
+
+        maxw = self._max_width
+        if maxw == 0:
+           maxw = self.winfo_width()
+           if maxw < 20:
+              # Window not updated yet
+              self._var.set(text)
+              return
+
+        maxw -= chw*3
+        if f.measure(text + file) > maxw:
+           # Exclude file path parts to fit in starting from 3 entry
+           parts = list(Path(file).parts)
+           for n in range(len(parts)-3):
+               parts.pop(len(parts)-2)
+               t = '\\'.join(parts)
+               if f.measure(text + t) < maxw: break
+           file = '\\'.join(parts[:-2])
+           file += '\\...\\' + parts[-1]
+
+        self._var.set(text + file)
+
+
+
 def addImagePanel(parent, caption, btn_params, image = None, frame_callback = None):
-    """Creates a panel with caption and buttons.
+    """Creates a panel with caption and buttons
 
     Parameters:
         parent         Tk window/frame to add panel to
@@ -191,3 +275,6 @@ def treeview_sort_columns(tv):
         tv.heading(col, command = lambda _col=col: _sort(tv, _col, col == 0))
 
 
+def addStatusPanel(parent, max_width = 0):
+    """Creates a status panel"""
+    return StatusPanel(parent, max_width)

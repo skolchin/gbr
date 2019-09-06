@@ -147,10 +147,8 @@ class GbrGUI(object):
 
     def __setup_status_frame(self):
         # Status bar
-        self.stoneInfo = tk.StringVar()
-        self.stoneInfo.set("")
-        self.stoneInfoPanel = tk.Label(self.statusFrame, textvariable = self.stoneInfo)
-        self.stoneInfoPanel.grid(row = 0, column = 0, sticky = tk.W, padx = 5, pady = 2)
+        self.statusInfo = addStatusPanel(self.statusFrame, self.max_img_size*2)
+        self.statusInfo.grid(row = 0, column = 0, sticky = tk.W, padx = 5, pady = 2)
 
 
     # Callback functions
@@ -184,7 +182,7 @@ class GbrGUI(object):
                 y = round(p[GR_Y],0),
                 r = round(p[GR_R],0))
             print(ct)
-            self.stoneInfo.set(ct)
+            self.statusInfo.set(ct)
 
     # Callback for mouse events on original image
     def orig_img_mouse_callback(self, event):
@@ -215,7 +213,7 @@ class GbrGUI(object):
             return
         else:
             fn = self.board.save_params()
-            self.stoneInfo.set("Params saved to: " + str(fn))
+            self.statusInfo.set_file("Params saved to ", str(fn))
 
     # Save stones button callback
     def save_jgf_callback(self):
@@ -225,7 +223,7 @@ class GbrGUI(object):
             return
 
         fn = self.board.save_board_info()
-        self.stoneInfo.set("Board saved to: " + str(fn))
+        self.statusInfo.set_file("Board saved to ", str(fn))
 
     # Apply button callback
     def apply_callback(self):
@@ -381,10 +379,10 @@ class GbrGUI(object):
             try:
                 self.board.process()
                 if GrLog.numErrors() > 0:
-                    self.stoneInfo.set("Errors during processing, see the log")
+                    self.statusInfo.set("Errors during processing, see the log")
             except:
                 logging.exception("Error")
-                self.stoneInfo.set("Error during processing, see the log")
+                self.statusInfo.set("Error during processing, see the log")
                 return
 
         # Generate board using analysis results
@@ -441,15 +439,15 @@ class GbrGUI(object):
 
             # Update status
             if GrLog.numErrors() > 0:
-                self.stoneInfo.set("Errors during file loading, see the log")
+                self.statusInfo.set("Errors during file loading, see the log")
             else:
-                ftitle = ""
-                if params_loaded: ftitle = " (with params)"
-                self.stoneInfo.set("File loaded{ft}: {fn}".format(ft = ftitle, fn = self.board.image_file))
+                ftitle = ": "
+                if params_loaded: ftitle = " (with params): "
+                self.statusInfo.set_file("File loaded" + ftitle, self.board.image_file)
 
         except:
             logging.exception("Error")
-            self.stoneInfo.set("Error when loading image, see the log")
+            self.statusInfo.set("Error when loading image, see the log")
 
 
 # Main function
