@@ -12,12 +12,12 @@ if sys.version_info[0] < 3:
     from grdef import *
     from gr import process_img, generate_board, find_coord
     from utils import gres_to_jgf, jgf_to_gres, resize2
-    from net_utils import make_anno
+    from dataset import GrDataset
 else:
     from gr.grdef import *
     from gr.gr import process_img, generate_board, find_coord
     from gr.utils import gres_to_jgf, jgf_to_gres, resize2
-    from gr.net_utils import make_anno
+    from gr.dataset import GrDataset
 
 import xml.dom.minidom as minidom
 
@@ -176,13 +176,14 @@ class GrBoard(object):
            fn = str(Path(path_override).joinpath(Path(fn).name))
         self.load_image(fn, f_process = f_process)
 
-    def save_annotation(self, filename = None):
-        """Save annotation (XML) to specified file"""
+    def save_annotation(self, filename = None, format = None):
+        """Save annotation to specified file"""
+
+        # Check parameters
         if self._img is None:
             return None
-        if filename is None:
-            filename = str(Path(self._img_file).with_suffix('.xml'))
 
+        # Prepare JGF
         jgf = None
         if not self._res is None:
             jgf = gres_to_jgf(self._res)
@@ -191,7 +192,10 @@ class GrBoard(object):
         jgf['image_file'] = self._img_file
         jgf['source_file'] = self._src_img_file
 
-        make_anno(filename, self._img_file, img = self._img, jgf = jgf)
+        # Get a dataset and save
+        src_path = str(Path(self._img_file).parent)
+        ds = GrDataset.getDataset(format = format, src_path = src_path)
+        ds.save_annotation(self, filename)
 
         return filename
 

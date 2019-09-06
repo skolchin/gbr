@@ -69,7 +69,7 @@ class GrLogWindow(simpledialog.Dialog):
 
 
 class GrLog(object):
-    """GBR logging system"""
+    """GBR logging class"""
 
     class GrLogFilter(logging.Filter):
         """ Enclosed log filter class"""
