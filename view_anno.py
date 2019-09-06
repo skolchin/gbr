@@ -13,12 +13,11 @@ import cv2
 import sys
 from PIL import Image, ImageTk
 from pathlib import Path
-import xml.dom.minidom as minidom
 from gr.utils import img_to_imgtk, resize2
 from gr.board import GrBoard
 from gr.ui_extra import *
 import logging
-from make_dataset import generate_dataset, default_image_size
+from gr.dataset import GrDataset
 from gr.grlog import GrLog
 
 if sys.version_info[0] < 3:
@@ -65,23 +64,24 @@ class ViewAnnoGui:
         self.boardImgTk = img_to_imgtk(self.boardImg)
         self.boardImgName = None
         self.annoName = None
+        self.srcName = None
 
         _, self.imgPanel, _ = addImagePanel(self.imgFrame,"Dataset image",
                 [["box", True, self.show_rec_callback, "Rectangle/circle"]],
                 self.boardImgTk, self.open_img_callback)
 
         # Config
-        self.dsImgSize = default_image_size()
+        self.dataset = GrDataset.getDataset()
 
         tk.Label(self.configFrame, text = "Train image size").grid(row = 0, column = 0)
         self.trainSize = tk.StringVar()
-        self.trainSize.set(str(self.dsImgSize['train']))
+        self.trainSize.set(str(self.dataset.image_size['train']))
         self.trainSizeEntry = tk.Entry(self.configFrame, textvariable = self.trainSize)
         self.trainSizeEntry.grid(row = 0, column = 1, padx = PADX, pady = PADY)
 
         tk.Label(self.configFrame, text = "Test image size").grid(row = 1, column = 0)
         self.testSize = tk.StringVar()
-        self.testSize.set(str(self.dsImgSize['test']))
+        self.testSize.set(str(self.dataset.image_size['test']))
         self.testSizeEntry = tk.Entry(self.configFrame, textvariable = self.testSize)
         self.testSizeEntry.grid(row = 1, column = 1, padx = PADX, pady = PADY)
 
@@ -105,27 +105,21 @@ class ViewAnnoGui:
 
         # Img info
         self.imgInfo = tk.StringVar()
-        self.imgInfo .set("")
+        self.imgInfo.set("")
         self.imgnfoPanel = tk.Label(self.buttonFrame, textvariable = self.imgInfo)
         self.imgnfoPanel.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
         # Status frame
-        self.statusInfo = tk.StringVar()
-        self.statusInfo.set("")
-        self.stoneInfoPanel = tk.Label(self.statusFrame, textvariable = self.statusInfo)
-        self.stoneInfoPanel.grid(row = 0, column = 0, sticky = tk.W, padx = 5, pady = 2)
+        self.statusInfo = addStatusPanel(self.statusFrame, self.defBoardImg.shape[1])
+        self.statusInfo.grid(row = 0, column = 0, sticky = tk.W, padx = 5, pady = 2)
 
-        # Load datasets
-        self.datasets = None
-        self.load_datasets()
-        pass
 
     # Load annotation button callback
     def open_btn_callback(self):
         if not self.allow_open: return  # GUI used from other app
 
         fn = filedialog.askopenfilename(title = "Select file",
-           filetypes = (("XML files","*.xml"),("All files","*.*")))
+           filetypes = (("Annotation files","*" + self.dataset.anno_ext),("All files","*.*")))
         if fn != "": self.load_annotation(fn)
 
     # Image click callback
@@ -134,79 +128,19 @@ class ViewAnnoGui:
 
     # Board update button callback
     def update_callback(self):
-        if self.annoName is None:
-            return
+        if not self.annoName is None:
+           self.update_img_size()
+           self.update_anotation()
 
-        # Init
-        GrLog.clear()
-        self.update_img_size()
-
-        # Check whether JGF exists
-        # If not - image goes to test dataset, stones should not be stored in annotation
-        jgf_file = self.src_path.joinpath(Path(self.boardImgName).name).with_suffix('.jgf')
-        f_process = jgf_file.is_file()
-        logging.info('Board file {} exists: {}'.format(jgf_file, f_process))
-
-        try:
-            # Load board from annotation file
-            # This will find the image and load it to the board
-            board = GrBoard()
-            board.load_annotation(self.annoName, path_override = str(self.src_path), f_process = f_process)
-
-            # Get dataset
-            ds = self.find_dataset(self.boardImgName)
-            logging.info('Current dataset {}'.format(ds))
-            if ds is None:
-               ds = 'test'
-               if not board.results is None: ds = 'train'
-
-            # Resize image to dataset preferred size
-            if self.dsImgSize[ds] > 0:
-               logging.info('Resizing image to {}'.format(self.dsImgSize[ds]))
-               board.resize_board(self.dsImgSize[ds])
-
-            # Save image to dataset path
-            png_file = self.img_path.joinpath(Path(board.image_file).with_suffix('.png').name)
-            board.save_image(str(png_file))
-            board.save_annotation(self.annoName)
-
-            # Include file into proper dataset
-            ds = self.find_dataset(self.boardImgName)
-            if ds is None:
-               ds = 'test'
-               if not board.results is None: ds = 'train'
-               self.datasets[ds].append(str(png_file.stem))
-               self.save_datasets()
-               logging.info('New dataset {}'.format(ds))
-            elif ds == 'test' and not board.results is None:
-               self.datasets[ds].remove(str(png_file.stem))
-               ds = 'train'
-               self.datasets[ds].append(str(png_file.stem))
-               self.save_datasets()
-               logging.info('New dataset {}'.format(ds))
-
-            if GrLog.numErrors() > 0:
-                self.stoneInfo.set("Errors during processing, see the log")
-            else:
-                self.statusInfo.set("Dataset updated")
-        except:
-            logging.exception('Error')
-            self.statusInfo.set("Errors during processing, see the log")
-            return
-
-        # Refresh
-        self.load_annotation(self.annoName, clear_log = False)
-        self.statusInfo.set("Annotation updated: {}".format(self.annoName))
-
+    # Dataset regeneration button callback
     def update_all_callback(self):
         self.update_img_size()
 
         GrLog.clear()
         try:
-            generate_dataset(str(self.src_path), str(self.meta_path), str(self.img_path),
-                str(self.sets_path), self.dsImgSize)
+            self.dataset.generate_dataset()
             if GrLog.numErrors() > 0:
-                self.stoneInfo.set("Errors during processing, see the log")
+                self.statusInfo.set("Errors during processing, see the log")
             else:
                 self.statusInfo.set("Dataset updated")
         except:
@@ -225,31 +159,13 @@ class ViewAnnoGui:
     def show_log_callback(self):
         GrLog.show(self.root)
 
-    def load_annotation(self, file, clear_log = False):
-        """Load annotation from file (XML/TXT)"""
+    def load_annotation(self, file):
+        """Load annotation from file"""
 
-        def get_tag(node, tag):
-            d = node.getElementsByTagName(tag)
-            if d is None: return None
-            else:
-                d = d[0].firstChild
-                if d is None: return None
-                else: return d.data
-
-        def get_child_node(node, tag):
-            return node.getElementsByTagName(tag)[0].childNodes[0].data
-
-        # Load annotation file
-        if clear_log: GrLog.clear()
+        GrLog.clear()
         try:
-            with open(file) as f:
-                data = minidom.parseString(f.read())
-
-            # Find image file name
-            fn = get_tag(data, 'path')
-            if not Path(fn).is_file():
-                fn = str(self.src_path.joinpath(Path(fn).name))
-            logging.info('Image file {}'.format(fn))
+            # Load annotation file
+            fn, src, shape, bboxes = self.dataset.load_annotation(file)
 
             # Load image
             img = cv2.imread(fn)
@@ -257,25 +173,15 @@ class ViewAnnoGui:
                 raise Exception('File not found {}'.format(fn))
 
             # Resize the image
-            logging.info('Image size {}'.format(img.shape[:2]))
             img2, self.zoom = resize2 (img, np.max(self.defBoardImg.shape[:2]), f_upsize = False)
-            logging.info('Zooming to {}'.format(self.zoom))
 
-            # Load objects list
-            objs = data.getElementsByTagName('object')
-            for ix, obj in enumerate(objs):
-                x1 = int(get_child_node(obj, 'xmin'))
-                y1 = int(get_child_node(obj, 'ymin'))
-                x2 = int(get_child_node(obj, 'xmax'))
-                y2 = int(get_child_node(obj, 'ymax'))
-                cls = str(get_child_node(obj, "name")).lower().strip()
-                logging.info('Class {} object ({},{}) - ({},{})'.format(cls, x1,y1, x2,y2))
-
-                if x1 <= 0 or y1 <= 0 or x1 >= img.shape[1] or y1 >= img.shape[0]:
-                    logging.error("Point {} coordinates out of boundaries ({},{})-({},{}) <> ({},{})".format(ix, x1, \
-                        y1,x2,y2,img.shape[1],img.shape[0]))
-                if x1 >= x2 or y1 >= y2:
-                    logging.error("Coordinates ({},{}) and ({},{}) overlap".format(x1,y1,x2,y2))
+            # Process objects
+            for bb in bboxes:
+                x1 = bb[0][0]
+                y1 = bb[0][1]
+                x2 = bb[1][0]
+                y2 = bb[1][1]
+                cls = bb[2]
 
                 # Draw a bounding box
                 x1 = int(x1 * self.zoom[0])
@@ -298,33 +204,77 @@ class ViewAnnoGui:
             self.boardImgTk = img_to_imgtk(img2)
             self.boardImgName = fn
             self.annoName = file
+            self.srcName = src
             self.imgFrame.pack_propagate(False)
             self.imgPanel.configure(image = self.boardImgTk)
 
             # Update status
-            ds = self.find_dataset(self.boardImgName)
-            if ds is None: ds = '<none>'
-            img_info = "Size: ({}, {}), dataset: {}".format(img.shape[1], img.shape[0], ds)
+            stage = self.dataset.get_stage(self.boardImgName)
+            img_info = "Size: ({}, {}), stage: {}".format(img.shape[1], img.shape[0], stage)
             self.imgInfo.set(img_info)
 
             if GrLog.numErrors() > 0:
-                self.stoneInfo.set("Errors during processing, see the log")
+                self.statusInfo.set("Errors during processing, see the log")
             else:
-                self.statusInfo.set('File loaded: {}'.format(self.annoName))
+                self.statusInfo.set_file('File loaded: ', self.annoName)
         except:
             logging.exception('Error')
             self.statusInfo.set("Errors during processing, see the log")
 
+    def update_anotation(self):
+        """Updates annotation for currently loaded file"""
+        GrLog.clear()
+
+        # Check whether JGF exists
+        # If not - image goes to test dataset, stones should not be stored in annotation
+        jgf_file = self.src_path.joinpath(Path(self.boardImgName).name).with_suffix('.jgf')
+        f_process = jgf_file.is_file()
+        logging.info('Board file {} exists: {}'.format(jgf_file, f_process))
+
+        try:
+            # Load board from annotation file
+            # This will find the image and load it to the board
+            board = GrBoard()
+            board.load_annotation(self.annoName, self.dataset, f_process = f_process)
+
+            # Determine stage to store image to
+            stage = self.dataset.get_stage(self.boardImgName)
+            logging.info('Current stage {}'.format(stage))
+            if stage is None:
+               stage = 'test'
+               if not board.results is None: stage = 'train'
+
+            # Save annortation
+            board.save_annotation(self.annoName, self.dataset, anno_only = False, stage = stage)
+
+            # Update status
+            stage = self.dataset.get_stage(self.boardImgName)
+            img_info = "Size: ({}, {}), stage: {}".format(self.boardImg.shape[1], \
+                                                          self.boardImg.shape[0], \
+                                                          stage)
+            self.imgInfo.set(img_info)
+
+            if GrLog.numErrors() > 0:
+                self.statusInfo.set("Errors during processing, see the log")
+            else:
+                self.statusInfo.set("Dataset updated")
+        except:
+            logging.exception('Error')
+            self.statusInfo.set("Errors during processing, see the log")
+            return
+
+
     def update_img_size(self):
+        """Updates dataset image parameters"""
         try:
             n1 = int(self.trainSize.get())
             n2 = int(self.testSize.get())
             if n1 == 0 or n1 > 300:
-                self.dsImgSize['train'] = n1
+                self.dataset.image_size['train'] = n1
             else:
                 raise Exception("Invalid value")
             if n2 == 0 or n2 > 300:
-                self.dsImgSize['test'] = n2
+                self.dataset.image_size['test'] = n2
             else:
                 raise Exception("Invalid value")
             return True
@@ -332,37 +282,6 @@ class ViewAnnoGui:
             self.statusInfo.set("Image size should be integer equal to zero or greater than 300")
             return False
 
-    def load_datasets(self):
-        self.datasets = dict()
-        for ds in ('test', 'train'):
-            fn = self.sets_path.joinpath(ds + '.txt')
-            try:
-                with open(str(fn), 'r') as f:
-                    self.datasets[ds] = f.read().splitlines()
-                    f.close()
-            except:
-                self.datasets[ds] = []
-
-    def save_datasets(self):
-        for ds in ('test', 'train'):
-            fn = self.sets_path.joinpath(ds + '.txt')
-            try:
-                with open(str(fn), 'w') as f:
-                    f.writelines( "%s\n" % item for item in self.datasets[ds])
-                    f.close()
-            except:
-                self.datasets[ds] = []
-
-
-    def find_dataset(self, file):
-        fn = Path(file).stem
-        for ds in ('test', 'train'):
-            try:
-                if self.datasets[ds].index(fn) >= 0:
-                    return ds
-            except:
-                pass
-        return None
 
 def main():
     window = tk.Tk()
