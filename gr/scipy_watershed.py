@@ -26,13 +26,16 @@ def apply_watershed(img, stones, n_thresh, f_bw, n_morph = 0, f_debug = False):
        # To have watershed properly determine black stones, board dividers
        # have to be removed with dilation, source image converted to negative
        img2 = cv2.dilate(img,kernel,iterations=n_morph+1)
-       img2 = cv2.erode(img2,kernel,iterations=1)
+       img2 = cv2.erode(img2,kernel,iterations=n_morph+1)
        img2 = cv2.bitwise_not(img2)
        ret, t2 = cv2.threshold(img2, n_thresh, WS_MAX, cv2.THRESH_BINARY)
     else:
        # White stones, normal thresholding
-       img2 = img
-       ret, t2 = cv2.threshold(img, n_thresh, WS_MAX, cv2.THRESH_BINARY)
+       if n_morph > 0:
+            img2 = cv2.erode(img, kernel, iterations = n_morph)
+       else:
+            img2 = img
+       ret, t2 = cv2.threshold(img2, n_thresh, WS_MAX, cv2.THRESH_BINARY)
 
     if f_debug:
        cv2.imshow('Source', img2)

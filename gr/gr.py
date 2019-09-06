@@ -187,21 +187,20 @@ def find_stones(src_img, params, res, f_bw):
     # Process image with pre-filters
     filtered_img = src_img.copy()
     for f in pre_filters:
-        logging.info("Applying pre-filter {} for {} color".format(f, f_bw))
+        logging.info("Applying pre-filter {} for color {}".format(f, f_bw))
         filtered_img = pre_filters[f](filtered_img, params, f_bw)
     res['IMG_MORPH_' + f_bw] = filtered_img
 
     # Process image with post-filters
     stones = None
     for f in post_filters:
-        logging.info("Applying post-filter {} for {} color".format(f, f_bw))
+        logging.info("Applying post-filter {} for color {}".format(f, f_bw))
         new_stones = post_filters[f](src_img, filtered_img, params, f_bw, stones)
         if new_stones is None:
-           logging.info("No stones found after applying post-filter")
-           break;
+           logging.info("No stones found by filter")
         else:
            if len(new_stones.shape) == 3: new_stones = new_stones[0]
-           logging.info("Stones found: {}".format(len(new_stones)))
+           logging.info("Filter found {} stones".format(len(new_stones)))
 
            conv_stones = convert_xy(new_stones, res)
            stones = _combine_stones(stones, conv_stones)

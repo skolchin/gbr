@@ -14,8 +14,6 @@ import numpy as np
 from gr.board import GrBoard
 import random as rng
 from gr.cv2_watershed import apply_watershed
-from gr.grlog import GrLog
-import logging
 
 rng.seed(12345)
 
@@ -44,12 +42,8 @@ def process(f_bw):
 ##        cv2.waitKey()
 ##    return
 
-    GrLog.clear()
-
     ret, dst = apply_watershed(gray, board.stones[f_bw], 140, f_bw, 0, True)
-
     print("{} of {} stones found".format(len(ret), len(board.stones[f_bw])))
-    print("%s\n" % e for e in GrLog.get())
 
     # Generate random colors
     colors = []
@@ -68,7 +62,6 @@ def process(f_bw):
     cv2.imshow('Final result', dst)
 
 
-log = GrLog.init()
 process('W')
 
 cv2.waitKey()
