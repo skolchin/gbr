@@ -18,19 +18,31 @@ else:
     import tkinter as tk
     from tkinter import ttk
 
-UI_DIR = 'ui'
+UI_DIR = 'ui'    # directory containing ImgButton images
 PADX = 5
 PADY = 5
 
-# Image frame with additional tag - for debug info
 class NLabel(tk.Label):
+    """Image frame with additional tag attached"""
     def __init__(self, master, tag=None, *args, **kwargs):
         tk.Label.__init__(self, master, *args, **kwargs)
         self.master, self.tag = master, tag
 
 # ImageButton
 class ImgButton(tk.Label):
+    """Button with image as face"""
     def __init__(self, master, tag, state, callback, *args, **kwargs):
+        """Creates new ImgButton. Parameters:
+
+        master     Tk windows/frame
+        tag        Button tag. Files names "<tag>_down.png" and "<tag>_up.png" must exist in UI_DIR.
+        state      Initial state (true/false)
+        callback   Callback function. Function signature:
+                      event - Tk event
+                      tag   - button's tag
+                      state - target state (true/false)
+                   Function shall return if new state accepted, or false otherwise
+        """
         tk.Label.__init__(self, master, *args, **kwargs)
 
         self._tag = tag
@@ -71,8 +83,8 @@ class ImgButton(tk.Label):
         self._state = new_state
         self.configure(image = self._images[new_state])
 
-# Tooltip class
 class ToolTip(object):
+    """ToolTip class (see https://stackoverflow.com/questions/3221956/how-do-i-display-tooltips-in-tkinter)"""
 
     def __init__(self, widget):
         self.widget = widget
@@ -113,15 +125,19 @@ def createToolTip(widget, text):
     widget.bind('<Enter>', enter)
     widget.bind('<Leave>', leave)
 
-# Add a panel with caption and buttons
-# Buttons is a list of lists with ImgButon parameters:
-#   [0] tag
-#   [1] initial state
-#   [2] button callback
-#   [3] (optional) tooltip
-# Returns created panel, body frame/image and dictionary with buttons
 def addImagePanel(parent, caption, btn_params, image = None, frame_callback = None):
-    """Add a panel with caption and buttons"""
+    """Creates a panel with caption and buttons.
+
+    Parameters:
+        parent         Tk window/frame to add panel to
+        caption        Panel caption
+        btn_params     Params for ImgButtons: tag, initial state, callback function, (optional) tooltip
+        image          PhotoImage. If none provided, an empty frame is created
+        frame_callback Callback for panel mouse click
+
+    Returns:
+        panel          A panel frame
+    """
     # Panel itself
     panel = tk.Frame(parent)
     panel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
@@ -158,7 +174,7 @@ def addImagePanel(parent, caption, btn_params, image = None, frame_callback = No
     return panel, body, buttons
 
 def treeview_sort_columns(tv):
-    """Set up Treeview tv for column sorting"""
+    """Set up Treeview tv for column sorting (see https://stackoverflow.com/questions/1966929/tk-treeview-column-sort)"""
 
     def _sort(tv, col, reverse):
         l = [(tv.set(k, col), k) for k in tv.get_children('')]

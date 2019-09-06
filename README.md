@@ -115,7 +115,7 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 - [x] Add logging during board processing/dataset generation
 
-- [ ] Adopt the algorithm to the photos of real boards (make functions to set edges, rotate board, correct skewness, etc)
+- [ ] Adopt the algorithm to the photos of real boards (add functions to set edges, rotate board, correct skewness, etc)
 
 - [x] Make "tagger" interface to simplify image processing
 

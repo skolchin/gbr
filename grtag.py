@@ -29,8 +29,8 @@ else:
     import tkinter as tk
     from tkinter import ttk
 
-# GUI class
-class GrTagGui:
+class GrTagGui(object):
+      """ GBR board tagging GUI class"""
       def __init__(self, root):
           self.root = root
 
