@@ -160,19 +160,16 @@ class StatusPanel(tk.Frame):
         """Max status panel width in pixels"""
         self._max_width = v
 
+    def _get_maxw(self):
+        #w = self.winfo_width()
+        return self._max_width
+
     def set(self, text):
         """Set status as text"""
         f = font.Font(font = self._label['font'])
         chw = f.measure('W')
 
-        maxw = self._max_width
-        if maxw == 0:
-           maxw = self.winfo_width()
-           if maxw < 20:
-              # Window not updated yet
-              self._var.set(text)
-              return
-
+        maxw = self._get_maxw()
         curw = f.measure(text)
         maxw -= chw*3
         if curw > maxw:
@@ -186,7 +183,7 @@ class StatusPanel(tk.Frame):
         f = font.Font(font = self._label['font'])
         chw = f.measure('W')
 
-        maxw = self._max_width
+        maxw = self._get_maxw()
         if maxw == 0:
            maxw = self.winfo_width()
            if maxw < 20:
