@@ -471,10 +471,10 @@
 		<difficult>Unspecified</difficult>
 		<position>J8</position>
 		<bndbox>
-			<xmin>989</xmin>
-			<ymin>735</ymin>
-			<xmax>1083</xmax>
-			<ymax>829</ymax>
+			<xmin>1006</xmin>
+			<ymin>752</ymin>
+			<xmax>1066</xmax>
+			<ymax>812</ymax>
 		</bndbox>
 	</object>
 	<object>
@@ -1148,9 +1148,9 @@
 		<position>A2</position>
 		<bndbox>
 			<xmin>1</xmin>
-			<ymin>100</ymin>
-			<xmax>92</xmax>
-			<ymax>194</ymax>
+			<ymin>96</ymin>
+			<xmax>96</xmax>
+			<ymax>198</ymax>
 		</bndbox>
 	</object>
 	<object>
@@ -2044,10 +2044,10 @@
 		<difficult>Unspecified</difficult>
 		<position>Q12</position>
 		<bndbox>
-			<xmin>1710</xmin>
-			<ymin>1194</ymin>
-			<xmax>1804</xmax>
-			<ymax>1288</ymax>
+			<xmin>1735</xmin>
+			<ymin>1219</ymin>
+			<xmax>1779</xmax>
+			<ymax>1263</ymax>
 		</bndbox>
 	</object>
 	<object>

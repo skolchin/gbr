@@ -367,10 +367,10 @@
 		<difficult>Unspecified</difficult>
 		<position>P6</position>
 		<bndbox>
-			<xmin>1637</xmin>
-			<ymin>537</ymin>
-			<xmax>1733</xmax>
-			<ymax>633</ymax>
+			<xmin>1674</xmin>
+			<ymin>574</ymin>
+			<xmax>1696</xmax>
+			<ymax>596</ymax>
 		</bndbox>
 	</object>
 	<object>
@@ -692,10 +692,10 @@
 		<difficult>Unspecified</difficult>
 		<position>L13</position>
 		<bndbox>
-			<xmin>1191</xmin>
-			<ymin>1284</ymin>
-			<xmax>1287</xmax>
-			<ymax>1380</ymax>
+			<xmin>1224</xmin>
+			<ymin>1317</ymin>
+			<xmax>1254</xmax>
+			<ymax>1347</ymax>
 		</bndbox>
 	</object>
 	<object>
@@ -783,10 +783,10 @@
 		<difficult>Unspecified</difficult>
 		<position>N17</position>
 		<bndbox>
-			<xmin>1400</xmin>
-			<ymin>1721</ymin>
-			<xmax>1496</xmax>
-			<ymax>1817</ymax>
+			<xmin>1395</xmin>
+			<ymin>1716</ymin>
+			<xmax>1501</xmax>
+			<ymax>1822</ymax>
 		</bndbox>
 	</object>
 	<object>
@@ -809,10 +809,10 @@
 		<difficult>Unspecified</difficult>
 		<position>O15</position>
 		<bndbox>
-			<xmin>1507</xmin>
-			<ymin>1507</ymin>
-			<xmax>1603</xmax>
-			<ymax>1603</ymax>
+			<xmin>1502</xmin>
+			<ymin>1502</ymin>
+			<xmax>1608</xmax>
+			<ymax>1608</ymax>
 		</bndbox>
 	</object>
 	<object>

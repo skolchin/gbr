@@ -42,10 +42,10 @@
 		<difficult>Unspecified</difficult>
 		<position>O12</position>
 		<bndbox>
-			<xmin>1505</xmin>
-			<ymin>1179</ymin>
-			<xmax>1589</xmax>
-			<ymax>1263</ymax>
+			<xmin>1493</xmin>
+			<ymin>1167</ymin>
+			<xmax>1601</xmax>
+			<ymax>1275</ymax>
 		</bndbox>
 	</object>
 	<object>
@@ -81,10 +81,10 @@
 		<difficult>Unspecified</difficult>
 		<position>P14</position>
 		<bndbox>
-			<xmin>1610</xmin>
-			<ymin>1389</ymin>
-			<xmax>1694</xmax>
-			<ymax>1473</ymax>
+			<xmin>1598</xmin>
+			<ymin>1377</ymin>
+			<xmax>1706</xmax>
+			<ymax>1485</ymax>
 		</bndbox>
 	</object>
 	<object>
@@ -107,10 +107,10 @@
 		<difficult>Unspecified</difficult>
 		<position>P17</position>
 		<bndbox>
-			<xmin>1610</xmin>
-			<ymin>1703</ymin>
-			<xmax>1694</xmax>
-			<ymax>1787</ymax>
+			<xmin>1598</xmin>
+			<ymin>1691</ymin>
+			<xmax>1706</xmax>
+			<ymax>1799</ymax>
 		</bndbox>
 	</object>
 	<object>

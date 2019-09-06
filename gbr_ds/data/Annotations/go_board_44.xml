@@ -536,10 +536,10 @@
 		<difficult>Unspecified</difficult>
 		<position>I1</position>
 		<bndbox>
-			<xmin>871</xmin>
-			<ymin>91</ymin>
-			<xmax>959</xmax>
-			<ymax>179</ymax>
+			<xmin>867</xmin>
+			<ymin>87</ymin>
+			<xmax>963</xmax>
+			<ymax>183</ymax>
 		</bndbox>
 	</object>
 	<object>
@@ -2499,10 +2499,10 @@
 		<difficult>Unspecified</difficult>
 		<position>N11</position>
 		<bndbox>
-			<xmin>1367</xmin>
-			<ymin>1075</ymin>
-			<xmax>1455</xmax>
-			<ymax>1163</ymax>
+			<xmin>1401</xmin>
+			<ymin>1109</ymin>
+			<xmax>1421</xmax>
+			<ymax>1129</ymax>
 		</bndbox>
 	</object>
 	<object>
