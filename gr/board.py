@@ -19,8 +19,6 @@ else:
     from gr.utils import gres_to_jgf, jgf_to_gres, resize2
     from gr.dataset import GrDataset
 
-import xml.dom.minidom as minidom
-
 from pathlib import Path
 import cv2
 import numpy as np
@@ -30,10 +28,13 @@ import logging
 class GrBoard(object):
     """ Go board """
     def __init__(self, image_file = None, board_shape = None):
-        """ Create new instance.
-        image_file is name of file to open and process.
-        board_shape - desired board shape for generated board generation.
-        If neither provided, board with default shape is generated. """
+        """ Create new instance either for image file or by generation
+
+        Parameters:
+            image_file       Name of image file to load
+            board_shape      Generated board shape, if no image file is provided
+
+        """
         self._params = DEF_GR_PARAMS.copy()
         self._res = None
         self._img = None
@@ -50,9 +51,11 @@ class GrBoard(object):
             self.load_image(image_file)
 
     def load_image(self, filename, f_with_params = True, f_process = True):
-        """ Loads a new image from file.
-        If f_with_params is True, also loads image recognition params from <filename>.JSON file.
-        If f_process is True, starts image recongition.
+        """Loads a new image to board
+
+        Parameters:
+            f_with_params     If True, image recognition params are loaed from <filename>.JSON file
+            f_process         If True, starts image recongition
         """
         # Load image
         logging.info('Loading {}'.format(filename))
@@ -79,7 +82,10 @@ class GrBoard(object):
         return f_params_loaded
 
     def generate(self, shape = DEF_IMG_SIZE):
-        """Generates a new board image with given shape"""
+        """Generates a new board image of given shape.
+        if source image was processed, displays recognition results on the image.
+        Returns generated OpenCV image.
+        """
         self._img = generate_board(shape, res = self._res)
         self._img_file = None
         self._gen_board = True
@@ -151,55 +157,55 @@ class GrBoard(object):
             json.dump(jgf, f, indent=4, sort_keys=True, ensure_ascii=False)
         return filename
 
-    def load_annotation(self, filename, path_override = None, f_process = True):
-        def get_tag(node, tag):
-            d = node.getElementsByTagName(tag)
-            if d is None: return None
-            else:
-                d = d[0].firstChild
-                if d is None: return None
-                else: return d.data
+    def load_annotation(self, filename, ds_format = None, f_process = True):
+        """Loads annotation from specified file and dataset
 
-        # Load annotation file
-        with open(filename) as f:
-            data = minidom.parseString(f.read())
+        Parameters:
+            filename        Name of annotation file
+            ds_format       Either a dataset format string or a dataset object
+            f_process       True if loaded image has to be processed
+        """
 
-        # Find image file name (first - from <source>, then - from <path>)
-        fn = get_tag(data, 'source')
-        if fn is None:
-            fn = get_tag(data, 'path')
-            if fn is None:
-                raise Exception('Filename not specified')
+        # Load annotation data
+        ds = GrDataset.getDataset(ds_format)
+        fn, src, _, _ = ds.load_annotation(filename)
 
         # Load image
-        if not path_override is None:
-           fn = str(Path(path_override).joinpath(Path(fn).name))
+        if not src is None and src != '': fn = src
         self.load_image(fn, f_process = f_process)
 
-    def save_annotation(self, filename = None, format = None):
-        """Save annotation to specified file"""
+    def save_annotation(self, filename = None, ds_format = None, anno_only = True, stage = "test"):
+        """Saves annotation to specified file and dataset
+
+        Parameters:
+            filename        Name of annotation file
+            ds_format       Either a dataset format string or a dataset object
+            anno_only       True to save only annotation file, False to store image to dataset
+            stage           If anno_only is False, name of stage where to save the image
+
+        Returns
+            file            Name of file annotation was saved to
+        """
 
         # Check parameters
         if self._img is None:
             return None
 
-        # Prepare JGF
-        jgf = None
-        if not self._res is None:
-            jgf = gres_to_jgf(self._res)
-        else:
-            jgf = dict()
-        jgf['image_file'] = self._img_file
-        jgf['source_file'] = self._src_img_file
+        # Prepare data
+        extra_param = dict()
+        extra_param['image_file'] = self._img_file
+        extra_param['source_file'] = self._src_img_file
 
         # Get a dataset and save
-        src_path = str(Path(self._img_file).parent)
-        ds = GrDataset.getDataset(format = format, src_path = src_path)
-        ds.save_annotation(self, filename)
+        ds = GrDataset.getDataset(ds_format)
+        file, _ = ds.save_annotation(board = self, extra_param = extra_param, \
+                                        file_name = filename, anno_only = anno_only, \
+                                        stage = stage)
 
-        return filename
+        return file
 
     def process(self):
+        """Does recognition of image file loaded to the board"""
         if self._img is None or self._gen_board:
             self._res = None
         else:
@@ -210,6 +216,17 @@ class GrBoard(object):
                 self._res[GR_STONES_W] = np.array([])
 
     def show_board(self, f_black = True, f_white = True, f_det = False, show_state = None):
+        """Generates board image. If a source image was processed, plots recognition results onto the image
+
+        Parameters:
+            f_black     If True, black stones are displayed. Not used if show_state is provided
+            f_white     If True, white stones are displayed. Not used if show_state is provided
+            f_det       If True, stone circles are displayed. Not used if show_state is provided
+            show_state  A dictionary of display parameters. If provided, overrides all f_xxx parameters
+
+        Returns:
+            img         OpenCV image generated
+        """
         if not show_state is None:
            f_black = show_state['black']
            f_white = show_state['white']

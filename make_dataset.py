@@ -15,8 +15,8 @@ from gr.dataset import GrDataset
 def main():
     logging.basicConfig(format='%(levelname)s: %(message)s', level = logging.INFO)
 
-    ds = GrDataset.getDataset("pascal")
-    ds.save_dataset()
+    ds = GrDataset.getDataset()
+    ds.generate_dataset()
 
 if __name__ == '__main__':
     main()

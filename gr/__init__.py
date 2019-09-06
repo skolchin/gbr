@@ -15,7 +15,7 @@ if sys.version_info[0] < 3:
     from ps_dataset import GrPascalDataset
     from grlog import GrLog
 else:
-    from gr.dataset import __reg_dataset_fmt
+    from gr.dataset import GrDataset
     from gr.ps_dataset import GrPascalDataset
     from gr.grlog import GrLog
 
