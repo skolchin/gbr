@@ -111,7 +111,7 @@ class ViewAnnoGui:
 
         # Status frame
         self.statusInfo = addStatusPanel(self.statusFrame, self.defBoardImg.shape[1])
-        self.statusInfo.grid(row = 0, column = 0, sticky = tk.W, padx = 5, pady = 2)
+        self.statusInfo.grid(row = 0, column = 0, sticky = "nswe", padx = 5, pady = 2)
 
 
     # Load annotation button callback

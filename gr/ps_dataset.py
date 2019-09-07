@@ -373,7 +373,7 @@ class GrPascalDataset(GrDataset):
                     self._stage_files[ds] = f.read().splitlines()
                     f.close()
             except:
-                self.datasets[ds] = []
+                self._stage_files[ds] = []
 
     def save_metadata(self):
         """Saves dataset metadata"""
@@ -384,7 +384,7 @@ class GrPascalDataset(GrDataset):
                     f.writelines( "%s\n" % item for item in self._stage_files[ds])
                     f.close()
             except:
-                self.datasets[ds] = []
+                self._stage_files[ds] = []
 
     def get_stage(self, file_name):
         """Returns stage where given file belongs to"""
