@@ -41,20 +41,25 @@ class GrTestNetGui(object):
     def __init__(self, root, max_size = 500, allow_open = True):
         self.root = root
         self.allow_open = allow_open
+        self.max_size = max_size
 
         # Set paths
         self.root_path = Path(__file__).parent.resolve()
         self.model_path = self.root_path.joinpath("models")
-        self.model_file = 'test.prototxt'
+        self.model_file = 'zf_test.prototxt'
         self.weigth_path = self.root_path.joinpath("out", "gbr_zf", "train")
-        self.weigth_file = None #'gbr_zf_iter_10000.caffemodel'
+        self.weigth_file = None
+        self.train_solver = 'zf_solver.prototxt'
         self.netProb = 0.8
+        self.netIter = 10000
 
         # Top frames
         self.imgFrame = tk.Frame(self.root)
         self.imgFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX, pady = PADY)
         self.buttonFrame = tk.Frame(self.root, width = max_size + 10, height = 70, bd = 1, relief = tk.RAISED)
         self.buttonFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX, pady = PADY)
+        self.configFrame = tk.Frame(self.root, bd = 1, relief = tk.RAISED)
+        self.configFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX)
         self.statusFrame = tk.Frame(self.root, width = max_size + 2*PADX, bd = 1, relief = tk.SUNKEN)
         self.statusFrame.pack(side = tk.BOTTOM, fill=tk.BOTH, padx = PADX, pady = PADY)
 
@@ -79,32 +84,44 @@ class GrTestNetGui(object):
         self.updateBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
         # Params
-        self.probFrame = tk.Frame(self.buttonFrame)
+        self.probFrame = tk.Frame(self.configFrame)
         self.probFrame.pack(side = tk.LEFT, padx = PADX, pady = PADY)
 
+        self.solverVar = tk.StringVar()
+        self.solverVar.set(self.train_solver)
+        tk.Label(self.probFrame, text = "Solver").grid(row = 0, column = 0)
+        self.cbSolver = ttk.Combobox(self.probFrame, state="readonly", textvariable = self.solverVar)
+        self.cbSolver.grid(row = 0, column = 1)
+        self.load_models(self.cbSolver, 'solver')
+
+        self.iterVar = tk.StringVar()
+        self.iterVar.set(str(self.netIter))
+        tk.Label(self.probFrame, text = "Iterations").grid(row = 1, column = 0)
+        self.iterEntry = tk.Entry(self.probFrame, textvariable = self.iterVar)
+        self.iterEntry.grid(row = 1, column = 1)
+
         self.modelVar = tk.StringVar()
-        tk.Label(self.probFrame, text = "Model").grid(row = 0, column = 0)
+        self.modelVar.set(self.model_file)
+        tk.Label(self.probFrame, text = "Test model").grid(row = 0, column = 2)
         self.cbModel = ttk.Combobox(self.probFrame, state="readonly", textvariable = self.modelVar)
-        self.cbModel.grid(row = 0, column = 1)
-        self.load_models()
+        self.cbModel.grid(row = 0, column = 3)
+        self.load_models(self.cbModel, 'test')
 
         self.weigthVar = tk.StringVar()
-        tk.Label(self.probFrame, text = "Weights").grid(row = 1, column = 0)
+        tk.Label(self.probFrame, text = "Test weights").grid(row = 1, column = 2)
         self.cbWeight = ttk.Combobox(self.probFrame, state="readonly", textvariable = self.weigthVar)
-        self.cbWeight.grid(row = 1, column = 1)
+        self.cbWeight.grid(row = 1, column = 3)
         self.load_weights()
 
-        tk.Label(self.probFrame, text = "Threshold").grid(row = 0, column = 3)
         self.probVar = tk.StringVar()
         self.probVar.set(str(self.netProb))
+        tk.Label(self.probFrame, text = "Threshold").grid(row = 0, column = 4)
         self.probEntry = tk.Entry(self.probFrame, textvariable = self.probVar)
-        self.probEntry.grid(row = 0, column = 4)
+        self.probEntry.grid(row = 1, column = 4)
 
         # Status frame
-        self.statusInfo = tk.StringVar()
-        self.statusInfo.set("")
-        self.stoneInfoPanel = tk.Label(self.statusFrame, textvariable = self.statusInfo)
-        self.stoneInfoPanel.grid(row = 0, column = 0, sticky = tk.W, padx = 5, pady = 2)
+        self.statusInfo = addStatusPanel(self.statusFrame, self.max_size + 10)
+        self.statusInfo.grid(row = 0, column = 0, sticky = tk.W, padx = 5, pady = 2)
 
 
     def open_img_callback(self, event):
@@ -137,19 +154,17 @@ class GrTestNetGui(object):
 
         # Display the image
         self.boardImg = img
-        self.boardImgTk = img_to_imgtk(img)
+        self.boardImgTk = img_to_imgtk(img2)
         self.boardImgName = file_name
         self.imgFrame.pack_propagate(False)
         self.imgPanel.configure(image = self.boardImgTk)
 
-    def load_models(self):
+    def load_models(self, cb, stage):
         file_list = []
-        g = self.model_path.glob('*.prototxt')
+        g = self.model_path.glob('*' + stage + '.prototxt')
         for x in g:
           if x.is_file(): file_list.append(str(x.name))
-        self.cbModel['values'] = sorted(file_list)
-        if not self.model_file is None:
-            self.modelVar.set(self.model_file)
+        cb['values'] = sorted(file_list)
 
     def load_weights(self):
         file_list = []

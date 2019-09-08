@@ -109,6 +109,7 @@ venv.bak/
 # Test file
 t.py
 
-# Net out
+# Net dataset and out
 *.caffemodel
 /out/*
+/gbr_ds/*
