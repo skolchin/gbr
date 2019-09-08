@@ -105,11 +105,11 @@ class GrTestNetGui(object):
 
         # Model file
         self.modelVar, self.cbModel = addField(self.probFrame, "cb", "Model", 0, 2, self.model_file)
-        self.load_files(self.cbConfig, self.model_path, '*test.prototxt')
+        self.load_files(self.cbModel, self.model_path, '*test.prototxt')
 
         # Weight file
         self.weigthVar, self.cbWeight = addField(self.probFrame, "cb", "Weights", 1, 2, self.weigth_file)
-        self.load_files(self.cbConfig, self.weigth_path, '*.caffemodel')
+        self.load_files(self.cbWeight, self.weigth_path, '*.caffemodel')
 
         # Probability
         self.probVar, self.probEntry = addField(self.probFrame, "e", "Threshold", 2, 2, self.net_prob)
