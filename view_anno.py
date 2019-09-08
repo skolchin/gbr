@@ -36,18 +36,6 @@ class ViewAnnoGui:
         self.allow_open = allow_open
         self.f_rect = True
 
-        # Set paths
-        self.root_path = Path(__file__).parent.resolve()
-        self.src_path = self.root_path.joinpath("img")
-        self.ds_path = self.root_path.joinpath("gbr_ds")
-        if not self.ds_path.exists(): self.ds_path.mkdir(parents = True)
-        self.meta_path = self.ds_path.joinpath("data","Annotations")
-        if not self.meta_path.exists(): self.meta_path.mkdir(parents = True)
-        self.img_path = self.ds_path.joinpath("data","Images")
-        if not self.img_path.exists(): self.img_path.mkdir(parents = True)
-        self.sets_path = self.ds_path.joinpath("data","ImageSets")
-        if not self.sets_path.exists(): self.sets_path.mkdir(parents = True)
-
         # Top frames
         self.imgFrame = tk.Frame(self.root)
         self.imgFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX, pady = PADY)
@@ -109,9 +97,9 @@ class ViewAnnoGui:
         self.imgnfoPanel = tk.Label(self.buttonFrame, textvariable = self.imgInfo)
         self.imgnfoPanel.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
-        # Status frame
-        self.statusInfo = addStatusPanel(self.statusFrame, self.defBoardImg.shape[1])
-        self.statusInfo.grid(row = 0, column = 0, sticky = tk.W, padx = 5, pady = 2)
+        # Status panel
+        self.statusInfo = addStatusPanel(self.statusFrame, max_size + 2*PADX)
+        self.statusInfo.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
 
     # Load annotation button callback

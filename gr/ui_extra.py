@@ -137,7 +137,7 @@ class StatusPanel(tk.Frame):
         self._var = tk.StringVar()
         self._var.set("")
 
-        self._label = tk.Label(self, textvariable = self._var)
+        self._label = tk.Label(self, textvariable = self._var, anchor = tk.W)
         self._label.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
     @property
@@ -161,8 +161,8 @@ class StatusPanel(tk.Frame):
         self._max_width = v
 
     def _get_maxw(self):
-        #w = self.winfo_width()
-        return self._max_width
+        w = self.winfo_width()
+        return w
 
     def set(self, text):
         """Set status as text"""
@@ -197,9 +197,9 @@ class StatusPanel(tk.Frame):
            parts = list(Path(file).parts)
            for n in range(len(parts)-3):
                parts.pop(len(parts)-2)
-               t = '\\'.join(parts)
+               t = parts[0] + '\\'.join(parts[1:])
                if f.measure(text + t) < maxw: break
-           file = '\\'.join(parts[:-2])
+           file = parts[0] + '\\'.join(parts[1:-2])
            file += '\\...\\' + parts[-1]
 
         self._var.set(text + file)

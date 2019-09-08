@@ -148,7 +148,7 @@ class GbrGUI(object):
     def __setup_status_frame(self):
         # Status bar
         self.statusInfo = addStatusPanel(self.statusFrame, self.max_img_size*2)
-        self.statusInfo.grid(row = 0, column = 0, sticky = tk.W, padx = 5, pady = 2)
+        self.statusInfo.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
 
     # Callback functions
@@ -328,8 +328,7 @@ class GbrGUI(object):
 
         nrow = 0
         ncol = 0
-        sx = int(shape[CV_WIDTH] / 2) - 5
-        if sx > self.max_dbg_img_size: sx = self.max_dbg_img_size
+        sx = min(int(shape[CV_WIDTH] / 2) - 5, self.max_dbg_img_size)
         sy = int(float(sx) / float(shape[CV_WIDTH]) * shape[CV_HEIGTH])
 
         # Remove all previously added controls
