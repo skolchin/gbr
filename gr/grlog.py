@@ -87,6 +87,7 @@ class GrLog(object):
         """Initialize logging system"""
         self.log_stream = StringIO()
         self.log_filter = self.GrLogFilter()
+        self.dlg = None
         logging.basicConfig (stream=self.log_stream, format='%(levelname)s: %(message)s', level=level)
         logging.getLogger().addFilter(self.log_filter)
 

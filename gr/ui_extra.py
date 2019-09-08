@@ -275,3 +275,19 @@ def treeview_sort_columns(tv):
 def addStatusPanel(parent, max_width = 0):
     """Creates a status panel"""
     return StatusPanel(parent, max_width)
+
+def addField(parent, type_, caption, nrow, ncol, def_val):
+    """Add an text entry or combobox"""
+    _var = tk.StringVar()
+    if not def_val is None: _var.set(str(def_val))
+    tk.Label(parent, text = caption).grid(row = nrow, column = ncol)
+
+    _entry = None
+    if type_ == 'cb':
+        _entry = ttk.Combobox(parent, state="readonly", textvariable = _var)
+    else:
+        _entry = tk.Entry(parent, textvariable = _var)
+    _entry.grid(row = nrow, column = ncol + 1)
+    return _var, _entry
+
+

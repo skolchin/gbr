@@ -49,9 +49,10 @@ class GrTestNetGui(object):
         self.model_file = 'zf_test.prototxt'
         self.weigth_path = self.root_path.joinpath("out", "gbr_zf", "train")
         self.weigth_file = None
-        self.train_solver = 'zf_solver.prototxt'
-        self.netProb = 0.8
-        self.netIter = 10000
+        self.solver_file = 'zf_solver.prototxt'
+        self.config_file = 'gbr_rcnn.yml'
+        self.net_prob = 0.8
+        self.net_iters = 10000
 
         # Top frames
         self.imgFrame = tk.Frame(self.root)
@@ -79,7 +80,11 @@ class GrTestNetGui(object):
                                                           command = self.open_btn_callback)
             self.openBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
-        self.updateBtn = tk.Button(self.buttonFrame, text = "Update",
+        self.trainBtn = tk.Button(self.buttonFrame, text = "Train",
+                                                      command = self.train_callback)
+        self.trainBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
+
+        self.updateBtn = tk.Button(self.buttonFrame, text = "Detect",
                                                       command = self.update_callback)
         self.updateBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
 
@@ -87,41 +92,31 @@ class GrTestNetGui(object):
         self.probFrame = tk.Frame(self.configFrame)
         self.probFrame.pack(side = tk.LEFT, padx = PADX, pady = PADY)
 
-        self.solverVar = tk.StringVar()
-        self.solverVar.set(self.train_solver)
-        tk.Label(self.probFrame, text = "Solver").grid(row = 0, column = 0)
-        self.cbSolver = ttk.Combobox(self.probFrame, state="readonly", textvariable = self.solverVar)
-        self.cbSolver.grid(row = 0, column = 1)
-        self.load_models(self.cbSolver, 'solver')
+        # Solver file
+        self.solverVar, self.cbSolver = addField(self.probFrame, "cb", "Solver", 0, 0, self.solver_file)
+        self.load_files(self.cbSolver, self.model_path, '*solver.prototxt')
 
-        self.iterVar = tk.StringVar()
-        self.iterVar.set(str(self.netIter))
-        tk.Label(self.probFrame, text = "Iterations").grid(row = 1, column = 0)
-        self.iterEntry = tk.Entry(self.probFrame, textvariable = self.iterVar)
-        self.iterEntry.grid(row = 1, column = 1)
+        # Net train config
+        self.configVar, self.cbConfig = addField(self.probFrame, "cb", "Config", 1, 0, self.config_file)
+        self.load_files(self.cbConfig, self.model_path, '*.yml')
 
-        self.modelVar = tk.StringVar()
-        self.modelVar.set(self.model_file)
-        tk.Label(self.probFrame, text = "Test model").grid(row = 0, column = 2)
-        self.cbModel = ttk.Combobox(self.probFrame, state="readonly", textvariable = self.modelVar)
-        self.cbModel.grid(row = 0, column = 3)
-        self.load_models(self.cbModel, 'test')
+        # Number of iterations
+        self.iterVar, self.iterEntry = addField(self.probFrame, "e", "Iterations", 2, 0, self.net_iters)
 
-        self.weigthVar = tk.StringVar()
-        tk.Label(self.probFrame, text = "Test weights").grid(row = 1, column = 2)
-        self.cbWeight = ttk.Combobox(self.probFrame, state="readonly", textvariable = self.weigthVar)
-        self.cbWeight.grid(row = 1, column = 3)
-        self.load_weights()
+        # Model file
+        self.modelVar, self.cbModel = addField(self.probFrame, "cb", "Model", 0, 2, self.model_file)
+        self.load_files(self.cbConfig, self.model_path, '*test.prototxt')
 
-        self.probVar = tk.StringVar()
-        self.probVar.set(str(self.netProb))
-        tk.Label(self.probFrame, text = "Threshold").grid(row = 0, column = 4)
-        self.probEntry = tk.Entry(self.probFrame, textvariable = self.probVar)
-        self.probEntry.grid(row = 1, column = 4)
+        # Weight file
+        self.weigthVar, self.cbWeight = addField(self.probFrame, "cb", "Weights", 1, 2, self.weigth_file)
+        self.load_files(self.cbConfig, self.weigth_path, '*.caffemodel')
+
+        # Probability
+        self.probVar, self.probEntry = addField(self.probFrame, "e", "Threshold", 2, 2, self.net_prob)
 
         # Status frame
         self.statusInfo = addStatusPanel(self.statusFrame, self.max_size + 10)
-        self.statusInfo.grid(row = 0, column = 0, sticky = tk.W, padx = 5, pady = 2)
+        self.statusInfo.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
 
     def open_img_callback(self, event):
@@ -139,15 +134,49 @@ class GrTestNetGui(object):
             self.load_image(self.boardImgName)
             self.statusInfo.set("Detections updated")
 
+    def train_callback(self):
+        # Set params
+        if not self.update_train_params():
+            return
+
+        # Get args
+        cmd = os.environ['FASTER_RCNN_HOME'] + '\\tools\\train_net.py'
+        args = [sys.executable,
+                cmd,
+                '--solver',
+                self.solver_file,
+                '--imdb',
+                'gbr_train',
+                '--iters',
+                str(self.net_iters),
+                '--cfg',
+                self.config_file]
+
+        # Create a simple batch file
+        with open("train.bat", "w") as f:
+            f.write(':: This is an DLN training file generated by test_net.py module')
+            f.write('@echo off\n')
+            f.write('set PYTHONPATH=%PYTHONPATH%;.\n')
+            f.writelines('%s ' % item for item in args)
+            f.write('2>&1 | wtee out\\logs\\train.log\n')
+        f.close()
+
+        # Run the command
+        os.system("start cmd.exe /k train.bat")
+
+
     def load_image(self, file_name):
+        # Update params
+        if not self.update_net_params():
+            return
+
+        # Update detections
+        self.show_detection(img, self.net_prob)
+
         # Load image
         img = cv2.imread(file_name)
         if img is None:
             raise Exception('File not found {}'.format(file_name))
-
-        # Do detection and display results on the image
-        if self.update_net_params():
-            self.show_detection(img, self.netProb)
 
         # Resize the image
         img2, self.zoom = resize2 (img, np.max(self.defBoardImg.shape[:2]), f_upsize = False)
@@ -159,21 +188,12 @@ class GrTestNetGui(object):
         self.imgFrame.pack_propagate(False)
         self.imgPanel.configure(image = self.boardImgTk)
 
-    def load_models(self, cb, stage):
+    def load_files(self, cb, path, mask):
         file_list = []
-        g = self.model_path.glob('*' + stage + '.prototxt')
+        g = path.glob(mask)
         for x in g:
           if x.is_file(): file_list.append(str(x.name))
         cb['values'] = sorted(file_list)
-
-    def load_weights(self):
-        file_list = []
-        g = self.weigth_path.glob('*.caffemodel')
-        for x in g:
-          if x.is_file(): file_list.append(str(x.name))
-        self.cbWeight['values'] = sorted(file_list)
-        if not self.weigth_file is None:
-            self.weigthVar.set(self.weigth_file)
 
     def show_detection(self, img, det_thresh):
         cfg.TEST.HAS_RPN = True
@@ -213,20 +233,38 @@ class GrTestNetGui(object):
             dets = dets[keep, :]
             cv2_show_detections(img, cls, dets, thresh=det_thresh, f_label = False, color = colors[cls_ind])
 
-    def update_net_params(self):
+    def update_train_params(self):
         try:
-            self.netProb = float(self.probVar.get())
-
-            self.model_file = self.modelVar.get()
-            self.weigth_file = self.weigthVar.get()
-            if self.model_file is None or self.model_file == '': return False
-            if self.weigth_file is None or self.weigth_file == '': return False
-
-            self.model_file = str(self.model_path.joinpath(self.model_file))
-            self.weigth_file = str(self.weigth_path.joinpath(self.weigth_file))
+            self.solver_file = self.get_file(self.model_path, self.solverVar)
+            self.config_file = self.get_file(self.model_path, self.configVar)
+            self.net_iters = int(self.get_entry(self.iterVar, 1000, 40000))
             return True
         except:
+            self.statusInfo.set(str(sys.exc_info()[1]))
             return False
+
+    def update_net_params(self):
+        try:
+            self.model_file = self.get_file(self.model_path, self.modelVar)
+            self.weigth_file = self.get_file(self.weigth_path, self.weigthVar)
+            self.net_prob = self.get_entry(self.probVar, 0.1, 100)
+            return True
+        except:
+            self.statusInfo.set(str(sys.exc_info()[1]))
+            return False
+
+    def get_file(self, p, v):
+        f = v.get()
+        if f is None or f == '':
+            raise ValueError('File not selected')
+        return str(p.joinpath(f))
+
+    def get_entry(self, v, min_, max_):
+        f = float(v.get())
+        if f < min_ or f > max_:
+            raise ValueError('Value not in range {}, {}'.format(min_, max_))
+        return f
+
 
 def main():
     # Construct interface
