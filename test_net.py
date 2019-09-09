@@ -166,17 +166,16 @@ class GrTestNetGui(object):
 
 
     def load_image(self, file_name):
-        # Update params
-        if not self.update_net_params():
-            return
-
-        # Update detections
-        self.show_detection(img, self.net_prob)
 
         # Load image
         img = cv2.imread(file_name)
         if img is None:
             raise Exception('File not found {}'.format(file_name))
+
+        # Update detections
+        # Update params
+        if self.update_net_params():
+            self.show_detection(img, self.net_prob)
 
         # Resize the image
         img2, self.zoom = resize2 (img, np.max(self.defBoardImg.shape[:2]), f_upsize = False)
