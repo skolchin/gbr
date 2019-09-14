@@ -2,10 +2,11 @@
 # Name:        Go board recognition project
 # Purpose:     Global definitions and constants
 #
-# Author:      skolchin
+# Author:      kol
 #
 # Created:     04.07.2019
-# Copyright:   (c) skolchin 2019
+# Copyright:   (c) kol 2019
+# Licence:     MIT
 #-------------------------------------------------------------------------------
 
 # Constants

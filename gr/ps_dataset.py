@@ -2,11 +2,11 @@
 # Name:        Go board recognition
 # Purpose:     Deep learning network PASCAL VOC dataset
 #
-# Author:      skolchin
+# Author:      kol
 #
 # Created:     03.08.2019.
-# Copyright:   (c) skolchin 2019
-# Licence:     <your licence>
+# Copyright:   (c) kol 2019
+# Licence:     MIT
 #-------------------------------------------------------------------------------
 import cv2
 import json
@@ -86,13 +86,14 @@ class GrPascalDataset(GrDataset):
 
                 # Convert to PNG
                 image_file = os.path.basename(board.image_file)
-                png_file = os.path.splitext(os.path.join(self.img_path,image_file))[0] + '.png'
+                #png_fname = str(len(file_list[stage])).zfill(4)
+                png_file = os.path.splitext(os.path.join(self.img_path, image_file))[0] + '.png'
                 if not self.img_size[stage] is None and self.img_size[stage] > 0:
                     board.resize_board(self.img_size[stage])
                 board.save_image(str(png_file))
 
                 # Save annotation
-                meta_file = os.path.splitext(os.path.join(self.meta_path,image_file))[0] + '.xml'
+                meta_file = os.path.splitext(os.path.join(self.meta_path, image_file))[0] + '.xml'
                 board.save_annotation(meta_file)
 
                 # Add to file list

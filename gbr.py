@@ -2,10 +2,11 @@
 # Name:        Go board recognition project
 # Purpose:     Main functions
 #
-# Author:      skolchin
+# Author:      kol
 #
 # Created:     04.07.2019
-# Copyright:   (c) skolchin 2019
+# Copyright:   (c) kol 2019
+# Licence:     MIT
 #-------------------------------------------------------------------------------
 from gr.board import GrBoard
 from gr.utils import img_to_imgtk, resize2, format_stone_pos

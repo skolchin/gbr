@@ -2,10 +2,11 @@
 # Name:        Go board recognition project
 # Purpose:     Deep-learning network testing module
 #
-# Author:      skolchin
+# Author:      kol
 #
 # Created:     19.07.2019
-# Copyright:   (c) skolchin 2019
+# Copyright:   (c) kol 2019
+# License:     MIT
 #-------------------------------------------------------------------------------
 
 import sys

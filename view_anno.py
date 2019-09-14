@@ -2,11 +2,11 @@
 # Name:        Go board recognition
 # Purpose:     Deep learning network dataset review
 #
-# Author:      skolchin
+# Author:      kol
 #
 # Created:     03.08.2019
-# Copyright:   (c) skolchin 2019
-# Licence:     <your licence>
+# Copyright:   (c) kol 2019
+# Licence:     MIT
 #-------------------------------------------------------------------------------
 import numpy as np
 import cv2
