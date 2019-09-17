@@ -326,9 +326,15 @@ def find_board(img, params, res):
             find_line(lines, GR_X, is_vertical, cmp_greater))
 
     # Determine edges
-    if hl[0] is None:
+    if hl[0] is None and vl[0] is None:
+       logging.error('Cannot determine board corners')
+       return None
+    elif hl[0] is None:
         corner1 = (int(vl[0][0]), int(vl[1][1]))
         corner2 = (int(vl[0][1]), int(vl[1][0]))
+    elif vl[0] is None:
+        corner1 = (int(hl[0][0]), int(hl[1][1]))
+        corner2 = (int(hl[0][1]), int(hl[1][0]))
     else:
         corner1 = (int(min(hl[0][0], vl[0][0])), int(min(hl[0][1], vl[0][1])))
         corner2 = (int(max(hl[1][0], vl[1][0])), int(max(hl[1][1], vl[1][1])))
