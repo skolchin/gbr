@@ -6,6 +6,7 @@
 #
 # Created:     06-09-2019
 # Copyright:   (c) kol 2019
+# Licence:     MIT
 #-------------------------------------------------------------------------------
 
 from pathlib import Path

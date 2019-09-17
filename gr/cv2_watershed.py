@@ -2,10 +2,11 @@
 # Name:        Go board recognition project
 # Purpose:     Watershed function (OpenCV version)
 #
-# Author:      skolchin
+# Author:      kol
 #
 # Created:     20.08.2019
-# Copyright:   (c) skolchin 2019
+# Copyright:   (c) kol 2019
+# Licence:     MIT
 #-------------------------------------------------------------------------------
 
 import cv2

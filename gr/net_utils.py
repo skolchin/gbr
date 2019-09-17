@@ -2,11 +2,11 @@
 # Name:        Go board recognition project
 # Purpose:     Deep-learning network common functions
 #
-# Author:      skolchin
+# Author:      kol
 #
 # Created:     19.07.2019
-# Copyright:   (c) skolchin 2019
-# Licence:     <your licence>
+# Copyright:   (c) kol 2019
+# Licence:     MIT
 #-------------------------------------------------------------------------------
 
 import sys

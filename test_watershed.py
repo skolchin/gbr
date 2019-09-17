@@ -2,11 +2,11 @@
 # Name:        Test watershed module
 # Purpose:
 #
-# Author:      skolchin
+# Author:      kol
 #
 # Created:     19.07.2019
-# Copyright:   (c) skolchin 2019
-# Licence:     <your licence>
+# Copyright:   (c) kol 2019
+# Licence:     MIT
 #-------------------------------------------------------------------------------
 
 import cv2
