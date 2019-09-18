@@ -11,7 +11,9 @@
 
 # Constants
 COLOR_WHITE = (255, 255, 255)     # white
-COLOR_BLACK = (0,0, 0)            # black
+COLOR_BLACK = (0, 0, 0)           # black
+COLOR_RED = (0, 0, 255)           # red
+COLOR_BLUE = (255, 0, 0)          # blue
 DEF_IMG_SIZE = (500, 500)         # default shape for board generation
 DEF_IMG_COLOR = (80, 145, 210)    # default generated board color
 DEF_BOARD_SIZE = 19               # default board size
@@ -33,9 +35,9 @@ DEF_GR_PARAMS = {
     "CANNY_MINVAL": 50,
     "CANNY_MAXVAL": 100,
     "CANNY_APERTURE": 3,
-    "HL_RHO": 1,
-    "HL_THETA": 90,
-    "HL_THRESHOLD": 100,
+#    "HL_RHO": 1,
+#    "HL_THETA": 90,
+#    "HL_THRESHOLD": 100,
     "HL_RHO2": 1,
     "HL_THETA2": 90,
     "HL_THRESHOLD2": 6,
@@ -69,9 +71,9 @@ GR_PARAMS_PROP = {
     "CANNY_MAXVAL": (1, 255, None),
     "CANNY_APERTURE": (3, 7, None),
 
-    "HL_RHO": (1, 5, "Lines detection"),
-    "HL_THETA": (1, 90, "Lines detection"),
-    "HL_THRESHOLD": (1, 255, "Lines detection"),
+#    "HL_RHO": (1, 5, "Lines detection"),
+#    "HL_THETA": (1, 90, "Lines detection"),
+#    "HL_THRESHOLD": (1, 255, "Lines detection"),
     "HL_RHO2": (1, 5, "Lines detection"),
     "HL_THETA2": (1, 90, "Lines detection"),
     "HL_THRESHOLD2": (1, 255, "Lines detection"),

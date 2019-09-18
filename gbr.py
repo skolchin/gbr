@@ -236,6 +236,8 @@ class GbrGUI(object):
             p[key] = self.tkVars[key].get()
         self.board.params = p
         self.update_board(reprocess = True)
+        if GrLog.numErrors() == 0:
+            self.statusInfo.set("No errors")
 
     # Apply defaults button callback
     def apply_def_callback(self):
@@ -247,6 +249,8 @@ class GbrGUI(object):
         for key in self.tkVars.keys():
             self.tkVars[key].set(p[key])
         self.update_board(reprocess = True)
+        if GrLog.numErrors() == 0:
+            self.statusInfo.set("No errors")
 
     # Show log button callback
     def show_log_callback(self):

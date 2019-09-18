@@ -8,11 +8,11 @@ The algorithm per se is the following:
 
 1. Detect board properties (board edges, spacing and board size):
     * Remove parts of image close to border
-    * Run HoughLinesP detection and determine line segments
-    * Calculate board edges as minimum and maximum coordinates of horizontal/vertical line segments
-    * Make up a new image and draw all line segments (thus removing any noise)
-    * Run HoughLines to determine lines (it returns line orientation but not line origin)
-    * Assume a board size as number of horizontal/vertical lines found
+    * Run HoughLines to find the lines
+    * Separate lines to vertical/horizontal ones
+    * Remove duplicates and lines too close to each other
+    * Calculate board edges as minimum and maximum coordinates of horizontal/vertical lines
+    * Detect a board size as number of horizontal/vertical lines found
 
 2. Find stones (black and white):
     * Apply pre-filters with parameters specified through the interface
@@ -53,6 +53,10 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 
 ## Changelog
+
+18/09/2019:
+
+* Line/edges detection completelly rewritten to simplify the code. Now only HoughLines detection algorithm is used.
 
 04/09/2019:
 

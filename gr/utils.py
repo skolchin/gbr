@@ -54,7 +54,7 @@ def show_stones(title, shape, points, img = None):
 # Make image displaying given lines
 # If an image is provided, lines are drawn on it
 # Otherwise it creates a new image with the same shape and draw the lines there
-def make_lines_img(shape, lines, width = 1, img = None):
+def make_lines_img(shape, lines, width = 1, color = COLOR_BLACK, img = None):
     if (img is None):
        img = np.full(shape, COLOR_WHITE[0], dtype=np.uint8)
     for i in lines:
@@ -62,7 +62,7 @@ def make_lines_img(shape, lines, width = 1, img = None):
         y1 = i[GR_FROM][GR_Y]
         x2 = i[GR_TO][GR_X]
         y2 = i[GR_TO][GR_Y]
-        cv2.line(img, (x1,y1), (x2,y2), COLOR_BLACK, width)
+        cv2.line(img, (x1,y1), (x2,y2), color, width)
 
     return img
 
@@ -150,7 +150,7 @@ def remove_nearest(a, axis1 = 0, axis2 = None, delta = 5):
 # Convert 1-channel image to 3-channel
 def img1_to_img3(img):
     img3 = np.empty((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-    for i in range(3): img3[:,:,i] = gray
+    for i in range(3): img3[:,:,i] = img
     return img3
 
 # Check horizontal and vertical lines are intersecting
