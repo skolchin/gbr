@@ -10,12 +10,11 @@
     "HC_MINDIST": 1,
     "HC_SENSITIVITY_B": 11,
     "HC_SENSITIVITY_W": 10,
-    "HL_RHO": 1,
     "HL_RHO2": 1,
-    "HL_THETA": 6,
     "HL_THETA2": 5,
-    "HL_THRESHOLD": 94,
-    "HL_THRESHOLD2": 25,
+    "HL_THRESHOLD2": 100,
+    "PYRAMID_B": 0,
+    "PYRAMID_W": 0,
     "STONES_DILATE_B": 2,
     "STONES_DILATE_W": 1,
     "STONES_ERODE_B": 1,
@@ -25,5 +24,7 @@
     "STONES_THRESHOLD_B": 83,
     "STONES_THRESHOLD_W": 218,
     "WATERSHED_B": 1,
-    "WATERSHED_W": 1
+    "WATERSHED_W": 1,
+    "WS_MORPH_B": 4,
+    "WS_MORPH_W": 1
 }
