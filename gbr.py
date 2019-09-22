@@ -302,28 +302,28 @@ class GbrGUI(object):
             ncol = 0
 
             # Iterate through the params processing only ones belonging to current tab
-            for key in params.keys():
-                if key in GR_PARAMS_PROP and GR_PARAMS_PROP[key][2] == tab:
-                    if (n == 3 or frame is None):
-                        frame = tk.Frame(nbFrame, width = 400)
-                        frame.grid(row = 0, column = ncol, padx = 3, pady = 3)
-                        n = 0
-                        ncol = ncol + 1
+            keys = [key for key in params.keys() if key in GR_PARAMS_PROP and GR_PARAMS_PROP[key][2] == tab]
+            for key in sorted(keys):
+                if (n == 3 or frame is None):
+                    frame = tk.Frame(nbFrame, width = 400)
+                    frame.grid(row = 0, column = ncol, padx = 3, pady = 3)
+                    n = 0
+                    ncol = ncol + 1
 
-                    # Add a switch
-                    panel = tk.Label(frame, text = key)
-                    panel.grid(row = n, column = 0, padx = 2, pady = 2, sticky = "s")
+                # Add a switch
+                panel = tk.Label(frame, text = key)
+                panel.grid(row = n, column = 0, padx = 2, pady = 2, sticky = "s")
 
-                    v = tk.IntVar()
-                    v.set(params[key])
-                    panel = tk.Scale(frame, from_ = GR_PARAMS_PROP[key][0],
-                                            to = GR_PARAMS_PROP[key][1],
-                                            orient = tk.HORIZONTAL,
-                                            variable = v)
-                    panel.grid(row = n, column = 1, padx = 2, pady = 2)
-                    vars[key] = v
+                v = tk.IntVar()
+                v.set(params[key])
+                panel = tk.Scale(frame, from_ = GR_PARAMS_PROP[key][0],
+                                        to = GR_PARAMS_PROP[key][1],
+                                        orient = tk.HORIZONTAL,
+                                        variable = v)
+                panel.grid(row = n, column = 1, padx = 2, pady = 2)
+                vars[key] = v
 
-                    n = n + 1
+                n = n + 1
         return vars
 
     # Add analysis results info
@@ -347,7 +347,7 @@ class GbrGUI(object):
 
             img = cv2.resize(debug_img[key], (sx, sy))
 
-            imgtk = ImageTk.PhotoImage(image=Image.fromarray(img))
+            imgtk = img_to_imgtk(img)
             panel = NLabel(frame, image = imgtk, tag = key)
             panel.image = imgtk
             panel.grid(row = 0, column = 0)
