@@ -76,8 +76,9 @@ def show_lines(title, shape, lines, img = None):
 
 # Convert CV2 image to Tkinter format
 def img_to_imgtk(img):
-    b,g,r = cv2.split(img)
-    img = cv2.merge((r,g,b))
+    if len(img.shape) ==3 and img.shape[2] == 3:
+        b,g,r = cv2.split(img)
+        img = cv2.merge((r,g,b))
     imgtk = ImageTk.PhotoImage(image=Image.fromarray(img))
     return imgtk
 
