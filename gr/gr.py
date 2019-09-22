@@ -14,14 +14,15 @@ if sys.version_info[0] < 3:
     from grdef import *
     from utils import *
     from cv2_watershed import apply_watershed
+    from py_accumulate import accumulate
 else:
     from gr.grdef import *
     from gr.utils import *
     from gr.cv2_watershed import apply_watershed
+    from itertools import accumulate
 import cv2
 import numpy as np
 import logging
-import itertools
 
 # Find stones on a board
 # Takes an image, recognition param dictionary, results dictionary and
@@ -256,7 +257,7 @@ def find_board(img, params, res):
         """Return lines with are away more than predifined length"""
         if a is None: return None
 
-        v = itertools.accumulate(a, lambda x,y: x if abs(y[0][0] - x[0][0]) < 10 else y)
+        v = accumulate(a, lambda x,y: x if abs(y[0][0] - x[0][0]) < 10 else y)
         l = [i for i in v]
 
         if l is None or len(l) == 0:
