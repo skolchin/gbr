@@ -211,10 +211,9 @@ class GrBoard(object):
             self._res = None
         else:
             self._res = process_img(self._img, self._params)
-            if self._res[GR_STONES_B] is None:
-                self._res[GR_STONES_B] = np.array([])
-            if self._res[GR_STONES_W] is None:
-                self._res[GR_STONES_W] = np.array([])
+            if not self._res is None:
+               if self._res[GR_STONES_B] is None: self._res[GR_STONES_B] = np.array([])
+               if self._res[GR_STONES_W] is None: self._res[GR_STONES_W] = np.array([])
 
     def show_board(self, f_black = True, f_white = True, f_det = False, show_state = None):
         """Generates board image. If a source image was processed, plots recognition results onto the image

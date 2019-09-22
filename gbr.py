@@ -303,7 +303,7 @@ class GbrGUI(object):
 
             # Iterate through the params processing only ones belonging to current tab
             for key in params.keys():
-                if GR_PARAMS_PROP[key][2] == tab:
+                if key in GR_PARAMS_PROP and GR_PARAMS_PROP[key][2] == tab:
                     if (n == 3 or frame is None):
                         frame = tk.Frame(nbFrame, width = 400)
                         frame.grid(row = 0, column = ncol, padx = 3, pady = 3)
@@ -394,12 +394,15 @@ class GbrGUI(object):
         self.genImgTk, _ = self.make_imgtk(self.genImg)
         self.genImgPanel.configure(image = self.genImgTk)
 
-        board_size = self.board.board_size
-        black_stones = self.board.black_stones
-        white_stones = self.board.white_stones
+        if self.board.results is None:
+            self.boardInfo.set("")
+        else:
+            board_size = self.board.board_size
+            black_stones = self.board.black_stones
+            white_stones = self.board.white_stones
 
-        self.boardInfo.set("Board size: {}, black stones: {}, white stones: {}".format(
-                                  board_size, black_stones.shape[0], white_stones.shape[0]))
+            self.boardInfo.set("Board size: {}, black stones: {}, white stones: {}".format(
+                                      board_size, black_stones.shape[0], white_stones.shape[0]))
 
         # Update params
         p = self.board.params

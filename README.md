@@ -8,6 +8,7 @@ The algorithm per se is the following:
 
 1. Detect board properties (board edges, spacing and board size):
     * Remove parts of image close to border
+    * If parameters set - run HoughLinesP to determine line segments, filter out small lines and reconstruct the image. This allows to remove board labels.
     * Run HoughLines to find the lines
     * Separate lines to vertical/horizontal ones
     * Remove duplicates and lines too close to each other
@@ -54,9 +55,9 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 ## Changelog
 
-18/09/2019:
+22/09/2019:
 
-* Line/edges detection completelly rewritten to simplify the code. Now only HoughLines detection algorithm is used.
+* Line/edges detection completelly rewritten to simplify the code. HoughLinesP detection is now optional and runs only if threshold/minlen params set.
 
 04/09/2019:
 

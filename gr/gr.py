@@ -252,9 +252,17 @@ def find_board(img, params, res):
                 ret.append(((x1,y1),(x2,y2)))
         return np.array(ret)
 
-    def get_unique(a):
-        v = itertools.accumulate(a, lambda x,y: x if abs(y[0][0] - x[0][0]) < MIN_LINE_SPACE else y)
-        return np.unique(np.array([i for i in v]), axis = 0)
+    def unique_lines(a):
+        """Return lines with are away more than predifined length"""
+        if a is None: return None
+
+        v = itertools.accumulate(a, lambda x,y: x if abs(y[0][0] - x[0][0]) < 10 else y)
+        l = [i for i in v]
+
+        if l is None or len(l) == 0:
+           return None
+        else:
+           return np.unique(np.array(l), axis = 0)
 
     # Prepare gray image
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -271,13 +279,32 @@ def find_board(img, params, res):
     edges = cv2.rectangle(edges, (dx,dx),
                 (edges.shape[CV_WIDTH]-dx, edges.shape[CV_HEIGTH]-dx), COLOR_BLACK, MIN_EDGE_DIST)
 
-    # Detect lines цшер with HoughLines
+    # Run HoughLinesP, if its parameters are set
+    # HoughLinesP detects line segments and may split a single line to multiple segments
+    # The goal of running it is to remove small lines (less than minlen) which are,
+    # for example, labels on board positions
+    # If HoughLines is to run, its results will be used for further recognition as imput
+    img_detect = edges
+    n_rho = params['HL_RHO']
+    n_theta = params['HL_THETA'] * np.pi / 180
+    n_thresh = params['HL_THRESHOLD']
+    n_minlen = params['HL_MINLEN']
+    if n_thresh > 0 and n_minlen > 0:
+       lines = cv2.HoughLinesP(edges, n_rho, n_theta, n_thresh, minLineLength = n_minlen)
+       lines = houghp_to_lines(lines)
+       img_detect = make_lines_img(edges.shape, lines)
+       res[GR_IMG_LINES] = img_detect
+       img_detect = cv2.bitwise_not(img_detect)
+
+    # Detect lines with HoughLines
     n_rho = params['HL_RHO2']
     n_theta = params['HL_THETA2'] * np.pi / 180
     n_thresh = params['HL_THRESHOLD2']
     if n_thresh < 10: n_thresh = 90       #w/a for backward compt
 
-    lines = cv2.HoughLines(edges, n_rho, n_theta, n_thresh)
+    # HoughLines doesn't determine coordinates, but only direction (theta) and
+    # distance from (0,0) point (rho)
+    lines = cv2.HoughLines(img_detect, n_rho, n_theta, n_thresh)
     lines = sorted(lines, key = lambda f: f[0][0])
 
     # Find vertical/horizontal lines
@@ -286,8 +313,8 @@ def find_board(img, params, res):
     lines_h = [e for e in lines if round(e[0][1]*100,0) == p if e[0][0] > 1]
 
     # Remove duplicates (lines too close to each other)
-    unique_v = get_unique(lines_v)
-    unique_h = get_unique(lines_h)
+    unique_v = unique_lines(lines_v)
+    unique_h = unique_lines(lines_h)
 
     # Convert from (rho, theta) to coordinate-based lines
     lines_v = hough_to_lines(unique_v, img.shape)
@@ -299,14 +326,14 @@ def find_board(img, params, res):
 
     # Detect edges
     if len(lines_h) == 0:
-       logging.error("Cannot determine number of horizontal lines")
+       logging.error("Cannot find horizontal lines, check params")
        return None
     if len(lines_v) == 0:
-       logging.error("Cannot determine number of vertical lines")
+       logging.error("Cannot find vertical lines, check params")
        return None
 
-    top_left = [lines_v[0][0][0], lines_h[0][0][1]]
-    bottom_right = [lines_v[-1][0][0], lines_h[-1][0][1]]
+    top_left = [int(lines_v[0][0][0]), int(lines_h[0][0][1])]
+    bottom_right = [int(lines_v[-1][0][0]), int(lines_h[-1][0][1])]
     edges = (top_left, bottom_right)
 
     res[GR_EDGES] = edges
@@ -314,8 +341,8 @@ def find_board(img, params, res):
 
     # Draw a lines grid over gray image for debugging
     line_img = img1_to_img3(gray)
-    line_img = make_lines_img(gray.shape, lines_v, width = 1, color = COLOR_RED, img = line_img)
-    line_img = make_lines_img(gray.shape, lines_h, width = 1, color = COLOR_RED, img = line_img)
+    line_img = make_lines_img(gray.shape, lines_v, width = 2, color = COLOR_RED, img = line_img)
+    line_img = make_lines_img(gray.shape, lines_h, width = 2, color = COLOR_RED, img = line_img)
     res[GR_IMG_LINES2] = line_img
 
     # Determine board size
@@ -346,6 +373,10 @@ def find_board(img, params, res):
 
     # Calculate spacing
     space_x, space_y = board_spacing(edges, size)
+    if space_x == 0 or space_y == 0:
+       logging.error("Cannot determine spacing, check params")
+       return None
+
     spacing = (space_x, space_y)
     res[GR_SPACING] = spacing
     logging.info("Detected spacing: {}".format(spacing))
@@ -358,7 +389,7 @@ def find_board(img, params, res):
 # Board coordinates are stores as first two array items, board position - as 3,4
 def convert_xy(coord, res):
     """Convert stone coordinates to board positions"""
-    if coord is None:
+    if coord is None or not GR_EDGES in res:
         return None
 
      # Make up an empty array
@@ -442,6 +473,9 @@ def process_img(img, params):
     try:
         # Find board edges, spacing, size
         board_edges = find_board(img, params, res)
+        if board_edges is None:
+           logging.error('Edges not found, processing stopped')
+           return None
 
         # Find stones
         black_stones = find_stones(img, params, res, 'B')

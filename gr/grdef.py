@@ -35,12 +35,13 @@ DEF_GR_PARAMS = {
     "CANNY_MINVAL": 50,
     "CANNY_MAXVAL": 100,
     "CANNY_APERTURE": 3,
-#    "HL_RHO": 1,
-#    "HL_THETA": 90,
-#    "HL_THRESHOLD": 100,
+    "HL_RHO": 1,
+    "HL_THETA": 90,
+    "HL_THRESHOLD": 0,
+    "HL_MINLEN": 0,
     "HL_RHO2": 1,
     "HL_THETA2": 90,
-    "HL_THRESHOLD2": 6,
+    "HL_THRESHOLD2": 60,
     "HC_MINDIST": 1,
     "HC_MAXRADIUS": 20,
     "HC_SENSITIVITY_B": 10,
@@ -65,16 +66,17 @@ DEF_GR_PARAMS = {
     "PYRAMID_W": 0,
 }
 
-# Parameter properties: min, max, change, block
+# Parameter properties: min, max, group
 GR_PARAMS_PROP = {
     "CANNY_MINVAL": (1, 255, None),
     "CANNY_MAXVAL": (1, 255, None),
     "CANNY_APERTURE": (3, 7, None),
 
 #    "HL_RHO": (1, 5, "Lines detection"),
-#    "HL_THETA": (1, 90, "Lines detection"),
-#    "HL_THRESHOLD": (1, 255, "Lines detection"),
-    "HL_RHO2": (1, 5, "Lines detection"),
+    "HL_THETA": (1, 90, "Lines detection"),
+    "HL_THRESHOLD": (0, 255, "Lines detection"),
+    "HL_MINLEN": (0, 255, "Lines detection"),
+#    "HL_RHO2": (1, 5, "Lines detection"),
     "HL_THETA2": (1, 90, "Lines detection"),
     "HL_THRESHOLD2": (1, 255, "Lines detection"),
 
