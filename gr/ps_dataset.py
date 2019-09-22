@@ -30,6 +30,9 @@ class GrPascalDataset(GrDataset):
     def __init__(self, src_path = None, ds_path = None, img_size = DS_DEF_IMG_SIZE):
         GrDataset.__init__(self, src_path, ds_path, img_size)
 
+        self.use_image_ids = False
+        self.separate_stages = False
+
         self.meta_path = ensure_path(self.ds_path,"data", "Annotations")
         self.img_path = ensure_path(self.ds_path,"data", "Images")
         self.sets_path = ensure_path(self.ds_path,"data", "ImageSets")
@@ -58,6 +61,12 @@ class GrPascalDataset(GrDataset):
         file_list['test'] = []
         file_list['train'] = []
 
+        # Check dirs
+        if self.separate_stages:
+            for t in file_list.keys():
+                ensure_path(self.img_path, t)
+                ensure_path(self.meta_path, t)
+
         # Process all JGF (board descr) files in source path
         try:
             for file in os.listdir(self.src_path):
@@ -76,24 +85,48 @@ class GrPascalDataset(GrDataset):
                     if os.path.exists(jgf_file): continue
 
                     # Process image file
-                    logging.info ("Loading file {} to testing dataset".format(src_file))
+                    logging.info ("Processing {}".format(src_file))
                     board.load_image(src_file, f_process = False)
                     stage = "test"
                 else:
                     continue
 
-                logging.info ("Appending to dataset {}".format(stage))
+                logging.info ("Appending to stage {}".format(stage))
 
                 # Convert to PNG
                 image_file = os.path.basename(board.image_file)
-                #png_fname = str(len(file_list[stage])).zfill(4)
-                png_file = os.path.splitext(os.path.join(self.img_path, image_file))[0] + '.png'
+                if self.use_image_ids:
+                    # Dataset image name is index wihin the stage
+                    png_fname = stage + '_' + str(len(file_list[stage])).zfill(4)
+                else:
+                    # Dataset image name is source file name
+                    png_fname = image_file
+                if self.separate_stages:
+                    # Create separate directories for each stage
+                    png_file = os.path.splitext(os.path.join(self.img_path, stage, png_fname))[0] + '.png'
+                else:
+                    # Use one directory
+                    png_file = os.path.splitext(os.path.join(self.img_path, png_fname))[0] + '.png'
+
                 if not self.img_size[stage] is None and self.img_size[stage] > 0:
                     board.resize_board(self.img_size[stage])
+
+                logging.info ("Saving image as {}".format(png_file))
                 board.save_image(str(png_file))
 
                 # Save annotation
-                meta_file = os.path.splitext(os.path.join(self.meta_path, image_file))[0] + '.xml'
+                if self.use_image_ids:
+                    # Dataset image name is index wihin the stage
+                    meta_fname = str(len(file_list[stage])).zfill(4)
+                else:
+                    # Dataset image name is source file name
+                    meta_fname = image_file
+                if self.separate_stages:
+                    # Create separate directories for each stage
+                    meta_file = os.path.splitext(os.path.join(self.meta_path, stage, meta_fname))[0] + '.xml'
+                else:
+                    # Use one directory
+                    meta_file = os.path.splitext(os.path.join(self.meta_path, meta_fname))[0] + '.xml'
                 board.save_annotation(meta_file)
 
                 # Add to file list
