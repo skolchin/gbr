@@ -13,7 +13,7 @@ import cv2
 import sys
 from PIL import Image, ImageTk
 from pathlib import Path
-from gr.utils import img_to_imgtk, resize2
+from gr.utils import resize2
 from gr.board import GrBoard
 from gr.ui_extra import *
 import logging
@@ -49,14 +49,14 @@ class ViewAnnoGui:
         # Image frame
         self.defBoardImg = GrBoard(board_shape = (max_size, max_size)).image
         self.boardImg = self.defBoardImg
-        self.boardImgTk = img_to_imgtk(self.boardImg)
         self.boardImgName = None
         self.annoName = None
         self.srcName = None
 
-        _, self.imgPanel, _ = addImagePanel(self.imgFrame,"Dataset image",
+        self.imgPanel = addImagePanel(self.imgFrame,"Dataset image",
                 [["box", True, self.show_rec_callback, "Rectangle/circle"]],
-                self.boardImgTk, self.open_img_callback)
+                self.boardImg, self.open_img_callback)
+        self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
         # Config
         self.dataset = GrDataset.getDataset()
@@ -189,12 +189,11 @@ class ViewAnnoGui:
 
             # Display the image
             self.boardImg = img2
-            self.boardImgTk = img_to_imgtk(img2)
+            self.imgPanel.set_image(img2)
             self.boardImgName = fn
             self.annoName = file
             self.srcName = src
             self.imgFrame.pack_propagate(False)
-            self.imgPanel.configure(image = self.boardImgTk)
 
             # Update status
             stage = self.dataset.get_stage(self.boardImgName)
