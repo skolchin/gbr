@@ -16,10 +16,10 @@ import random
 
 if sys.version_info[0] < 3:
     from grdef import *
-    from utils import img_to_imgtk
+    from utils import img_to_imgtk, resize2
 else:
     from gr.grdef import *
-    from gr.utils import img_to_imgtk
+    from gr.utils import img_to_imgtk, resize2
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
@@ -223,28 +223,30 @@ class StatusPanel(tk.Frame):
 
 # Image panel class
 class ImagePanel(tk.Frame):
-    def __init__(self, master, caption = None, btn_params = None, image = None, frame_callback = None, max_size = None, *args, **kwargs):
+    def __init__(self, master, *args, **kwargs):
         """Creates ImagePanel instance.
 
-           Parameters:
-               master          master frame
+           Allowed parameters:
+               master         master frame
                caption        Panel caption
                btn_params     Params for ImgButtons: tag, initial state, callback function, (optional) tooltip
                image          OpenCv or PhotoImage. If none provided, an empty frame is created
                frame_callback Callback for panel mouse click
-               max_width       maximal text width
+               max_size       maximal image size (if image is larger, it will be resized down to this size)
+                              Can be used only for OpenCV images.
         """
+
+        # Parse parameters
+        self.__max_size = kwargs.pop('max_size', 0)
+        image = kwargs.pop('image', None)
+        caption = kwargs.pop('caption', '')
+        btn_params = kwargs.pop('btn_params', None)
+        frame_callback = kwargs.pop('frame_callback', None)
+
+        # Init
         tk.Frame.__init__(self, master, *args, **kwargs)
-        self._max_size = max_size
-        if image is None:
-           self._image = image
-           self._imgtk = None
-        elif type(image) is ImageTk.PhotoImage:
-           self._image = None
-           self._imgtk = image
-        else:
-           self._image = image
-           self._imgtk = img_to_imgtk(image)
+        self.__scale = [1.0, 1.0]
+        self.__set_image(image)
 
         # Panel itself
         self.internalPanel = tk.Frame(self)
@@ -253,7 +255,7 @@ class ImagePanel(tk.Frame):
         # Header panel and label
         self.headerPanel = tk.Frame(self.internalPanel)
         self.headerPanel.pack(side = tk.TOP, fill = tk.X, expand = True)
-        if caption is None: caption = ""
+
         self.headerLabel = tk.Label(self.headerPanel, text = caption)
         self.headerLabel.pack(side = tk.LEFT, fill = tk.X, expand = True)
 
@@ -268,24 +270,25 @@ class ImagePanel(tk.Frame):
                 btn.pack(side = tk.RIGHT, padx = 2, pady = 2)
 
         # Body
-        if self._imgtk is None:
+        if self.__imgtk is None:
            self.body = tk.Frame(self.internalPanel)
         else:
-           self.body = tk.Label(self.internalPanel, image = self._imgtk)
+           self.body = tk.Label(self.internalPanel, image = self.__imgtk)
 
         self.body.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+
         if not frame_callback is None:
             self.body.bind('<Button-1>', frame_callback)
 
     @property
     def image(self):
         """Current OpenCv image"""
-        return self._image
+        return self.__image
 
     @property
     def imagetk(self):
         """Current PhotoImage image"""
-        return self._imagetk
+        return self.__imagetk
 
     @image.setter
     def image(self, img):
@@ -295,40 +298,83 @@ class ImagePanel(tk.Frame):
     def imagetk(self, imgtk):
         self.set_image(imgtk)
 
+    @property
+    def scale(self):
+        """Current image scale"""
+        return self.__scale
+
+    @property
+    def max_size(self):
+        """Current maximum size"""
+        return self.__max_size
+
+    @max_size.setter
+    def max_size(self, ms):
+        self.__max_size = ms
+        self.__resize()
+        self.__update_image()
+
     def set_image(self, img):
         """Changes image. img can be either OpenCv or PhotoImage"""
-        if img is None:
-           self._image = None
-           self._imgtk = None
-        elif type(img) is ImageTk.PhotoImage:
-           self._image = None
-           self._imgtk = img
-        else:
-           self._image = img
-           self._imgtk = img_to_imgtk(img)
+        self.__set_image(img)
+        self.__update_image()
 
+    def coords(self, p):
+        """Maps a point from image coordinates to frame coordinates
+
+        Parameters:
+            p  A tuple or list of (x,y) image-related coordinates
+
+        Returns:
+            Coordinates scaled to frame as (x, y) tuple
+        """
+        return (int(p[0] * self.scale[0]), int(p[1] * self.scale[1]))
+
+
+    def __set_image(self, image):
+        """Internal function to assign image"""
+        self.__scale = [1.0, 1.0]
+        if image is None:
+           self.__image = image
+           self.__imgtk = None
+        elif type(image) is ImageTk.PhotoImage:
+           self.__image = None
+           self.__imgtk = image
+        else:
+           self.__image = image
+           self.__resize()
+           self.__imgtk = img_to_imgtk(self.__image)
+
+    def __resize(self):
+        """Internal function to resize image"""
+        if not self.__image is None and self.__max_size > 0:
+           self.__image, self.__scale = resize2(self.__image, self.__max_size, f_upsize = False)
+
+    def __update_image(self):
+        """Internal function to update image"""
         if type(self.body) is tk.Label:
-           if self._imgtk is None:
+           if self.__imgtk is None:
               self.body.configure(text = "", image = None)
            else:
-              self.body.configure(image = self._imgtk)
+              self.body.configure(image = self.__imgtk)
 
 
-
-def addImagePanel(parent, caption = None, btn_params = None, image = None, frame_callback = None):
+def addImagePanel(parent, **kwargs):
     """Creates a panel with caption and buttons
 
-    Parameters:
-        parent         Tk window/frame to add panel to
-        caption        Panel caption
-        btn_params     Params for ImgButtons: tag, initial state, callback function, (optional) tooltip
-        image          OpenCv image. If none provided, an empty frame is created
-        frame_callback Callback for panel mouse click
+       Allowed parameters:
+           master         master frame
+           caption        Panel caption
+           btn_params     Params for ImgButtons: tag, initial state, callback function, (optional) tooltip
+           image          OpenCv or PhotoImage. If none provided, an empty frame is created
+           frame_callback Callback for panel mouse click
+           max_size       maximal image size (if image is larger, it will be resized down to this size)
+                          Can be used only for OpenCV images.
 
     Returns:
         panel          A panel frame
     """
-    return ImagePanel(parent, caption, btn_params, image, frame_callback)
+    return ImagePanel(parent, None, **kwargs)
 
 def treeview_sort_columns(tv):
     """Set up Treeview tv for column sorting (see https://stackoverflow.com/questions/1966929/tk-treeview-column-sort)"""

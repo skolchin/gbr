@@ -48,14 +48,16 @@ class ViewAnnoGui:
 
         # Image frame
         self.defBoardImg = GrBoard(board_shape = (max_size, max_size)).image
-        self.boardImg = self.defBoardImg
         self.boardImgName = None
         self.annoName = None
         self.srcName = None
 
-        self.imgPanel = addImagePanel(self.imgFrame,"Dataset image",
-                [["box", True, self.show_rec_callback, "Rectangle/circle"]],
-                self.boardImg, self.open_img_callback)
+        self.imgPanel = addImagePanel(self.imgFrame,
+                caption = "Dataset image",
+                btn_params = [["box", True, self.show_rec_callback, "Rectangle/circle"]],
+                image = self.defBoardImg,
+                frame_callback = self.open_img_callback,
+                max_size = max_size)
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
         # Config
@@ -161,39 +163,34 @@ class ViewAnnoGui:
                 raise Exception('File not found {}'.format(fn))
 
             # Resize the image
-            img2, self.zoom = resize2 (img, np.max(self.defBoardImg.shape[:2]), f_upsize = False)
-
-            # Process objects
-            for bb in bboxes:
-                x1 = bb[0][0]
-                y1 = bb[0][1]
-                x2 = bb[1][0]
-                y2 = bb[1][1]
-                cls = bb[2]
-
-                # Draw a bounding box
-                x1 = int(x1 * self.zoom[0])
-                x2 = int(x2 * self.zoom[0])
-                y1 = int(y1 * self.zoom[1])
-                y2 = int(y2 * self.zoom[1])
-                clr = (0,0,255)
-                if cls == "black": clr = (255,0,0)
-
-                if self.f_rect:
-                    cv2.rectangle(img2,(x1,y1),(x2,y2),clr,1)
-                else:
-                    d = max(x2-x1, y2-y1)
-                    x = int(x1 + d/2)
-                    y = int(y1 + d/2)
-                    cv2.circle(img2, (x,y), int(d/2), clr, 1)
-
-            # Display the image
-            self.boardImg = img2
-            self.imgPanel.set_image(img2)
             self.boardImgName = fn
             self.annoName = file
             self.srcName = src
             self.imgFrame.pack_propagate(False)
+
+            self.imgPanel.image = img          # this adopts to frame max_size
+            img2 = self.imgPanel.image
+
+            # Process objects
+            for bb in bboxes:
+                # Get coordinates
+                p1 = self.imgPanel.coords((bb[0][0],bb[0][1]))
+                p2 = self.imgPanel.coords((bb[1][0],bb[1][1]))
+                cls = bb[2]
+
+                # Draw a bounding box
+                clr = (0,0,255)
+                if cls == "black": clr = (255,0,0)
+
+                if self.f_rect:
+                    cv2.rectangle(img2, p1, p2, clr,1)
+                else:
+                    d = max(p2[0]-p1[0], p2[1]-p1[1])
+                    x = int(p1[0] + d/2)
+                    y = int(p1[1] + d/2)
+                    cv2.circle(img2, (x,y), int(d/2), clr, 1)
+
+            self.imgPanel.image = img2      # reassing image with drawing results
 
             # Update status
             stage = self.dataset.get_stage(self.boardImgName)
@@ -214,7 +211,7 @@ class ViewAnnoGui:
 
         # Check whether JGF exists
         # If not - image goes to test dataset, stones should not be stored in annotation
-        jgf_file = self.src_path.joinpath(Path(self.boardImgName).name).with_suffix('.jgf')
+        jgf_file = Path(self.dataset.src_path).joinpath(Path(self.boardImgName).name).with_suffix('.jgf')
         f_process = jgf_file.is_file()
         logging.info('Board file {} exists: {}'.format(jgf_file, f_process))
 
@@ -236,8 +233,8 @@ class ViewAnnoGui:
 
             # Update status
             stage = self.dataset.get_stage(self.boardImgName)
-            img_info = "Size: ({}, {}), stage: {}".format(self.boardImg.shape[1], \
-                                                          self.boardImg.shape[0], \
+            img_info = "Size: ({}, {}), stage: {}".format(self.imgPanel.image.shape[1], \
+                                                          self.imgPanel.image.shape[0], \
                                                           stage)
             self.imgInfo.set(img_info)
 

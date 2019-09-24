@@ -50,9 +50,9 @@ class GrBoardEdit(object):
         self.boardImgTk = img_to_imgtk(self.src_img)
 
         # Image panel
-        self.imgPanel = addImagePanel(self.imgFrame,"Image",
-              [["edge", False, self.set_edges_callback, "Set board area"]],
-              None, None)
+        self.imgPanel = addImagePanel(self.imgFrame,
+              caption = "Image",
+              btn_params = [["edge", False, self.set_edges_callback, "Set board area"]])
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
         # Canvas and image on canvas
