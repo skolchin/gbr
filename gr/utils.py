@@ -225,11 +225,54 @@ def jgf_to_gres(jgf):
 
 # Resize the image proportionally so no side will exceed given max_size
 # if f_upsize = False, images with size less than max_size are not upscaled
-def resize(img, max_size, f_upsize = True):
-    img, _ = resize2(img, max_size, f_upsize)
-    return img
+def resize(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
+    """Resizes an image so neither of its sides will be bigger that max_size saving proportions
 
-def resize2(img, max_size, f_upsize = True):
+    Parameters:
+        img         An OpenCv image
+        max_size    Size to resize to
+        f_upsize    If True, images less than max_size will be upsized
+        f_center    If True, smaller images will be centered on bigger image with padding
+        pad_color   Padding color
+
+    Returns:
+        Resized image
+    """
+    im, _, _ = resize3(img, max_size, f_upsize, f_center, pad_color)[0]
+    return im
+
+def resize2(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
+    """Resizes an image so neither of its sides will be bigger that max_size saving proportions
+
+    Parameters:
+        img         An OpenCv image
+        max_size    Size to resize to
+        f_upsize    If True, images with size less than max_size will be upsized
+        f_center    If True, smaller images will be centered on bigger image with padding
+        pad_color   Padding color
+
+    Returns:
+        Resized image
+        Scale [scale_x, scale_y]. Scale < 0 means image was downsized
+    """
+    im, scale, _ = resize3(img, max_size, f_upsize, f_center, pad_color)
+    return im, scale
+
+def resize3(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
+    """Resizes an image so neither of its sides will be bigger that max_size saving proportions
+
+    Parameters:
+        img         An OpenCv image
+        max_size    Size to resize to
+        f_upsize    If True, images with size less than max_size will be upsized
+        f_center    If True, smaller images will be centered on bigger image with padding
+        pad_color   Padding color
+
+    Returns:
+        Resized image
+        Scale [scale_x, scale_y]. Scale < 0 means image was downsized
+        Offset [x, y]. If image was centered, offset of image location
+    """
     im_size_max = np.max(img.shape[0:2])
     im_size_min = np.min(img.shape[0:2])
     im_scale = float(max_size) / float(im_size_min)
@@ -238,9 +281,30 @@ def resize2(img, max_size, f_upsize = True):
         im_scale = float(max_size) / float(im_size_max)
 
     if not f_upsize and im_scale > 1.0:
-        return img, [im_scale, im_scale]
+       # Image size is less than max_size and upsize not specified
+       if not f_center:
+          # Nothing to do!
+          return img, [1.0, 1.0], [0, 0]
+       else:
+          # Make a bigger image and center initial image on it
+          if len(img.shape) > 2:
+             im = np.full((max_size, max_size, img.shape[2]), pad_color, dtype=np.uint8)
+          else:
+             c = pad_color[0] if type(pad_color) is tuple else pad_color
+             im = np.full((max_size, max_size), c, dtype=np.uint8)
+
+          w = img.shape[CV_WIDTH]
+          h = img.shape[CV_HEIGTH]
+          dx = int((max_size - w)/2)
+          dy = int((max_size - h)/2)
+
+          im[dy:dy + h, dx:dx + w] = img
+
+          return im, [1.0, 1.0], [dx, dy]
     else:
-        return cv2.resize(img, dsize = None, fx = im_scale, fy = im_scale), [im_scale, im_scale]
+       # Perform normal resize
+       im = cv2.resize(img, dsize = None, fx = im_scale, fy = im_scale)
+       return im, [im_scale, im_scale], [0, 0]
 
 # Calculate spacing
 def board_spacing(edges, size):
