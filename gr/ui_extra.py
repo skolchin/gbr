@@ -16,10 +16,10 @@ import random
 
 if sys.version_info[0] < 3:
     from grdef import *
-    from utils import img_to_imgtk, resize2
+    from utils import img_to_imgtk, resize3
 else:
     from gr.grdef import *
-    from gr.utils import img_to_imgtk, resize2
+    from gr.utils import img_to_imgtk, resize3
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
@@ -246,6 +246,7 @@ class ImagePanel(tk.Frame):
         # Init
         tk.Frame.__init__(self, master, *args, **kwargs)
         self.__scale = [1.0, 1.0]
+        self.__offset = [0, 0]
         self.__set_image(image)
 
         # Panel itself
@@ -270,15 +271,26 @@ class ImagePanel(tk.Frame):
                 btn.pack(side = tk.RIGHT, padx = 2, pady = 2)
 
         # Body
-        if self.__imgtk is None:
-           self.body = tk.Frame(self.internalPanel)
-        else:
-           self.body = tk.Label(self.internalPanel, image = self.__imgtk)
+        def get_size(n):
+            sz = self.max_size
+            if sz == 0:
+               if not self.__image is None:
+                  sz = self.__image.shape[n]
+               else:
+                  sz = DEF_IMG_SIZE[n]
+            return sz
 
-        self.body.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+        self.canvas = tk.Canvas(self.internalPanel,
+              width = get_size(CV_WIDTH),
+              height = get_size(CV_HEIGTH))
+        self.canvas.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+
+        self.__image_id = None
+        if not self.__imgtk is None:
+           self.__image_id = self.canvas.create_image(0, 0, anchor = tk.NW, image = self.__imgtk)
 
         if not frame_callback is None:
-            self.body.bind('<Button-1>', frame_callback)
+            self.canvas.bind('<Button-1>', frame_callback)
 
     @property
     def image(self):
@@ -302,6 +314,11 @@ class ImagePanel(tk.Frame):
     def scale(self):
         """Current image scale"""
         return self.__scale
+
+    @property
+    def offset(self):
+        """Current offset of image origin"""
+        return self.__offset
 
     @property
     def max_size(self):
@@ -328,12 +345,12 @@ class ImagePanel(tk.Frame):
         Returns:
             Coordinates scaled to frame as (x, y) tuple
         """
-        return (int(p[0] * self.scale[0]), int(p[1] * self.scale[1]))
+        return (int(p[0] * self.scale[0]) + self.offset[0],
+               int(p[1] * self.scale[1]) + self.offset[1])
 
 
     def __set_image(self, image):
         """Internal function to assign image"""
-        self.__scale = [1.0, 1.0]
         if image is None:
            self.__image = image
            self.__imgtk = None
@@ -347,16 +364,22 @@ class ImagePanel(tk.Frame):
 
     def __resize(self):
         """Internal function to resize image"""
-        if not self.__image is None and self.__max_size > 0:
-           self.__image, self.__scale = resize2(self.__image, self.__max_size, f_upsize = False)
+        self.__scale = [1.0, 1.0]
+        self.__offset = [0, 0]
+        if not self.__image is None and self.max_size > 0:
+           c = self.winfo_rgb(self['bg'])
+           r, g, b = c[0]/256, c[1]/256, c[2]/256
+           self.__image, self.__scale, self.__offset = resize3(self.__image, self.__max_size,
+           f_upsize = False, f_center = True, pad_color = (r, g, b))
 
     def __update_image(self):
         """Internal function to update image"""
-        if type(self.body) is tk.Label:
-           if self.__imgtk is None:
-              self.body.configure(text = "", image = None)
-           else:
-              self.body.configure(image = self.__imgtk)
+        if self.__imgtk is None and self.__image_id is not None:
+           self.canvas.destroy(self.__image_id)
+        elif not self.__imgtk is None and self.__image_id is None:
+           self.__image_id = self.canvas.create_image(0, 0, anchor = tk.NW, image = self.__imgtk)
+        else:
+           self.canvas.itemconfig(self.__image_id, image = self.__imgtk)
 
 
 def addImagePanel(parent, **kwargs):
@@ -442,12 +465,13 @@ def is_on_w(a,b,c,delta=1):
 class ImageMask(object):
     """Support class for drawing and changing mask on an image drawn on canvas"""
 
-    def __init__(self, canvas, image_shape, mask = None, allow_change = True, f_show = True, min_dist = 5):
+    def __init__(self, canvas, image_shape, **kwargs):
         """Creates a mask object.
 
         Parameters:
-            canvas        A canvas object
-            image_shape   Shape of image drawn on canvas(assuming from 0,0 coordinates)
+            canvas        A canvas object (required)
+            image_shape   Shape of image drawn on canvas
+            offset        Offset of image on canvas ([x, y])
             mask          Initial mask (if None, default mask is generated)
             allow_change  True to allow mask reshaping by user (dragging by mouse)
             f_show        True to show mask initially
@@ -459,16 +483,21 @@ class ImageMask(object):
         # Parameters
         self.canvas = canvas
         self.image_shape = image_shape
-        self.min_dist = min_dist
-        self.allow_change = allow_change
-        self.mask = mask
+        self.offset = kwargs.pop('offset', [0,0])
+        self.mask = kwargs.pop('mask', None)
+        allow_change = kwargs.pop('allow_change', True)
+        f_show = kwargs.pop('f_show', True)
+        self.min_dist = kwargs.pop('min_dist', 0)
+
         if self.mask is None:
            self.default_mask()
 
+        # Public parameters
         self.shade_fill = "gray"
         self.shade_stipple = "gray50"
         self.mask_color = "red"
 
+        # Internal parameters - should not be changed
         self.mask_area = None
         self.mask_rect = None
         self.last_cursor = None
@@ -505,7 +534,8 @@ class ImageMask(object):
         if self.drag_side is None:
            self.drag_side = self.get_mask_rect_side(event.x, event.y)
         if not self.drag_side is None:
-           p = (self.canvas.canvasx(event.x), self.canvas.canvasy(event.y))
+           p = (self.canvas.canvasx(event.x) - self.offset[0],
+                self.canvas.canvasy(event.y) - self.offset[1])
            if self.drag_side == 0:
                 self.mask[0] = max(p[0], self.min_dist)
            elif self.drag_side == 1:
@@ -514,7 +544,13 @@ class ImageMask(object):
                 self.mask[2] = min(p[0], self.image_shape[1]-self.min_dist)
            elif self.drag_side == 3:
                 self.mask[3] = min(p[1], self.image_shape[0]-self.min_dist)
-           self.canvas.coords(self.mask_rect, self.mask[0], self.mask[1], self.mask[2], self.mask[3])
+
+           self.canvas.coords(self.mask_rect,
+                self.mask[0] + self.offset[0],
+                self.mask[1] + self.offset[1],
+                self.mask[2] + self.offset[0],
+                self.mask[3] + self.offset[1])
+
            self.draw_mask_shading()
 
     def end_drag_callback(self, event):
@@ -573,15 +609,17 @@ class ImageMask(object):
             self.mask_area = None
 
         # Create mask points array
-        ix = self.image_shape[1]
-        iy = self.image_shape[0]
-        mx = self.mask[0]
-        my = self.mask[1]
-        wx = self.mask[2]
-        wy = self.mask[3]
+        sx = self.offset[0]
+        sy = self.offset[1]
+        ix = sx + self.image_shape[1]
+        iy = sy + self.image_shape[0]
+        mx = sx + self.mask[0]
+        my = sy + self.mask[1]
+        wx = sx + self.mask[2]
+        wy = sy + self.mask[3]
         self.mask_area = [
-          _rect([0, 0, ix, 0, ix, my, 0, my, 0, 0]),
-          _rect([0, my, mx, my, mx, iy, 0, iy, 0, my]),
+          _rect([sx, sy, ix, sy, ix, my, sx, my, sx, sy]),
+          _rect([sx, my, mx, my, mx, iy, sx, iy, sx, my]),
           _rect([mx, wy, ix, wy, ix, iy, mx, iy, mx, wy]),
           _rect([wx, my, ix, my, ix, wy, wx, wy, wx, my])
         ]
@@ -594,10 +632,12 @@ class ImageMask(object):
             self.mask_rect = None
 
         # Draw rect
-        mx = self.mask[0]
-        my = self.mask[1]
-        wx = self.mask[2]
-        wy = self.mask[3]
+        sx = self.offset[0]
+        sy = self.offset[1]
+        mx = sx + self.mask[0]
+        my = sy + self.mask[1]
+        wx = sx + self.mask[2]
+        wy = sy + self.mask[3]
         self.mask_rect = self.canvas.create_rectangle(
           mx, my,
           wx, wy,
