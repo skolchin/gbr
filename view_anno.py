@@ -168,8 +168,8 @@ class ViewAnnoGui:
             self.srcName = src
             self.imgFrame.pack_propagate(False)
 
-            self.imgPanel.image = img          # this adopts to frame max_size
-            img2 = self.imgPanel.image
+            self.imgPanel.image = img          # this adopts image to frame max_size
+            img2 = self.imgPanel.image         # image to draw upon
 
             # Process objects
             for bb in bboxes:
@@ -190,7 +190,7 @@ class ViewAnnoGui:
                     y = int(p1[1] + d/2)
                     cv2.circle(img2, (x,y), int(d/2), clr, 1)
 
-            self.imgPanel.image = img2      # reassing image with drawing results
+            self.imgPanel.image = img2      # display image with drawing on the panel
 
             # Update status
             stage = self.dataset.get_stage(self.boardImgName)

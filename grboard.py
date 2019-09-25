@@ -37,6 +37,7 @@ class GrBoardEdit(object):
         self.root = root
         self.src_img = img
         self.board_size = board_size
+        self.max_size = 550
 
         # Top-level frames
         self.imgFrame = tk.Frame(self.root)
@@ -46,24 +47,17 @@ class GrBoardEdit(object):
 ##        self.buttonFrame = tk.Frame(self.root, width = max_size + 10, height = 70, bd = 1, relief = tk.RAISED)
 ##        self.buttonFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX)
 
-        # Board image
-        self.boardImgTk = img_to_imgtk(self.src_img)
-
         # Image panel
         self.imgPanel = addImagePanel(self.imgFrame,
               caption = "Image",
-              btn_params = [["edge", False, self.set_edges_callback, "Set board area"]])
+              btn_params = [["edge", False, self.set_edges_callback, "Set board area"]],
+              image = self.src_img,
+              max_size = self.max_size)
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
-        # Canvas and image on canvas
-        self.canvas = tk.Canvas(self.imgPanel,
-              width = self.src_img.shape[1],
-              height = self.src_img.shape[0])
-        self.canvasImg = self.canvas.create_image(0, 0, anchor = tk.NW, image = self.boardImgTk)
-        self.canvas.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
-
         # Image mask
-        self.imageMask = ImageMask(self.canvas, self.src_img.shape, allow_change = True, f_show = False)
+        self.imageMask = ImageMask(self.imgPanel.canvas, self.src_img.shape,
+            allow_change = True, f_show = False, offset = self.imgPanel.offset)
 
 ##        # Editors and buttons
 ##        self.editorFrame = tk.Frame(self.configFrame)
@@ -94,7 +88,7 @@ class GrBoardEdit(object):
 # Main function
 def main():
 
-    img = cv2.imread('img\\go_board_25.png')
+    img = cv2.imread('img\\go_board_1.png')
     if img is None:
         raise Exception('File not found')
 
