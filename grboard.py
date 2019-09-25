@@ -52,7 +52,8 @@ class GrBoardEdit(object):
               caption = "Image",
               btn_params = [["edge", False, self.set_edges_callback, "Set board area"]],
               image = self.src_img,
-              max_size = self.max_size)
+              max_size = self.max_size,
+              scrollbars = False)
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
         # Image mask

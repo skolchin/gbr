@@ -230,10 +230,12 @@ class ImagePanel(tk.Frame):
                master         master frame
                caption        Panel caption
                btn_params     Params for ImgButtons: tag, initial state, callback function, (optional) tooltip
-               image          OpenCv or PhotoImage. If none provided, an empty frame is created
-               frame_callback Callback for panel mouse click
+               image          OpenCv or PhotoImage. If none provided, an empty frame is created (default is None)
+               frame_callback Callback for panel mouse click (default is None)
                max_size       maximal image size (if image is larger, it will be resized down to this size)
-                              Can be used only for OpenCV images.
+                              Can be used only for OpenCV images (default is 0)
+               scrollbars     Boolean or tuple of booleans. If True both x and y scrollbars attached to canvas.
+                              If tuple provided, it specify where scrollbars are attached (horiz, vert)
         """
 
         # Parse parameters
@@ -242,6 +244,8 @@ class ImagePanel(tk.Frame):
         caption = kwargs.pop('caption', '')
         btn_params = kwargs.pop('btn_params', None)
         frame_callback = kwargs.pop('frame_callback', None)
+        f_sb = kwargs.pop('scrollbars', (False, False))
+        if not type(f_sb) is tuple: f_sb = (f_sb, f_sb)
 
         # Init
         tk.Frame.__init__(self, master, *args, **kwargs)
@@ -265,8 +269,7 @@ class ImagePanel(tk.Frame):
         if not btn_params is None:
             for b in btn_params:
                 btn = ImgButton(self.headerPanel, b[0], b[1], b[2])
-                if len(b) > 3:
-                    createToolTip(btn, b[3])
+                if len(b) > 3: createToolTip(btn, b[3])
                 self.buttons[b[0]] = btn
                 btn.pack(side = tk.RIGHT, padx = 2, pady = 2)
 
@@ -280,15 +283,33 @@ class ImagePanel(tk.Frame):
                   sz = DEF_IMG_SIZE[n]
             return sz
 
-        self.canvas = tk.Canvas(self.internalPanel,
+        # Canvas
+        self.canvasPanel = tk.Frame(self.internalPanel)
+        self.canvasPanel.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+
+        self.canvas = tk.Canvas(self.canvasPanel,
               width = get_size(CV_WIDTH),
               height = get_size(CV_HEIGTH))
-        self.canvas.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+        self.canvas.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
+        # Image on canvas
         self.__image_id = None
         if not self.__imgtk is None:
            self.__image_id = self.canvas.create_image(0, 0, anchor = tk.NW, image = self.__imgtk)
 
+        # Scrollbars
+        if f_sb[0]:
+           sbb = tk.Scrollbar(self.internalPanel, orient=tk.HORIZONTAL)
+           sbb.pack(side=tk.BOTTOM, fill=tk.X, expand = True)
+           sbb.config(command=self.canvas.xview)
+           self.canvas.config(xscrollcommand=sbb.set)
+        if f_sb[1]:
+           sbr = tk.Scrollbar(self.canvasPanel)
+           sbr.pack(side=tk.RIGHT, fill=tk.Y, expand = True)
+           sbr.config(command=self.canvas.yview)
+           self.canvas.config(yscrollcommand=sbr.set)
+
+        # Frame click callback
         if not frame_callback is None:
             self.canvas.bind('<Button-1>', frame_callback)
 
@@ -336,7 +357,7 @@ class ImagePanel(tk.Frame):
         self.__set_image(img)
         self.__update_image()
 
-    def coords(self, p):
+    def image2frame(self, p):
         """Maps a point from image coordinates to frame coordinates
 
         Parameters:
@@ -346,8 +367,19 @@ class ImagePanel(tk.Frame):
             Coordinates scaled to frame as (x, y) tuple
         """
         return (int(p[0] * self.scale[0]) + self.offset[0],
-               int(p[1] * self.scale[1]) + self.offset[1])
+                int(p[1] * self.scale[1]) + self.offset[1])
 
+    def frame2image(self, p):
+        """Maps a point from frame coordinates to image coordinates
+
+        Parameters:
+            p  A tuple or list of (x,y) frame-related coordinates
+
+        Returns:
+            Coordinates scaled to image as (x, y) tuple
+        """
+        return (int((p[0] - self.offset[0]) / self.scale[0]),
+                int((p[1] - self.offset[1]) / self.scale[1]))
 
     def __set_image(self, image):
         """Internal function to assign image"""
@@ -369,8 +401,13 @@ class ImagePanel(tk.Frame):
         if not self.__image is None and self.max_size > 0:
            c = self.winfo_rgb(self['bg'])
            r, g, b = c[0]/256, c[1]/256, c[2]/256
-           self.__image, self.__scale, self.__offset = resize3(self.__image, self.__max_size,
-           f_upsize = False, f_center = True, pad_color = (r, g, b))
+           orig_shape = self.__image.shape
+           self.__image, self.__scale, self.__offset = resize3(self.__image,
+                         max_size = self.__max_size,
+                         f_upsize = False,
+                         f_center = True,
+                         pad_color = (r, g, b))
+           #print('Shape: {}, scale: {}, offset: {}'.format(orig_shape, self.__scale, self.__offset))
 
     def __update_image(self):
         """Internal function to update image"""

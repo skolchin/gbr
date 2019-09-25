@@ -30,7 +30,7 @@ else:
     from tkinter import filedialog
     from tkinter import ttk
 
-MAX_IMG_SIZE = 550
+MAX_IMG_SIZE = 500
 MAX_DBG_IMG_SIZE = 200
 DEF_BTN_STATE = { "black": True, "white": True, "box": False, "edge": False }
 
@@ -47,10 +47,6 @@ class GbrGUI(object):
         # Generate board
         self.board = GrBoard()
 
-        # Prepare images
-        self.origImgTk, self.zoom = self.make_imgtk(self.board.image)
-        self.genImgTk = self.origImgTk
-
         # Top-level frames
         self.imgFrame = tk.Frame(self.root)
         self.imgFrame.pack(side = tk.TOP, fill=tk.BOTH, expand = True, padx = PADX, pady = PADY)
@@ -64,43 +60,47 @@ class GbrGUI(object):
         self.__setup_status_frame()
 
     def __setup_img_frame(self):
-        _, self.origImgPanel, buttons = \
-                addImagePanel(self.imgFrame,
-                          "Original",
-                          [["edge", False, self.set_edges_callback]],
-                          self.origImgTk,
-                          self.orig_img_mouse_callback)
-        self.imgButtons.update(buttons)
+        self.origImgPanel = addImagePanel(self.imgFrame,
+            caption = "Original",
+            btn_params = [["edge", False, self.set_edges_callback]],
+            image = self.board.image,
+            max_size = self.max_img_size,
+            frame_callback = self.orig_img_mouse_callback)
+        self.imgButtons.update(self.origImgPanel.buttons)
+        self.origImgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
-        _, self.genImgPanel, buttons = \
-                addImagePanel(self.imgFrame,
-                          "Generated",
-                           [["box", False, self.show_stones_callback, "Show/hide detection boxes"],
-                           ["white", True, self.show_stones_callback, "Show/hide white stones"],
-                           ["black", True, self.show_stones_callback, "Show/hide black stones"]],
-                          self.genImgTk,
-                          self.gen_img_mouse_callback)
-        self.imgButtons.update(buttons)
+        self.genImgPanel = addImagePanel(self.imgFrame,
+            caption = "Generated",
+            btn_params = [["box", False, self.show_stones_callback, "Show/hide detection boxes"],
+                          ["white", True, self.show_stones_callback, "Show/hide white stones"],
+                          ["black", True, self.show_stones_callback, "Show/hide black stones"]],
+            image = self.board.image,
+            max_size = self.max_img_size,
+            frame_callback = self.gen_img_mouse_callback)
+        self.imgButtons.update(self.genImgPanel.buttons)
+        self.genImgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
-        self.dbgPanel, self.dbgCanvasFrame, buttons = \
-                addImagePanel(self.imgFrame,
-                          "Analysis",
-                           [],
-                           None,
-                           self.dbg_img_mouse_callback)
+        self.dbgPanel = addImagePanel(self.imgFrame,
+            caption = "Analysis",
+            frame_callback = self.dbg_img_mouse_callback,
+            scrollbars = (False, True))
+        self.dbgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
+        self.dbgFrame = tk.Frame(self.dbgPanel.canvas)
+        self.dbgPanel.canvas.create_window((0,0), window=self.dbgFrame, anchor='nw')
+        self.dbgFrame.bind('<Configure>', self.on_scroll_configure)
 
         # Add canvas
-        self.dbgCanvas = tk.Canvas(self.dbgCanvasFrame, width = self.max_dbg_img_size*2+10,
-                                                        height = self.origImgTk.height())
-        scroll = tk.Scrollbar(self.dbgCanvasFrame, command = self.dbgCanvas.yview)
-        scroll.pack(side=tk.RIGHT, fill=tk.Y, pady = PADY)
-        self.dbgCanvas.configure(yscrollcommand = scroll.set)
-        self.dbgCanvas.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
-
-        self.dbgFrame = tk.Frame(self.dbgCanvas)
-        self.dbgCanvas.create_window((0,0), window=self.dbgFrame, anchor='nw')
-        self.dbgFrame.bind('<Configure>', self.on_scroll_configure)
+##        self.dbgCanvas = tk.Canvas(self.dbgCanvasFrame, width = self.max_dbg_img_size*2+10,
+##                                                        height = self.origImgTk.height())
+##        scroll = tk.Scrollbar(self.dbgCanvasFrame, command = self.dbgCanvas.yview)
+##        scroll.pack(side=tk.RIGHT, fill=tk.Y, pady = PADY)
+##        self.dbgCanvas.configure(yscrollcommand = scroll.set)
+##        self.dbgCanvas.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
+##
+##        self.dbgFrame = tk.Frame(self.dbgCanvas)
+##        self.dbgCanvas.create_window((0,0), window=self.dbgFrame, anchor='nw')
+##        self.dbgFrame.bind('<Configure>', self.on_scroll_configure)
 
 
     def __setup_info_frame(self):
@@ -155,23 +155,11 @@ class GbrGUI(object):
     # Callback functions
     # Callback for mouse events on generated board image
     def gen_img_mouse_callback(self, event):
-        # Convert from widget coordinates to image coordinates
-        w = event.widget.winfo_width()
-        h = event.widget.winfo_height()
-        x = event.x
-        y = event.y
-        zx = self.zoom[GR_X]
-        zy = self.zoom[GR_Y]
-
         if self.board.is_gen_board:
             return
 
-        x = int((x - (w - self.board.board_shape[CV_WIDTH] * zx) / 2) / zx)
-        y = int((y - (h - self.board.board_shape[CV_HEIGTH] * zy) / 2) / zy)
-        print('{}, {}'.format(x, y))
-
+        x, y = self.genImgPanel.frame2image((event.x, event.y))
         p, f = self.board.find_stone(coord = (x,y))
-
         if not p is None:
             fs = "Black"
             if f == GR_STONES_W: fs = "White"
@@ -258,7 +246,7 @@ class GbrGUI(object):
 
     # Callback for canvas configuration
     def on_scroll_configure(self, event):
-        self.dbgCanvas.configure(scrollregion = self.dbgFrame.bbox('all'))
+        self.dbgPanel.canvas.configure(scrollregion = self.dbgFrame.bbox('all'))
 
     # Callback for "Show stones/edges"
     def show_stones_callback(self, event, tag, state):
@@ -390,9 +378,7 @@ class GbrGUI(object):
                 return
 
         # Generate board using analysis results
-        self.genImg = self.board.show_board(show_state = self.buttonState)
-        self.genImgTk, _ = self.make_imgtk(self.genImg)
-        self.genImgPanel.configure(image = self.genImgTk)
+        self.genImgPanel.image = self.board.show_board(show_state = self.buttonState)
 
         if self.board.results is None:
             self.boardInfo.set("")
@@ -416,15 +402,15 @@ class GbrGUI(object):
 
     # Convert origImg to ImageTk
     # If image size greater than maximim one, resize it to proper level and store zoom factor
-    def make_imgtk(self, img):
-        imgtk = None
-        z = [1.0,1.0]
-        if img.shape[0] <= self.max_img_size and img.shape[1] <= self.max_img_size:
-            imgtk = img_to_imgtk(img)
-        else:
-            img2, z = resize2(img, self.max_img_size, False)
-            imgtk = img_to_imgtk(img2)
-        return imgtk, z
+##    def make_imgtk(self, img):
+##        imgtk = None
+##        z = [1.0,1.0]
+##        if img.shape[0] <= self.max_img_size and img.shape[1] <= self.max_img_size:
+##            imgtk = img_to_imgtk(img)
+##        else:
+##            img2, z = resize2(img, self.max_img_size, False)
+##            imgtk = img_to_imgtk(img2)
+##        return imgtk, z
 
     # Load specified image
     def load_image(self, fn):
@@ -432,9 +418,7 @@ class GbrGUI(object):
         GrLog.clear()
         try:
             params_loaded = self.board.load_image(fn, f_with_params = True)
-
-            self.origImgTk, self.zoom = self.make_imgtk(self.board.image)
-            self.origImgPanel.configure(image = self.origImgTk)
+            self.origImgPanel.image = self.board.image
 
             # Reset button state to default
             self.buttonState = DEF_BTN_STATE.copy()

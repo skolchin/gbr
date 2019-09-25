@@ -174,8 +174,8 @@ class ViewAnnoGui:
             # Process objects
             for bb in bboxes:
                 # Get coordinates
-                p1 = self.imgPanel.coords((bb[0][0],bb[0][1]))
-                p2 = self.imgPanel.coords((bb[1][0],bb[1][1]))
+                p1 = self.imgPanel.image2frame((bb[0][0],bb[0][1]))
+                p2 = self.imgPanel.image2frame((bb[1][0],bb[1][1]))
                 cls = bb[2]
 
                 # Draw a bounding box
