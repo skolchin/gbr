@@ -42,23 +42,31 @@ class NLabel(tk.Label):
 # ImageButton
 class ImgButton(tk.Label):
     """Button with image face"""
-    def __init__(self, master, tag, state, callback, *args, **kwargs):
-        """Creates new ImgButton. Parameters:
+    def __init__(self, master, *args, **kwargs):
+        """Creates new ImgButton.
 
-        master     Tk windows/frame
-        tag        Button tag. Files names "<tag>_down.png" and "<tag>_up.png" must exist in UI_DIR.
-        state      Initial state (true/false)
-        callback   Callback function. Function signature:
-                      event - Tk event
-                      tag   - button's tag
-                      state - target state (true/false)
-                   Function shall return if new state accepted, or false otherwise
+        Parameters:
+            master     Tk windows/frame
+            tag        Button tag. Files names "<tag>_down.png" and "<tag>_up.png" must exist in UI_DIR.
+            state      Initial pressing state (true/false)
+            tooltip    A tooltip text
+            callback   Callback function. Function signature:
+                          event - Tk event
+                          tag   - button's tag
+                          state - target state (true/false)
+                       Function shall return if new state accepted, or false otherwise
         """
+        self._tag = kwargs.pop('tag', None)
+        if self._tag is None:
+            raise Exception('tag not provided')
+        self._state = kwargs.pop('state', False)
+        self._callback = kwargs.pop('callback', None)
+        tooltip = kwargs.pop('tooltip', None)
+
         tk.Label.__init__(self, master, *args, **kwargs)
 
-        self._tag = tag
-        self._state = state
-        self._callback = callback
+        if not tooltip is None:
+            self._tooltip = createToolTip(self, tooltip)
 
         # Load button images
         self._images = [ImageTk.PhotoImage(Image.open(os.path.join(UI_DIR, self._tag + '_up.png'))),
@@ -77,13 +85,13 @@ class ImgButton(tk.Label):
         self.configure(image = self._images[new_state])
         if new_state: self._root().update()
         if self._callback(event = event, tag = self._tag, state = new_state):
-           self._state = new_state
+            self._state = new_state
         else:
-           if new_state:
-              # Unpress after small delay
-              self.after(300, lambda: self.configure(image = self._images[self._state]))
-           else:
-              self.configure(image = self._images[self._state])
+            if new_state:
+                # Unpress after small delay
+                self.after(300, lambda: self.configure(image = self._images[self._state]))
+            else:
+                self.configure(image = self._images[self._state])
 
     @property
     def state(self):
@@ -189,8 +197,8 @@ class StatusPanel(tk.Frame):
         curw = f.measure(text)
         maxw -= chw*3
         if curw > maxw:
-           strip_len = int((curw - maxw) / chw) + 3
-           text = text[:-strip_len] + '...'
+            strip_len = int((curw - maxw) / chw) + 3
+            text = text[:-strip_len] + '...'
 
         self._var.set(text)
 
@@ -202,22 +210,22 @@ class StatusPanel(tk.Frame):
 
         maxw = self._get_maxw()
         if maxw == 0:
-           maxw = self.winfo_width()
-           if maxw < 20:
-              # Window not updated yet
-              self._var.set(text)
-              return
+            maxw = self.winfo_width()
+            if maxw < 20:
+                # Window not updated yet
+                self._var.set(text)
+                return
 
         maxw -= chw*3
         if f.measure(text + file) > maxw:
-           # Exclude file path parts to fit in starting from 3 entry
-           parts = list(Path(file).parts)
-           for n in range(len(parts)-3):
-               parts.pop(len(parts)-2)
-               t = parts[0] + '\\'.join(parts[1:])
-               if f.measure(text + t) < maxw: break
-           file = parts[0] + '\\'.join(parts[1:-2])
-           file += '\\...\\' + parts[-1]
+            # Exclude file path parts to fit in starting from 3 entry
+            parts = list(Path(file).parts)
+            for n in range(len(parts)-3):
+                parts.pop(len(parts)-2)
+                t = parts[0] + '\\'.join(parts[1:])
+                if f.measure(text + t) < maxw: break
+            file = parts[0] + '\\'.join(parts[1:-2])
+            file += '\\...\\' + parts[-1]
 
         self._var.set(text + file)
 
@@ -226,7 +234,7 @@ class ImagePanel(tk.Frame):
     def __init__(self, master, *args, **kwargs):
         """Creates ImagePanel instance.
 
-           Allowed parameters:
+           Allowed keyworded parameters:
                master         master frame
                caption        Panel caption
                btn_params     Params for ImgButtons: tag, initial state, callback function, (optional) tooltip
@@ -236,91 +244,104 @@ class ImagePanel(tk.Frame):
                               Can be used only for OpenCV images (default is 0)
                scrollbars     Boolean or tuple of booleans. If True both x and y scrollbars attached to canvas.
                               If tuple provided, it specify where scrollbars are attached (horiz, vert)
+               use_mask       If True, an ImageMask is created
+               mask           If use_mask = True, specifies initial mask
+               allow_change   If use_mask = True, specifies whether the mask can be changed
+               show_mask      If use_mask = True, specifies whether the mask should be displayed immediatelly
         """
 
         # Parse parameters
         self.__max_size = kwargs.pop('max_size', 0)
-        image = kwargs.pop('image', None)
-        caption = kwargs.pop('caption', '')
+        img = kwargs.pop('image', None)
+        self.__caption = kwargs.pop('caption', '')
         btn_params = kwargs.pop('btn_params', None)
         frame_callback = kwargs.pop('frame_callback', None)
         f_sb = kwargs.pop('scrollbars', (False, False))
         if not type(f_sb) is tuple: f_sb = (f_sb, f_sb)
 
+        use_mask = kwargs.pop('use_mask', False)
+        mask = kwargs.pop('mask', None)
+        allow_change = kwargs.pop('allow_change', False)
+        show_mask = kwargs.pop('show_mask', False)
+        min_dist = kwargs.pop('min_dist', 0)
+
         # Init
         tk.Frame.__init__(self, master, *args, **kwargs)
         self.__scale = [1.0, 1.0]
         self.__offset = [0, 0]
-        self.__set_image(image)
+        self.__image_shape = []
+        self.__set_image(img)
 
-        # Panel itself
-        self.internalPanel = tk.Frame(self)
-        self.internalPanel.pack(fill = tk.BOTH, expand = True)
+        # Panel to hold everything
+        internalPanel = tk.Frame(self)
+        internalPanel.pack(fill = tk.BOTH, expand = True)
 
         # Header panel and label
-        self.headerPanel = tk.Frame(self.internalPanel)
-        self.headerPanel.pack(side = tk.TOP, fill = tk.X, expand = True)
+        headerPanel = tk.Frame(internalPanel)
+        headerPanel.pack(side = tk.TOP, fill = tk.X, expand = True)
 
-        self.headerLabel = tk.Label(self.headerPanel, text = caption)
-        self.headerLabel.pack(side = tk.LEFT, fill = tk.X, expand = True)
+        self.__header = tk.Label(headerPanel, text = self.__caption)
+        self.__header.pack(side = tk.LEFT, fill = tk.X, expand = True)
 
         # Buttons
-        self.buttons = dict()
+        self.__buttons = dict()
         if not btn_params is None:
             for b in btn_params:
-                btn = ImgButton(self.headerPanel, b[0], b[1], b[2])
-                if len(b) > 3: createToolTip(btn, b[3])
-                self.buttons[b[0]] = btn
+                btn = ImgButton(headerPanel,
+                    tag = b[0],
+                    state = b[1],
+                    callback = b[2],
+                    tooltip = b[3] if len(b) > 3 else None)
+                self.__buttons[b[0]] = btn
                 btn.pack(side = tk.RIGHT, padx = 2, pady = 2)
 
-        # Body
-        def get_size(n):
-            sz = self.max_size
-            if sz == 0:
-               if not self.__image is None:
-                  sz = self.__image.shape[n]
-               else:
-                  sz = DEF_IMG_SIZE[n]
-            return sz
-
         # Canvas
-        self.canvasPanel = tk.Frame(self.internalPanel)
-        self.canvasPanel.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+        canvasPanel = tk.Frame(internalPanel)
+        canvasPanel.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
 
-        self.canvas = tk.Canvas(self.canvasPanel,
-              width = get_size(CV_WIDTH),
-              height = get_size(CV_HEIGTH))
+        sz = self.max_canvas_size
+        self.canvas = tk.Canvas(canvasPanel,
+              width = sz[0],
+              height = sz[1])
         self.canvas.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
         # Image on canvas
         self.__image_id = None
         if not self.__imgtk is None:
-           self.__image_id = self.canvas.create_image(0, 0, anchor = tk.NW, image = self.__imgtk)
+            self.__image_id = self.canvas.create_image(0, 0, anchor = tk.NW, image = self.__imgtk)
 
         # Scrollbars
         if f_sb[0]:
-           sbb = tk.Scrollbar(self.internalPanel, orient=tk.HORIZONTAL)
-           sbb.pack(side=tk.BOTTOM, fill=tk.X, expand = True)
-           sbb.config(command=self.canvas.xview)
-           self.canvas.config(xscrollcommand=sbb.set)
+            sbb = tk.Scrollbar(internalPanel, orient=tk.HORIZONTAL)
+            sbb.pack(side=tk.BOTTOM, fill=tk.X, expand = True)
+            sbb.config(command=self.canvas.xview)
+            self.canvas.config(xscrollcommand=sbb.set)
         if f_sb[1]:
-           sbr = tk.Scrollbar(self.canvasPanel)
-           sbr.pack(side=tk.RIGHT, fill=tk.Y, expand = True)
-           sbr.config(command=self.canvas.yview)
-           self.canvas.config(yscrollcommand=sbr.set)
+            sbr = tk.Scrollbar(canvasPanel)
+            sbr.pack(side=tk.RIGHT, fill=tk.Y, expand = True)
+            sbr.config(command=self.canvas.yview)
+            self.canvas.config(yscrollcommand=sbr.set)
 
         # Frame click callback
         if not frame_callback is None:
             self.canvas.bind('<Button-1>', frame_callback)
 
+        # Image mask
+        self.__image_mask = None
+        if use_mask:
+           self.create_image_mask(mask = mask,
+                allow_change = allow_change,
+                show_mask = show_mask,
+                min_dist = min_dist)
+
     @property
     def image(self):
-        """Current OpenCv image"""
+        """OpenCv image"""
         return self.__image
 
     @property
     def imagetk(self):
-        """Current PhotoImage image"""
+        """PhotoImage image"""
         return self.__imagetk
 
     @image.setter
@@ -333,17 +354,17 @@ class ImagePanel(tk.Frame):
 
     @property
     def scale(self):
-        """Current image scale"""
+        """Image scale"""
         return self.__scale
 
     @property
     def offset(self):
-        """Current offset of image origin"""
+        """Offset of image origin"""
         return self.__offset
 
     @property
     def max_size(self):
-        """Current maximum size"""
+        """Maximum panel size"""
         return self.__max_size
 
     @max_size.setter
@@ -351,6 +372,37 @@ class ImagePanel(tk.Frame):
         self.__max_size = ms
         self.__resize()
         self.__update_image()
+
+    @property
+    def caption(self):
+        """Panel caption text"""
+        return self.__caption
+
+    @caption.setter
+    def caption(self, text):
+        self.__caption = text
+        self.__header.configure(text = text)
+
+    @property
+    def buttons(self):
+        """Image buttons shown on panel"""
+        return self.__buttons
+
+    @property
+    def max_canvas_size(self):
+        """Maximum actual canvas size"""
+        sz = self.max_size
+        if sz > 0:
+            return (sz, sz)
+        elif not self.__image is None:
+            return (self.__image.shape[CV_WIDTH], self.__image.shape[CV_HEIGTH])
+        else:
+            return DEF_IMG_SIZE
+
+    @property
+    def image_mask(self):
+        """Image mask or None"""
+        return self.__image_mask
 
     def set_image(self, img):
         """Changes image. img can be either OpenCv or PhotoImage"""
@@ -381,42 +433,55 @@ class ImagePanel(tk.Frame):
         return (int((p[0] - self.offset[0]) / self.scale[0]),
                 int((p[1] - self.offset[1]) / self.scale[1]))
 
+    def create_image_mask(self, **kwargs):
+        """Creates ImageMask if it was not created upon init"""
+        if self.__image is None:
+           raise Exception('Cannot create ImageMask if image is not set')
+        kwargs['offset'] = self.__offset
+        self.__image_mask = ImageMask(self.canvas, self.__image_shape, **kwargs)
+
     def __set_image(self, image):
         """Internal function to assign image"""
         if image is None:
-           self.__image = image
-           self.__imgtk = None
+            self.__image = None
+            self.__image_shape = [0,0]
+            self.__imgtk = None
         elif type(image) is ImageTk.PhotoImage:
-           self.__image = None
-           self.__imgtk = image
+            self.__image = None
+            self.__imgtk = image
         else:
-           self.__image = image
-           self.__resize()
-           self.__imgtk = img_to_imgtk(self.__image)
+            self.__image = image.copy()
+            self.__image_shape = self.__image.shape
+            self.__resize()
+            self.__imgtk = img_to_imgtk(self.__image)
 
     def __resize(self):
         """Internal function to resize image"""
         self.__scale = [1.0, 1.0]
         self.__offset = [0, 0]
         if not self.__image is None and self.max_size > 0:
-           c = self.winfo_rgb(self['bg'])
-           r, g, b = c[0]/256, c[1]/256, c[2]/256
-           orig_shape = self.__image.shape
-           self.__image, self.__scale, self.__offset = resize3(self.__image,
-                         max_size = self.__max_size,
-                         f_upsize = False,
-                         f_center = True,
-                         pad_color = (r, g, b))
-           #print('Shape: {}, scale: {}, offset: {}'.format(orig_shape, self.__scale, self.__offset))
+            c = self.winfo_rgb(self['bg'])
+            r, g, b = c[0]/256, c[1]/256, c[2]/256
+            self.__image, self.__scale, self.__offset = resize3(self.__image,
+                          max_size = self.__max_size,
+                          f_upsize = False,
+                          f_center = True,
+                          pad_color = (r, g, b))
+            #print('Shape: {}, scale: {}, offset: {}'.format(orig_shape, self.__scale, self.__offset))
+            try:
+               if not self.__image_mask is None:
+                  self.__image_mask.set_shape(self.__image_shape, self.__offset)
+            except AttributeError:
+                  pass
 
     def __update_image(self):
         """Internal function to update image"""
         if self.__imgtk is None and self.__image_id is not None:
-           self.canvas.destroy(self.__image_id)
+            self.canvas.destroy(self.__image_id)
         elif not self.__imgtk is None and self.__image_id is None:
-           self.__image_id = self.canvas.create_image(0, 0, anchor = tk.NW, image = self.__imgtk)
+            self.__image_id = self.canvas.create_image(0, 0, anchor = tk.NW, image = self.__imgtk)
         else:
-           self.canvas.itemconfig(self.__image_id, image = self.__imgtk)
+            self.canvas.itemconfig(self.__image_id, image = self.__imgtk)
 
 
 def addImagePanel(parent, **kwargs):
@@ -507,27 +572,27 @@ class ImageMask(object):
 
         Parameters:
             canvas        A canvas object (required)
-            image_shape   Shape of image drawn on canvas
+            image_shape   Shape of image drawn on canvas- tuple (height, width)
             offset        Offset of image on canvas ([x, y])
             mask          Initial mask (if None, default mask is generated)
             allow_change  True to allow mask reshaping by user (dragging by mouse)
-            f_show        True to show mask initially
+            show_mask     True to show mask initially
             min_dist      Minimal allowed distance to edges
 
         Mask shading and colors can be set by shade_fill, shade_stipple, mask_color attributes
         Resulting mask can be obtained through mask attribute
         """
         # Parameters
-        self.canvas = canvas
-        self.image_shape = image_shape
-        self.offset = kwargs.pop('offset', [0,0])
-        self.mask = kwargs.pop('mask', None)
-        allow_change = kwargs.pop('allow_change', True)
-        f_show = kwargs.pop('f_show', True)
-        self.min_dist = kwargs.pop('min_dist', 0)
+        self.__canvas = canvas
+        self.__image_shape = image_shape
+        self.__offset = kwargs.pop('offset', [0,0])
+        self.__mask = kwargs.pop('mask', None)
+        self.__allow_change = kwargs.pop('allow_change', True)
+        self.__min_dist = kwargs.pop('min_dist', 0)
+        f_show = kwargs.pop('show_mask', True)
 
         if self.mask is None:
-           self.default_mask()
+            self.default_mask()
 
         # Public parameters
         self.shade_fill = "gray"
@@ -543,18 +608,89 @@ class ImageMask(object):
         # Draw initial mask
         if f_show: self.show()
 
-        # Set handlers if allowed
-        if allow_change:
+        # Set handlers if required
+        if self.__allow_change:
             self.canvas.bind("<Motion>", self.motion_callback)
             self.canvas.bind('<B1-Motion>', self.drag_callback)
             self.canvas.bind('<B1-ButtonRelease>', self.end_drag_callback)
+
+    @property
+    def canvas(self):
+        return self.__canvas
+
+    @property
+    def image_shape(self):
+        return self.__image_shape
+
+    @image_shape.setter
+    def image_shape(self, shape):
+        was_shown = not self.mask_rect is None
+        self.hide()
+        self.__image_shape = shape
+        if was_shown: show()
+
+    @property
+    def offset(self):
+        return self.__offset
+
+    @offset.setter
+    def offset(self, ofs):
+        was_shown = not self.mask_rect is None
+        self.hide()
+        self.__offset = ofs
+        if was_shown: show()
+
+    @property
+    def mask(self):
+        return self.__mask
+
+    @mask.setter
+    def mask(self, m):
+        was_shown = not self.mask_rect is None
+        self.hide()
+        self.__mask = m
+        if was_shown: show()
+
+    @property
+    def allow_change(self):
+        return self.__allow_change
+
+    @allow_change.setter
+    def allow_change(self, f):
+        self.__allow_change = f
+        if self.__allow_change:
+            self.canvas.bind("<Motion>", self.motion_callback)
+            self.canvas.bind('<B1-Motion>', self.drag_callback)
+            self.canvas.bind('<B1-ButtonRelease>', self.end_drag_callback)
+        else:
+            self.canvas.unbind("<Motion>")
+            self.canvas.unbind('<B1-Motion>')
+            self.canvas.unbind('<B1-ButtonRelease>')
+
+    @property
+    def min_dist(self):
+        """Minimal distance to edges"""
+        return self.__min_dist
+
+    @min_dist.setter
+    def min_dist(self, m):
+        """Minimal distance to edges"""
+        self.__min_dist = m
+
+    def set_shape(self, shape, ofs = None):
+        """Changes image shape and offset"""
+        was_shown = not self.mask_rect is None
+        self.hide()
+        self.__image_shape = shape
+        if not ofs is None: self.__offset = ofs
+        if was_shown: show()
 
     def motion_callback(self, event):
         """Callback for mouse move event"""
         CURSORS = ["left_side", "top_side", "right_side", "bottom_side"]
         c = None
         if not self.mask_rect is None:
-            side = self.get_mask_rect_side(event.x, event.y)
+            side = self.__get_mask_rect_side(event.x, event.y)
             if not side is None: c = CURSORS[side]
 
         if c is None and not self.last_cursor is None:
@@ -569,56 +705,36 @@ class ImageMask(object):
     def drag_callback(self, event):
         """Callback for mouse drag event"""
         if self.drag_side is None:
-           self.drag_side = self.get_mask_rect_side(event.x, event.y)
+            self.drag_side = self.__get_mask_rect_side(event.x, event.y)
         if not self.drag_side is None:
-           p = (self.canvas.canvasx(event.x) - self.offset[0],
-                self.canvas.canvasy(event.y) - self.offset[1])
-           if self.drag_side == 0:
+            p = (self.canvas.canvasx(event.x) - self.offset[0],
+                 self.canvas.canvasy(event.y) - self.offset[1])
+            if self.drag_side == 0:
                 self.mask[0] = max(p[0], self.min_dist)
-           elif self.drag_side == 1:
+            elif self.drag_side == 1:
                 self.mask[1] = max(p[1], self.min_dist)
-           elif self.drag_side == 2:
+            elif self.drag_side == 2:
                 self.mask[2] = min(p[0], self.image_shape[1]-self.min_dist)
-           elif self.drag_side == 3:
+            elif self.drag_side == 3:
                 self.mask[3] = min(p[1], self.image_shape[0]-self.min_dist)
 
-           self.canvas.coords(self.mask_rect,
-                self.mask[0] + self.offset[0],
-                self.mask[1] + self.offset[1],
-                self.mask[2] + self.offset[0],
-                self.mask[3] + self.offset[1])
+            self.canvas.coords(self.mask_rect,
+                 self.mask[0] + self.offset[0],
+                 self.mask[1] + self.offset[1],
+                 self.mask[2] + self.offset[0],
+                 self.mask[3] + self.offset[1])
 
-           self.draw_mask_shading()
+            self.__draw_mask_shading()
 
     def end_drag_callback(self, event):
         """Callback for mouse button release event"""
         #print('Drag end')
         self.drag_side = None
 
-    def get_mask_rect_side(self, x, y):
-        """Returns a side where the cursor is on or None"""
-        if self.mask_rect is None:
-           return None
-
-        p = (self.canvas.canvasx(x), self.canvas.canvasy(y))
-        b = self.canvas.coords(self.mask_rect)
-
-        side = None
-        if is_on_w((b[0], b[1]), (b[0], b[3]), p):
-            side = 0
-        elif is_on_w((b[0], b[1]), (b[2], b[1]), p):
-            side = 1
-        elif is_on_w((b[2], b[1]), (b[2], b[3]), p):
-            side = 2
-        elif is_on_w((b[0], b[3]), (b[2], b[3]), p):
-            side = 3
-
-        return side
-
     def show(self):
         """Draw a mask on canvas"""
-        self.draw_mask_shading()
-        self.draw_mask_rect()
+        self.__draw_mask_shading()
+        self.__draw_mask_rect()
 
     def hide(self):
         """Hide a previously shown mask"""
@@ -630,8 +746,33 @@ class ImageMask(object):
             self.canvas.delete(self.mask_rect)
             self.mask_rect = None
 
-    def draw_mask_shading(self):
-        """Draw a shading part of mask"""
+    def random_mask(self):
+        """Generates a random mask"""
+        dx = self.min_dist
+        dy = self.min_dist
+        cx = int(self.image_shape[CV_WIDTH] / 2) - dx
+        cy = int(self.image_shape[CV_HEIGTH] / 2) - dy
+        mx = self.image_shape[CV_WIDTH] - 2*dx
+        my = self.image_shape[CV_HEIGTH] - 2*dy
+        self.__mask = [
+                random.randint(dx, cx),
+                random.randint(dy, cy),
+                random.randint(cx+1, mx),
+                random.randint(cy+1, my)]
+
+    def default_mask(self):
+        """Generates default mask"""
+        dx = self.min_dist
+        dy = self.min_dist
+        self.__mask = [
+                dx,
+                dy,
+                self.image_shape[CV_WIDTH] - 2*dx,
+                self.image_shape[CV_HEIGTH] - 2*dy]
+
+
+    def __draw_mask_shading(self):
+        """Internal function. Draw a shading part of mask"""
         def _rect(points):
             return self.canvas.create_polygon(
                   *points,
@@ -661,8 +802,28 @@ class ImageMask(object):
           _rect([wx, my, ix, my, ix, wy, wx, wy, wx, my])
         ]
 
-    def draw_mask_rect(self):
-        """Draws a transparent mask part"""
+    def __get_mask_rect_side(self, x, y):
+        """Internal function. Returns a side where the cursor is on or None"""
+        if self.mask_rect is None:
+            return None
+
+        p = (self.canvas.canvasx(x), self.canvas.canvasy(y))
+        b = self.canvas.coords(self.mask_rect)
+
+        side = None
+        if is_on_w((b[0], b[1]), (b[0], b[3]), p):
+            side = 0
+        elif is_on_w((b[0], b[1]), (b[2], b[1]), p):
+            side = 1
+        elif is_on_w((b[2], b[1]), (b[2], b[3]), p):
+            side = 2
+        elif is_on_w((b[0], b[3]), (b[2], b[3]), p):
+            side = 3
+
+        return side
+
+    def __draw_mask_rect(self):
+        """Internal function. Draws a transparent mask part"""
         # Clean up
         if not self.mask_rect is None:
             self.canvas.delete(self.mask_rect)
@@ -681,22 +842,4 @@ class ImageMask(object):
           outline = self.mask_color,
           width = 2
         )
-
-    def random_mask(self):
-        """Generates a random mask"""
-        cw = int(self.image_shape[1] / 2)
-        ch = int(self.image_shape[0] / 2)
-        self.mask = [
-                random.randint(0, cw),
-                random.randint(0, ch),
-                random.randint(cw+1, self.image_shape[1]),
-                random.randint(ch+1, self.image_shape[0])]
-
-    def default_mask(self):
-        """Generates default mask"""
-        self.mask = [
-                self.min_dist,
-                self.min_dist,
-                self.image_shape[1]-self.min_dist,
-                self.image_shape[0]-self.min_dist]
 

@@ -15,6 +15,7 @@ COLOR_BLACK = (0, 0, 0)           # black
 COLOR_RED = (0, 0, 255)           # red
 COLOR_BLUE = (255, 0, 0)          # blue
 DEF_IMG_SIZE = (500, 500)         # default shape for board generation
+MIN_EDGE_DIST = 6                 # minimum board area distance from edge
 DEF_IMG_COLOR = (80, 145, 210)    # default generated board color
 DEF_BOARD_SIZE = 19               # default board size
 DEF_AVAIL_SIZES = [9, 13, 19]     # available standard board sizes
@@ -64,6 +65,7 @@ DEF_GR_PARAMS = {
     "WS_MORPH_W": 0,
     "PYRAMID_B": 0,
     "PYRAMID_W": 0,
+    'AREA_MASK': 0
 }
 
 # Parameter properties: min, max, group
@@ -103,10 +105,12 @@ GR_PARAMS_PROP = {
     "STONES_MAXVAL_W": (1, 255, None),
     "WATERSHED_W": (0, 255, "White stones detection"),
     "WS_MORPH_W": (0, 10, "White stones detection"),
-    "PYRAMID_W": (0, 1, "White stones detection")
+    "PYRAMID_W": (0, 1, "White stones detection"),
+
+    'AREA_MASK': (0,0,None)
 }
 
-# Constants for analysis results
+# Analysis results
 GR_STONES_B = "BS"                  # black stones
 GR_STONES_W = "WS"                  # white stones
 GR_BOARD_SIZE = "BOARD_SIZE"        # board size

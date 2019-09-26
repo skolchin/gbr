@@ -37,7 +37,7 @@ class GrBoardEdit(object):
         self.root = root
         self.src_img = img
         self.board_size = board_size
-        self.max_size = 550
+        self.max_size = 500
 
         # Top-level frames
         self.imgFrame = tk.Frame(self.root)
@@ -53,12 +53,12 @@ class GrBoardEdit(object):
               btn_params = [["edge", False, self.set_edges_callback, "Set board area"]],
               image = self.src_img,
               max_size = self.max_size,
-              scrollbars = False)
+              scrollbars = False,
+              use_mask = True,
+              show_mask = True,
+              allow_change = True)
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
-        # Image mask
-        self.imageMask = ImageMask(self.imgPanel.canvas, self.src_img.shape,
-            allow_change = True, f_show = False, offset = self.imgPanel.offset)
 
 ##        # Editors and buttons
 ##        self.editorFrame = tk.Frame(self.configFrame)
@@ -73,10 +73,10 @@ class GrBoardEdit(object):
 
     def set_edges_callback(self, event, tag, state):
         if state:
-            self.imageMask.random_mask()
-            self.imageMask.show()
+            self.imgPanel.image_mask.random_mask()
+            self.imgPanel.image_mask.show()
         else:
-            self.imageMask.hide()
+            self.imgPanel.image_mask.hide()
         return True
 
     def transform_callback(self, event, tag, state):

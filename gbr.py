@@ -60,15 +60,21 @@ class GbrGUI(object):
         self.__setup_status_frame()
 
     def __setup_img_frame(self):
+        # Source image
         self.origImgPanel = addImagePanel(self.imgFrame,
             caption = "Original",
             btn_params = [["edge", False, self.set_edges_callback]],
             image = self.board.image,
             max_size = self.max_img_size,
-            frame_callback = self.orig_img_mouse_callback)
+            frame_callback = self.orig_img_mouse_callback,
+            use_mask = True,
+            show_mask = False,
+            allow_change = True,
+            min_dist = MIN_EDGE_DIST)
         self.imgButtons.update(self.origImgPanel.buttons)
         self.origImgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
+        # Generated image
         self.genImgPanel = addImagePanel(self.imgFrame,
             caption = "Generated",
             btn_params = [["box", False, self.show_stones_callback, "Show/hide detection boxes"],
@@ -80,6 +86,7 @@ class GbrGUI(object):
         self.imgButtons.update(self.genImgPanel.buttons)
         self.genImgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
+        # Debug images
         self.dbgPanel = addImagePanel(self.imgFrame,
             caption = "Analysis",
             frame_callback = self.dbg_img_mouse_callback,
@@ -175,7 +182,7 @@ class GbrGUI(object):
 
     # Callback for mouse events on original image
     def orig_img_mouse_callback(self, event):
-        self.load_img_callback()
+        if not self.buttonState['edge']: self.load_img_callback()
 
     # Callback for mouse event on debug image
     def dbg_img_mouse_callback(self, event):
@@ -259,10 +266,13 @@ class GbrGUI(object):
 
     # Callback for "Set edges"
     def set_edges_callback(self, event, tag, state):
-        return False
         if self.board.is_gen_board:
             return False
         else:
+            if state:
+               self.origImgPanel.image_mask.show()
+            else:
+               self.origImgPanel.image_mask.hide()
             self.buttonState[tag] = state
             return True
 
@@ -419,6 +429,7 @@ class GbrGUI(object):
         try:
             params_loaded = self.board.load_image(fn, f_with_params = True)
             self.origImgPanel.image = self.board.image
+            self.origImgPanel.image_mask.mask = self.board.area_mask
 
             # Reset button state to default
             self.buttonState = DEF_BTN_STATE.copy()

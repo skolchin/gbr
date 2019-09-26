@@ -280,32 +280,51 @@ class GrBoard(object):
 
     @property
     def params(self):
+        """Recognition parameters"""
         return self._params
 
     @params.setter
     def params(self, p):
+        """Recognition parameters"""
         for key in p.keys():
             if key in self._params:
                 self._params[key] = p[key]
 
     @property
+    def area_mask(self):
+        """Board recognition area mask"""
+        if 'AREA_MASK' in self._params and type(self._params['AREA_MASK']) is list:
+           return self._params['AREA_MASK']
+        else:
+           return [0, 0, self._img.shape[CV_WIDTH], self._img.shape[CV_HEIGTH]]
+
+    @area_mask.setter
+    def area_mask(self, mask):
+        self._params['AREA_MASK'] = mask
+
+    @property
     def results(self):
+        """Recognition results"""
         return self._res
 
     @property
     def image(self):
+        """Board image"""
         return self._img
 
     @property
     def image_file(self):
+        """Image file name"""
         return self._img_file
 
     @property
     def is_gen_board(self):
+        """True if board was generated with generate()"""
         return self._gen_board
 
     @property
     def black_stones(self):
+        """List of black stones"""
         if self._res is None:
             return None
         else:
@@ -313,6 +332,7 @@ class GrBoard(object):
 
     @property
     def white_stones(self):
+        """List of white stones"""
         if self._res is None:
             return None
         else:
@@ -320,6 +340,7 @@ class GrBoard(object):
 
     @property
     def stones(self):
+        """Dictionary with all stones (keys are B, W)"""
         if self._res is None:
             return None
         else:
@@ -327,6 +348,7 @@ class GrBoard(object):
 
     @property
     def debug_images(self):
+        """Collection of debug images generated during image recognition"""
         if self._res is None:
             return None
         else:
@@ -337,6 +359,7 @@ class GrBoard(object):
 
     @property
     def debug_info(self):
+        """Collection of textual information generated during image recognition"""
         if self._res is None:
             return None
         else:
@@ -352,6 +375,7 @@ class GrBoard(object):
 
     @property
     def board_shape(self):
+        """Board image shape"""
         if self._img is None:
             return None
         else:
@@ -359,6 +383,7 @@ class GrBoard(object):
 
     @property
     def board_size(self):
+        """Board size"""
         if self._res is None:
             return None
         else:

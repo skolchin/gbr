@@ -224,7 +224,6 @@ def find_board(img, params, res):
     res: results dictionary (see grdef.GR_xxx)"""
 
     MIN_LINE_SPACE = 10
-    MIN_EDGE_DIST = 6
 
     def houghp_to_lines(lines):
         """ Transform HoughP results to lines array """
