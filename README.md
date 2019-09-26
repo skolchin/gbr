@@ -7,7 +7,7 @@ The project is build on wonderfull [OpenCV](https://opencv.org/) library.
 The algorithm per se is the following:
 
 1. Detect board properties (board edges, spacing and board size):
-    * Remove parts of image close to border
+    * Set area to be recognized (either default or specified in parameters)
     * If parameters set - run HoughLinesP to determine line segments, filter out small lines and reconstruct the image. This allows to remove board labels.
     * Run HoughLines to find the lines
     * Separate lines to vertical/horizontal ones
