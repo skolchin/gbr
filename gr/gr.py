@@ -264,6 +264,10 @@ def find_board(img, params, res):
         else:
            return np.unique(np.array(l), axis = 0)
 
+    def draw_rect(img, p1, p2):
+        if p1[0] != p2[0] and p1[1] != p2[1]:
+           cv2.rectangle(img, p1, p2, 0, -1)
+
     # Prepare gray image
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     res[GR_IMG_GRAY] = gray
@@ -274,10 +278,21 @@ def find_board(img, params, res):
     n_apsize = params['CANNY_APERTURE']
     edges = cv2.Canny(gray, n_minval, n_maxval, apertureSize = n_apsize)
 
-    # Eliminate area close to edges in order not to give false line detections
-    dx = int(MIN_EDGE_DIST/2)
-    edges = cv2.rectangle(edges, (dx,dx),
-                (edges.shape[CV_WIDTH]-dx, edges.shape[CV_HEIGTH]-dx), COLOR_BLACK, MIN_EDGE_DIST)
+    # Eliminate area defined by area mask. If mask is not provided, use default gap
+    m = None
+    if 'AREA_MASK' in params:
+       m = params['AREA_MASK']
+    if m is None or not type(m) is list:
+       d = int(MIN_EDGE_DIST/2)
+       m = [d, d, edges.shape[CV_WIDTH]-d, edges.shape[CV_HEIGTH]-d]
+
+    w = edges.shape[CV_WIDTH]
+    h = edges.shape[CV_HEIGTH]
+    draw_rect(edges, (0,0),       (m[0], h))
+    draw_rect(edges, (m[0],0),    (w, m[1]))
+    draw_rect(edges, (m[2],0),    (w, h))
+    draw_rect(edges, (m[0],m[3]), (m[2], h))
+    res[GR_IMG_EDGES] = edges
 
     # Run HoughLinesP, if its parameters are set
     # HoughLinesP detects line segments and may split a single line to multiple segments

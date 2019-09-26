@@ -70,7 +70,7 @@ class GbrGUI(object):
             use_mask = True,
             show_mask = False,
             allow_change = True,
-            min_dist = MIN_EDGE_DIST)
+            mask_callback = self.mask_changed_callback)
         self.imgButtons.update(self.origImgPanel.buttons)
         self.origImgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
@@ -275,6 +275,10 @@ class GbrGUI(object):
                self.origImgPanel.image_mask.hide()
             self.buttonState[tag] = state
             return True
+
+    # Callback for ImageMask mask changed event
+    def mask_changed_callback(self, mask):
+        self.board.area_mask = mask.mask
 
     # Add Scale widgets with board recognition parameters
     def add_switches(self, rootFrame, params, nrow = 0):

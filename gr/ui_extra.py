@@ -248,6 +248,7 @@ class ImagePanel(tk.Frame):
                mask           If use_mask = True, specifies initial mask
                allow_change   If use_mask = True, specifies whether the mask can be changed
                show_mask      If use_mask = True, specifies whether the mask should be displayed immediatelly
+               mask_callback  If use_mask = True, a callback function called when mask is changed
         """
 
         # Parse parameters
@@ -264,6 +265,7 @@ class ImagePanel(tk.Frame):
         allow_change = kwargs.pop('allow_change', False)
         show_mask = kwargs.pop('show_mask', False)
         min_dist = kwargs.pop('min_dist', 0)
+        mask_cb = kwargs.pop('mask_callback', None)
 
         # Init
         tk.Frame.__init__(self, master, *args, **kwargs)
@@ -332,7 +334,8 @@ class ImagePanel(tk.Frame):
            self.create_image_mask(mask = mask,
                 allow_change = allow_change,
                 show_mask = show_mask,
-                min_dist = min_dist)
+                min_dist = min_dist,
+                mask_callback = mask_cb)
 
     @property
     def image(self):
@@ -436,7 +439,7 @@ class ImagePanel(tk.Frame):
     def create_image_mask(self, **kwargs):
         """Creates ImageMask if it was not created upon init"""
         if self.__image is None:
-           raise Exception('Cannot create ImageMask if image is not set')
+           raise Exception('Cannot create ImageMask if image is not assigned')
         kwargs['offset'] = self.__offset
         self.__image_mask = ImageMask(self.canvas, self.__image_shape, **kwargs)
 
@@ -578,6 +581,7 @@ class ImageMask(object):
             allow_change  True to allow mask reshaping by user (dragging by mouse)
             show_mask     True to show mask initially
             min_dist      Minimal allowed distance to edges
+            mask_callback A function to be called when mask has changed
 
         Mask shading and colors can be set by shade_fill, shade_stipple, mask_color attributes
         Resulting mask can be obtained through mask attribute
@@ -590,6 +594,7 @@ class ImageMask(object):
         self.__allow_change = kwargs.pop('allow_change', True)
         self.__min_dist = kwargs.pop('min_dist', 0)
         f_show = kwargs.pop('show_mask', True)
+        self.__callback = kwargs.pop('mask_callback', None)
 
         if self.mask is None:
             self.default_mask()
@@ -710,13 +715,13 @@ class ImageMask(object):
             p = (self.canvas.canvasx(event.x) - self.offset[0],
                  self.canvas.canvasy(event.y) - self.offset[1])
             if self.drag_side == 0:
-                self.mask[0] = max(p[0], self.min_dist)
+                self.mask[0] = int(max(p[0], self.min_dist))
             elif self.drag_side == 1:
-                self.mask[1] = max(p[1], self.min_dist)
+                self.mask[1] = int(max(p[1], self.min_dist))
             elif self.drag_side == 2:
-                self.mask[2] = min(p[0], self.image_shape[1]-self.min_dist)
+                self.mask[2] = int(min(p[0], self.image_shape[1]-self.min_dist))
             elif self.drag_side == 3:
-                self.mask[3] = min(p[1], self.image_shape[0]-self.min_dist)
+                self.mask[3] = int(min(p[1], self.image_shape[0]-self.min_dist))
 
             self.canvas.coords(self.mask_rect,
                  self.mask[0] + self.offset[0],
@@ -729,6 +734,8 @@ class ImageMask(object):
     def end_drag_callback(self, event):
         """Callback for mouse button release event"""
         #print('Drag end')
+        if not self.drag_side is None and not self.__callback is None:
+           self.__callback(self)
         self.drag_side = None
 
     def show(self):

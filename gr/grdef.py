@@ -65,7 +65,7 @@ DEF_GR_PARAMS = {
     "WS_MORPH_W": 0,
     "PYRAMID_B": 0,
     "PYRAMID_W": 0,
-    'AREA_MASK': 0
+    'AREA_MASK': None
 }
 
 # Parameter properties: min, max, group
@@ -123,6 +123,7 @@ GR_IMG_MORPH_B = "IMG_MORPH_B"      # morthed black stones image
 GR_IMG_MORPH_W = "IMG_MORPH_W"      # thresholded white stones image
 GR_IMG_LINES = "IMG_LINES1"         # generated lines image for 1st pass
 GR_IMG_LINES2 = "IMG_LINES2"        # generated lines image for 2nd pass
+GR_IMG_EDGES = "IMG_EDGES"          # edges image
 GR_EDGES = "EDGES"                  # edges array (x,y), (x,y)
 GR_SPACING = "SPACES"               # spacing of board net (x,y)
 GR_NUM_LINES = "NLIN"               # overall number of lines found
@@ -131,3 +132,4 @@ GR_NUM_CROSS_W = "NCROSS_W"         # Number of crosses on vertical line
 GR_IMAGE_SIZE = "IMAGE_SIZE"        # Image size (width, height)
 GR_IMG_WS_B = "IMG_WATERSHED_B"     # Watershed black stones image
 GR_IMG_WS_W = "IMG_WATERSHED_W"     # Watershed white stones image
+
