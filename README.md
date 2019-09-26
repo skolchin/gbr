@@ -55,6 +55,11 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 ## Changelog
 
+26/09/2019:
+
+* Now it is possible to define exact board area for recognition. This allows to take off board labels and stuff outside the board
+* New ImagePanel and ImageMask classses containing all the code to display images and area masks. UI modules adopted to support them.
+
 22/09/2019:
 
 * Line/edges detection completelly rewritten to simplify the code. HoughLinesP detection is now optional and runs only if threshold/minlen params set.
