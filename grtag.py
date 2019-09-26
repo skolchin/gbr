@@ -15,7 +15,6 @@ import sys
 from PIL import Image, ImageTk
 from pathlib import Path
 import xml.dom.minidom as minidom
-from gr.utils import img_to_imgtk, resize2
 from gbr import GbrGUI
 from view_anno import ViewAnnoGui
 import re
@@ -75,6 +74,7 @@ class GrTagGui(object):
           self.fileList.pack(side = tk.TOP, fill=tk.BOTH, expand = True)
           self.fileList.bind("<<TreeviewSelect>>", self.sel_changed_callback)
           self.fileListSb.config(command=self.fileList.yview)
+          self.fileList.config(yscrollcommand=self.fileListSb.set)
 
           # Notebook
           self.nb = ttk.Notebook(self.nbFrame)

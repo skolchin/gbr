@@ -278,7 +278,7 @@ class GbrGUI(object):
 
     # Callback for ImageMask mask changed event
     def mask_changed_callback(self, mask):
-        self.board.area_mask = mask.mask
+        self.board.area_mask = mask.scaled_mask
 
     # Add Scale widgets with board recognition parameters
     def add_switches(self, rootFrame, params, nrow = 0):
@@ -433,7 +433,7 @@ class GbrGUI(object):
         try:
             params_loaded = self.board.load_image(fn, f_with_params = True)
             self.origImgPanel.image = self.board.image
-            self.origImgPanel.image_mask.mask = self.board.area_mask
+            self.origImgPanel.image_mask.scaled_mask = self.board.area_mask
 
             # Reset button state to default
             self.buttonState = DEF_BTN_STATE.copy()

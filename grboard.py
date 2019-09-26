@@ -50,14 +50,16 @@ class GrBoardEdit(object):
         # Image panel
         self.imgPanel = addImagePanel(self.imgFrame,
               caption = "Image",
-              btn_params = [["edge", False, self.set_edges_callback, "Set board area"]],
+              btn_params = [["edge", True, self.set_edges_callback, "Set board area"]],
               image = self.src_img,
               max_size = self.max_size,
               scrollbars = False,
               use_mask = True,
               show_mask = True,
-              allow_change = True)
+              allow_change = True,
+              mask_callback = self.mask_callback)
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
+        self.mask_callback(self.imgPanel.image_mask)
 
 
 ##        # Editors and buttons
@@ -74,10 +76,14 @@ class GrBoardEdit(object):
     def set_edges_callback(self, event, tag, state):
         if state:
             self.imgPanel.image_mask.random_mask()
+            self.mask_callback(self.imgPanel.image_mask)
             self.imgPanel.image_mask.show()
         else:
             self.imgPanel.image_mask.hide()
         return True
+
+    def mask_callback(self, mask):
+        self.imgPanel.caption = "Mask {}".format(mask.scaled_mask)
 
     def transform_callback(self, event, tag, state):
         return False
@@ -89,7 +95,7 @@ class GrBoardEdit(object):
 # Main function
 def main():
 
-    img = cv2.imread('img\\go_board_1.png')
+    img = cv2.imread('img\\go_board_23.png')
     if img is None:
         raise Exception('File not found')
 

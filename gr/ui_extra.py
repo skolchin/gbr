@@ -251,7 +251,7 @@ class ImagePanel(tk.Frame):
                mask_callback  If use_mask = True, a callback function called when mask is changed
         """
 
-        # Parse parameters
+        # Panel parameters
         self.__max_size = kwargs.pop('max_size', 0)
         img = kwargs.pop('image', None)
         self.__caption = kwargs.pop('caption', '')
@@ -260,6 +260,7 @@ class ImagePanel(tk.Frame):
         f_sb = kwargs.pop('scrollbars', (False, False))
         if not type(f_sb) is tuple: f_sb = (f_sb, f_sb)
 
+        # Mask parameters
         use_mask = kwargs.pop('use_mask', False)
         mask = kwargs.pop('mask', None)
         allow_change = kwargs.pop('allow_change', False)
@@ -441,7 +442,10 @@ class ImagePanel(tk.Frame):
         if self.__image is None:
            raise Exception('Cannot create ImageMask if image is not assigned')
         kwargs['offset'] = self.__offset
-        self.__image_mask = ImageMask(self.canvas, self.__image_shape, **kwargs)
+        kwargs['scale'] = self.__scale
+        shape = self.__image_shape
+        if min(self.__scale) < 1.0: shape = self.__image.shape
+        self.__image_mask = ImageMask(self.canvas, shape, **kwargs)
 
     def __set_image(self, image):
         """Internal function to assign image"""
@@ -473,9 +477,11 @@ class ImagePanel(tk.Frame):
             #print('Shape: {}, scale: {}, offset: {}'.format(orig_shape, self.__scale, self.__offset))
             try:
                if not self.__image_mask is None:
-                  self.__image_mask.set_shape(self.__image_shape, self.__offset)
+                  shape = self.__image_shape
+                  if min(self.__scale) < 1.0: shape = self.__image.shape
+                  self.__image_mask.set_shape(shape, self.__offset, self.__scale)
             except AttributeError:
-                  pass
+               pass
 
     def __update_image(self):
         """Internal function to update image"""
@@ -577,6 +583,8 @@ class ImageMask(object):
             canvas        A canvas object (required)
             image_shape   Shape of image drawn on canvas- tuple (height, width)
             offset        Offset of image on canvas ([x, y])
+            scale         Image scale [x, y]
+                          The scale is used only to calculate actual mask area
             mask          Initial mask (if None, default mask is generated)
             allow_change  True to allow mask reshaping by user (dragging by mouse)
             show_mask     True to show mask initially
@@ -590,19 +598,21 @@ class ImageMask(object):
         self.__canvas = canvas
         self.__image_shape = image_shape
         self.__offset = kwargs.pop('offset', [0,0])
+        self.__scale = kwargs.pop('scale', [1.0,1.0])
         self.__mask = kwargs.pop('mask', None)
         self.__allow_change = kwargs.pop('allow_change', True)
         self.__min_dist = kwargs.pop('min_dist', 0)
         f_show = kwargs.pop('show_mask', True)
         self.__callback = kwargs.pop('mask_callback', None)
 
-        if self.mask is None:
+        if self.__mask is None:
             self.default_mask()
 
         # Public parameters
         self.shade_fill = "gray"
         self.shade_stipple = "gray50"
         self.mask_color = "red"
+        self.mask_width = 2
 
         # Internal parameters - should not be changed
         self.mask_area = None
@@ -621,40 +631,70 @@ class ImageMask(object):
 
     @property
     def canvas(self):
+        """Canvas"""
         return self.__canvas
 
     @property
     def image_shape(self):
+        """Image size (height, width)"""
         return self.__image_shape
 
     @image_shape.setter
     def image_shape(self, shape):
+        """Image size (height, width)"""
         was_shown = not self.mask_rect is None
         self.hide()
         self.__image_shape = shape
-        if was_shown: show()
+        if was_shown: self.show()
 
     @property
     def offset(self):
+        """Image offset on canvas"""
         return self.__offset
 
     @offset.setter
     def offset(self, ofs):
+        """Image offset on canvas"""
         was_shown = not self.mask_rect is None
         self.hide()
         self.__offset = ofs
-        if was_shown: show()
+        if was_shown: self.show()
 
     @property
     def mask(self):
+        """Mask as it is displayed on canvas"""
         return self.__mask
 
     @mask.setter
     def mask(self, m):
+        """Mask as it is displayed on canvas"""
         was_shown = not self.mask_rect is None
         self.hide()
+        self.__mask = m.copy()
+        if was_shown: self.show()
+
+    @property
+    def scaled_mask(self):
+        """Mask scaled to actual image size"""
+        m = self.__mask.copy()
+        m[0] = int(m[0] / self.__scale[0])
+        m[1] = int(m[1] / self.__scale[1])
+        m[2] = int(m[2] / self.__scale[0])
+        m[3] = int(m[3] / self.__scale[1])
+        return m
+
+    @scaled_mask.setter
+    def scaled_mask(self, mask):
+        """Mask scaled to actual image size"""
+        was_shown = not self.mask_rect is None
+        self.hide()
+        m = mask.copy()
+        m[0] = int(m[0] * self.__scale[0])
+        m[1] = int(m[1] * self.__scale[1])
+        m[2] = int(m[2] * self.__scale[0])
+        m[3] = int(m[3] * self.__scale[1])
         self.__mask = m
-        if was_shown: show()
+        if was_shown: self.show()
 
     @property
     def allow_change(self):
@@ -682,12 +722,13 @@ class ImageMask(object):
         """Minimal distance to edges"""
         self.__min_dist = m
 
-    def set_shape(self, shape, ofs = None):
+    def set_shape(self, shape, ofs = None, scale = None):
         """Changes image shape and offset"""
         was_shown = not self.mask_rect is None
         self.hide()
         self.__image_shape = shape
         if not ofs is None: self.__offset = ofs
+        if not scale is None: self.__scale = scale
         if was_shown: show()
 
     def motion_callback(self, event):
@@ -712,22 +753,22 @@ class ImageMask(object):
         if self.drag_side is None:
             self.drag_side = self.__get_mask_rect_side(event.x, event.y)
         if not self.drag_side is None:
-            p = (self.canvas.canvasx(event.x) - self.offset[0],
-                 self.canvas.canvasy(event.y) - self.offset[1])
+            p = (self.canvas.canvasx(event.x) - self.__offset[0],
+                 self.canvas.canvasy(event.y) - self.__offset[1])
             if self.drag_side == 0:
-                self.mask[0] = int(max(p[0], self.min_dist))
+                self.__mask[0] = int(max(p[0], self.__min_dist))
             elif self.drag_side == 1:
-                self.mask[1] = int(max(p[1], self.min_dist))
+                self.__mask[1] = int(max(p[1], self.__min_dist))
             elif self.drag_side == 2:
-                self.mask[2] = int(min(p[0], self.image_shape[1]-self.min_dist))
+                self.__mask[2] = int(min(p[0], self.__image_shape[1]-self.__min_dist))
             elif self.drag_side == 3:
-                self.mask[3] = int(min(p[1], self.image_shape[0]-self.min_dist))
+                self.__mask[3] = int(min(p[1], self.__image_shape[0]-self.__min_dist))
 
             self.canvas.coords(self.mask_rect,
-                 self.mask[0] + self.offset[0],
-                 self.mask[1] + self.offset[1],
-                 self.mask[2] + self.offset[0],
-                 self.mask[3] + self.offset[1])
+                 self.__mask[0] + self.__offset[0],
+                 self.__mask[1] + self.__offset[1],
+                 self.__mask[2] + self.__offset[0],
+                 self.__mask[3] + self.__offset[1])
 
             self.__draw_mask_shading()
 
@@ -755,28 +796,29 @@ class ImageMask(object):
 
     def random_mask(self):
         """Generates a random mask"""
-        dx = self.min_dist
-        dy = self.min_dist
-        cx = int(self.image_shape[CV_WIDTH] / 2) - dx
-        cy = int(self.image_shape[CV_HEIGTH] / 2) - dy
-        mx = self.image_shape[CV_WIDTH] - 2*dx
-        my = self.image_shape[CV_HEIGTH] - 2*dy
+        dx = self.__min_dist
+        dy = self.__min_dist
+        cx = int(self.__image_shape[CV_WIDTH] / 2) - dx
+        cy = int(self.__image_shape[CV_HEIGTH] / 2) - dy
+        mx = self.__image_shape[CV_WIDTH] - 2*dx
+        my = self.__image_shape[CV_HEIGTH] - 2*dy
         self.__mask = [
                 random.randint(dx, cx),
                 random.randint(dy, cy),
                 random.randint(cx+1, mx),
                 random.randint(cy+1, my)]
+        #print(self.__image_shape, '->', self.__mask)
 
     def default_mask(self):
         """Generates default mask"""
-        dx = self.min_dist
-        dy = self.min_dist
+        dx = self.__min_dist
+        dy = self.__min_dist
         self.__mask = [
                 dx,
                 dy,
-                self.image_shape[CV_WIDTH] - 2*dx,
-                self.image_shape[CV_HEIGTH] - 2*dy]
-
+                self.__image_shape[CV_WIDTH] - 2*dx,
+                self.__image_shape[CV_HEIGTH] - 2*dy]
+        #print(self.__image_shape, '->', self.__mask)
 
     def __draw_mask_shading(self):
         """Internal function. Draw a shading part of mask"""
@@ -794,14 +836,14 @@ class ImageMask(object):
             self.mask_area = None
 
         # Create mask points array
-        sx = self.offset[0]
-        sy = self.offset[1]
-        ix = sx + self.image_shape[1]
-        iy = sy + self.image_shape[0]
-        mx = sx + self.mask[0]
-        my = sy + self.mask[1]
-        wx = sx + self.mask[2]
-        wy = sy + self.mask[3]
+        sx = self.__offset[0]
+        sy = self.__offset[1]
+        ix = sx + self.__image_shape[1]
+        iy = sy + self.__image_shape[0]
+        mx = sx + self.__mask[0]
+        my = sy + self.__mask[1]
+        wx = sx + self.__mask[2]
+        wy = sy + self.__mask[3]
         self.mask_area = [
           _rect([sx, sy, ix, sy, ix, my, sx, my, sx, sy]),
           _rect([sx, my, mx, my, mx, iy, sx, iy, sx, my]),
@@ -830,23 +872,24 @@ class ImageMask(object):
         return side
 
     def __draw_mask_rect(self):
-        """Internal function. Draws a transparent mask part"""
+        """Internal function. Draws a mask rectangle"""
         # Clean up
         if not self.mask_rect is None:
             self.canvas.delete(self.mask_rect)
             self.mask_rect = None
 
         # Draw rect
-        sx = self.offset[0]
-        sy = self.offset[1]
-        mx = sx + self.mask[0]
-        my = sy + self.mask[1]
-        wx = sx + self.mask[2]
-        wy = sy + self.mask[3]
+        sx = self.__offset[0]
+        sy = self.__offset[1]
+        mx = sx + self.__mask[0]
+        my = sy + self.__mask[1]
+        wx = sx + self.__mask[2]
+        wy = sy + self.__mask[3]
+        #print('Offset {} + mask {} -> rect {}'.format((sx, sy), self.__mask, (mx, my, wx, wy)))
         self.mask_rect = self.canvas.create_rectangle(
           mx, my,
           wx, wy,
           outline = self.mask_color,
-          width = 2
+          width = self.mask_width
         )
 
