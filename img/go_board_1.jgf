@@ -10,9 +10,9 @@
         "B2": {
             "A": "B",
             "B": "2",
-            "R": 10,
-            "X": 36,
-            "Y": 36
+            "R": 7,
+            "X": 38,
+            "Y": 38
         },
         "B4": {
             "A": "B",
@@ -73,9 +73,9 @@
         "D2": {
             "A": "D",
             "B": "2",
-            "R": 11,
-            "X": 81,
-            "Y": 34
+            "R": 10,
+            "X": 82,
+            "Y": 36
         },
         "D3": {
             "A": "D",
@@ -204,18 +204,18 @@
             12
         ],
         "1": [
-            474,
-            474
+            472,
+            472
         ]
     },
-    "image_file": "C:/Users/skolchin/Documents/kol/gbr/img/go_board_1.png",
+    "image_file": "C:\\Users\\skolchin\\Documents\\kol\\gbr\\img\\go_board_1.png",
     "num_stones": [
         28,
         26
     ],
     "spacing": [
-        23.1,
-        23.1
+        23.0,
+        23.0
     ],
     "white": {
         "B5": {

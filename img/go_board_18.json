@@ -1,8 +1,8 @@
 {
     "AREA_MASK": [
-        19,
-        19,
-        358,
+        21,
+        23,
+        356,
         362
     ],
     "BLUR_MASK_B": 0,
@@ -20,9 +20,9 @@
     "HL_RHO": 1,
     "HL_RHO2": 1,
     "HL_THETA": 1,
-    "HL_THETA2": 6,
+    "HL_THETA2": 90,
     "HL_THRESHOLD": 0,
-    "HL_THRESHOLD2": 128,
+    "HL_THRESHOLD2": 180,
     "PYRAMID_B": 0,
     "PYRAMID_W": 0,
     "STONES_DILATE_B": 1,
@@ -33,8 +33,8 @@
     "STONES_MAXVAL_W": 255,
     "STONES_THRESHOLD_B": 168,
     "STONES_THRESHOLD_W": 124,
-    "WATERSHED_B": 0,
-    "WATERSHED_W": 0,
-    "WS_MORPH_B": 4,
+    "WATERSHED_B": 71,
+    "WATERSHED_W": 1,
+    "WS_MORPH_B": 2,
     "WS_MORPH_W": 1
 }

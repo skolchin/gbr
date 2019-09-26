@@ -887,14 +887,14 @@
     "edges": {
         "0": [
             39,
-            40
+            39
         ],
         "1": [
             458,
-            459
+            458
         ]
     },
-    "image_file": "C:/Users/skolchin/Documents/kol/gbr/img/go_board_25.png",
+    "image_file": "C:\\Users\\skolchin\\Documents\\kol\\gbr\\img\\go_board_25.png",
     "num_stones": [
         126,
         127
