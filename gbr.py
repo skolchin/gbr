@@ -32,17 +32,16 @@ else:
 
 MAX_IMG_SIZE = 500
 MAX_DBG_IMG_SIZE = 200
-DEF_BTN_STATE = { "black": True, "white": True, "box": False, "edge": False }
 
 # GUI class
 class GbrGUI(object):
 
     def __init__(self, root, max_img_size = MAX_IMG_SIZE, max_dbg_img_size = MAX_DBG_IMG_SIZE, allow_open = True):
-        # Params
+        """Create an instance"""
         self.root, self.max_img_size, self.max_dbg_img_size = root, max_img_size, max_dbg_img_size
-        self.buttonState = DEF_BTN_STATE.copy()
         self.imgButtons = dict()
         self.allow_open = allow_open
+        self.transform = None
 
         # Generate board
         self.board = GrBoard()
@@ -60,10 +59,12 @@ class GbrGUI(object):
         self.__setup_status_frame()
 
     def __setup_img_frame(self):
-        # Source image
+        """Internal - initialize image frame"""
         self.origImgPanel = addImagePanel(self.imgFrame,
             caption = "Original",
-            btn_params = [["edge", False, self.set_edges_callback]],
+            btn_params = [["area", False, self.set_area_callback],
+                          ["reset", False, self.transf_reset_callback, "Reset image"],
+                          ['edge', False, self.transform_callback, "Transform image"]],
             image = self.board.image,
             max_size = self.max_img_size,
             frame_callback = self.orig_img_mouse_callback,
@@ -71,7 +72,9 @@ class GbrGUI(object):
             show_mask = False,
             allow_change = True,
             mask_callback = self.mask_changed_callback)
+
         self.imgButtons.update(self.origImgPanel.buttons)
+        self.imgButtons['reset'].disabled = True
         self.origImgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
         # Generated image
@@ -97,21 +100,9 @@ class GbrGUI(object):
         self.dbgPanel.canvas.create_window((0,0), window=self.dbgFrame, anchor='nw')
         self.dbgFrame.bind('<Configure>', self.on_scroll_configure)
 
-        # Add canvas
-##        self.dbgCanvas = tk.Canvas(self.dbgCanvasFrame, width = self.max_dbg_img_size*2+10,
-##                                                        height = self.origImgTk.height())
-##        scroll = tk.Scrollbar(self.dbgCanvasFrame, command = self.dbgCanvas.yview)
-##        scroll.pack(side=tk.RIGHT, fill=tk.Y, pady = PADY)
-##        self.dbgCanvas.configure(yscrollcommand = scroll.set)
-##        self.dbgCanvas.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
-##
-##        self.dbgFrame = tk.Frame(self.dbgCanvas)
-##        self.dbgCanvas.create_window((0,0), window=self.dbgFrame, anchor='nw')
-##        self.dbgFrame.bind('<Configure>', self.on_scroll_configure)
-
 
     def __setup_info_frame(self):
-        # Info frame: buttons
+        """Internal - initialize button and settings frame"""
         self.buttonFrame = tk.Frame(self.infoFrame, bd = 1, relief = tk.RAISED,
                                                width = self.max_img_size*2, height = 50)
         self.buttonFrame.grid(row = 0, column = 0, sticky = "nswe")
@@ -154,14 +145,13 @@ class GbrGUI(object):
         self.tkVars = self.add_switches(self.switchFrame, self.board.params)
 
     def __setup_status_frame(self):
-        # Status bar
+        """Internal - initialize status bar"""
         self.statusInfo = addStatusPanel(self.statusFrame, self.max_img_size*2)
         self.statusInfo.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
 
-    # Callback functions
-    # Callback for mouse events on generated board image
     def gen_img_mouse_callback(self, event):
+        """Handler for mouse click on generated image panel"""
         if self.board.is_gen_board:
             return
 
@@ -180,12 +170,13 @@ class GbrGUI(object):
             print(ct)
             self.statusInfo.set(ct)
 
-    # Callback for mouse events on original image
     def orig_img_mouse_callback(self, event):
-        if not self.buttonState['edge']: self.load_img_callback()
+        """Handler for mouse click on original image panel"""
+        if not self.imgButtons['edge'].state and not self.imgButtons['area'].state:
+           self.load_img_callback()
 
-    # Callback for mouse event on debug image
     def dbg_img_mouse_callback(self, event):
+        """Handler for mouse click on debug info panel"""
         if self.board.is_gen_board:
             return
 
@@ -193,17 +184,16 @@ class GbrGUI(object):
         k = w.tag
         cv2.imshow(k, self.board.debug_images[k])
 
-    # Load image button callback
     def load_img_callback(self):
+        """Load image button/click handler"""
         if not self.allow_open: return  # GUI used from other app
 
         fn = filedialog.askopenfilename(title = "Select file",
            filetypes = (("PNG files","*.png"),("JPEG files","*.jpg"),("All files","*.*")))
         if fn != "": self.load_image(fn)
 
-    # Save params button callback
     def save_json_callback(self):
-        # Save json with current parsing parameters
+        """Save params button handler"""
         if self.board.is_gen_board:
             # Generated board - nothing to do!
             return
@@ -211,9 +201,8 @@ class GbrGUI(object):
             fn = self.board.save_params()
             self.statusInfo.set_file("Params saved to ", str(fn))
 
-    # Save stones button callback
     def save_jgf_callback(self):
-        # Save json with current parsing parameters
+        """Save JGF button handler"""
         if self.board.is_gen_board:
             # Generated board - nothing to do!
             return
@@ -221,8 +210,8 @@ class GbrGUI(object):
         fn = self.board.save_board_info()
         self.statusInfo.set_file("Board saved to ", str(fn))
 
-    # Apply button callback
     def apply_callback(self):
+        """Apply param changes button handler"""
         if self.board.is_gen_board:
             return
 
@@ -234,8 +223,8 @@ class GbrGUI(object):
         if GrLog.numErrors() == 0:
             self.statusInfo.set("No errors")
 
-    # Apply defaults button callback
     def apply_def_callback(self):
+        """Apply defaults button handler"""
         if self.board.is_gen_board:
             return
 
@@ -247,25 +236,24 @@ class GbrGUI(object):
         if GrLog.numErrors() == 0:
             self.statusInfo.set("No errors")
 
-    # Show log button callback
     def show_log_callback(self):
+        """Show log button handler"""
         GrLog.show(self.root)
 
-    # Callback for canvas configuration
     def on_scroll_configure(self, event):
+        """Canvas config callback"""
         self.dbgPanel.canvas.configure(scrollregion = self.dbgFrame.bbox('all'))
 
-    # Callback for "Show stones/edges"
     def show_stones_callback(self, event, tag, state):
+        """Stone visibility buttons handler"""
         if self.board.is_gen_board:
             return False
         else:
-            self.buttonState[tag] = state
-            self.update_board(reprocess= False)
+            self.update_board(reprocess = False)
             return True
 
-    # Callback for "Set edges"
-    def set_edges_callback(self, event, tag, state):
+    def set_area_callback(self, event, tag, state):
+        """Set board area button handler"""
         if self.board.is_gen_board:
             return False
         else:
@@ -273,12 +261,46 @@ class GbrGUI(object):
                self.origImgPanel.image_mask.show()
             else:
                self.origImgPanel.image_mask.hide()
-            self.buttonState[tag] = state
             return True
 
-    # Callback for ImageMask mask changed event
     def mask_changed_callback(self, mask):
+        """Callback for ImageMask end dragging event"""
         self.board.area_mask = mask.scaled_mask
+
+    def transform_callback(self, event, tag, state):
+        """Transform button handler"""
+        if self.board.is_gen_board:
+           return False
+
+        if not self.transform is None:
+           self.transform.cancel()
+           self.transform = None
+        else:
+            self.origImgPanel.image_mask.hide()
+            self.transform = ImageTransform(self.origImgPanel.canvas, self.origImgPanel.image, self.end_transform_callback)
+            self.transform.start()
+        return True
+
+    def end_transform_callback(self, t, state):
+        """Callback for transformation ending"""
+        if not t.transformed is None:
+           self.board.transform_image(t.transform_rect)
+           self.update_board(reprocess = True)
+
+           self.origImgPanel.image = self.board.image
+           self.imgButtons['reset'].disabled = False
+
+        self.imgButtons['edge'].state = False
+        self.transform = None
+
+    def transf_reset_callback(self, event, tag, state):
+        """Transformed image reset button handler"""
+        self.board.reset_image()
+        self.update_board(reprocess = True)
+
+        self.origImgPanel.image = self.board.image
+        self.imgButtons['reset'].disabled = True
+        return False
 
     # Add Scale widgets with board recognition parameters
     def add_switches(self, rootFrame, params, nrow = 0):
@@ -392,7 +414,10 @@ class GbrGUI(object):
                 return
 
         # Generate board using analysis results
-        self.genImgPanel.image = self.board.show_board(show_state = self.buttonState)
+        btn_state = dict()
+        for key in self.imgButtons.keys():
+            btn_state[key] = self.imgButtons[key].state
+        self.genImgPanel.image = self.board.show_board(show_state = btn_state)
 
         if self.board.results is None:
             self.boardInfo.set("")
@@ -414,18 +439,6 @@ class GbrGUI(object):
         self.add_debug_info(self.dbgFrame, self.board.board_shape,
                                            self.board.debug_images, self.board.debug_info)
 
-    # Convert origImg to ImageTk
-    # If image size greater than maximim one, resize it to proper level and store zoom factor
-##    def make_imgtk(self, img):
-##        imgtk = None
-##        z = [1.0,1.0]
-##        if img.shape[0] <= self.max_img_size and img.shape[1] <= self.max_img_size:
-##            imgtk = img_to_imgtk(img)
-##        else:
-##            img2, z = resize2(img, self.max_img_size, False)
-##            imgtk = img_to_imgtk(img2)
-##        return imgtk, z
-
     # Load specified image
     def load_image(self, fn):
         # Load the image
@@ -434,11 +447,13 @@ class GbrGUI(object):
             params_loaded = self.board.load_image(fn, f_with_params = True)
             self.origImgPanel.image = self.board.image
             self.origImgPanel.image_mask.scaled_mask = self.board.area_mask
+            self.imgButtons['reset'].disabled = (self.board.image == self.board.src_image)
 
             # Reset button state to default
-            self.buttonState = DEF_BTN_STATE.copy()
-            for key in self.buttonState:
-                self.imgButtons[key].state = self.buttonState[key]
+            for key in self.imgButtons.keys():
+                self.imgButtons[key].state = False
+            self.imgButtons['black'].state = True
+            self.imgButtons['white'].state = True
 
             # Process image
             self.update_board(reprocess = False)

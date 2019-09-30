@@ -22,6 +22,7 @@ else:
 
 from pathlib import Path
 import cv2
+from imutils.perspective import four_point_transform
 import numpy as np
 import json
 import logging
@@ -40,6 +41,7 @@ class GrBoard(object):
         self._res = None
         self._img = None
         self._img_file = None
+        self._src_img = None
         self._src_img_file = None
         self._gen_board = False
 
@@ -69,6 +71,7 @@ class GrBoard(object):
         self._img_file = filename
         self._src_img_file = filename
         self._img = img
+        self._src_img = img
 
         # Load params, if requested and file exists
         f_params_loaded = False
@@ -77,6 +80,10 @@ class GrBoard(object):
             if params_file.is_file():
                 self.load_params(str(params_file))
                 f_params_loaded = True
+
+        # Do a transformation, if specified
+        if 'TRANSFORM' in self._params:
+           self.transform_image(self._params['TRANSFORM'])
 
         # Analyze board
         if f_process: self.process()
@@ -206,7 +213,7 @@ class GrBoard(object):
         return file
 
     def process(self):
-        """Does recognition of image file loaded to the board"""
+        """Perform recognition of board image"""
         if self._img is None or self._gen_board:
             self._res = None
         else:
@@ -313,6 +320,14 @@ class GrBoard(object):
         return self._img
 
     @property
+    def src_image(self):
+        """Board image as it was loaded"""
+        return self._src_img
+##    @image.setter
+##    def image(self, im):
+##        self._img = im
+
+    @property
     def image_file(self):
         """Image file name"""
         return self._img_file
@@ -389,3 +404,14 @@ class GrBoard(object):
         else:
             return self._res[GR_BOARD_SIZE]
 
+    def transform_image(self, transform_rect):
+        """Performs a perspective transformation"""
+        if not transform_rect is None and len(transform_rect) == 4:
+           logging.info('Transforming: {}'.format(transform_rect))
+           self._img = four_point_transform(self._img, np.array(transform_rect))
+           self._params['TRANSFORM'] = transform_rect
+
+    def reset_image(self):
+        """Reset board image as it was loaded"""
+        self._img = self._src_img
+        self._params['TRANSFORM'] = None

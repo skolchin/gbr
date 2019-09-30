@@ -65,7 +65,8 @@ DEF_GR_PARAMS = {
     "WS_MORPH_W": 0,
     "PYRAMID_B": 0,
     "PYRAMID_W": 0,
-    'AREA_MASK': None
+    'AREA_MASK': None,
+    'TRANSFORM': None
 }
 
 # Parameter properties: min, max, group
@@ -107,7 +108,8 @@ GR_PARAMS_PROP = {
     "WS_MORPH_W": (0, 10, "White stones detection"),
     "PYRAMID_W": (0, 1, "White stones detection"),
 
-    'AREA_MASK': (0,0,None)
+    'AREA_MASK': (0,0,None),
+    'TRANSFORM': (0,0,None)
 }
 
 # Analysis results
