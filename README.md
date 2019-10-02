@@ -32,7 +32,7 @@ Currently, the following filters are implemented:
   * Eroding
   * Blur
   * Pyramid mean filtering (useful when stones have textured faces or extensive glare)
-  * Luminosity equalization using (CLAHE)[http://books.google.com.au/books?hl=en&lr=&id=CCqzMm_-WucC&oi=fnd&pg=PR11&dq=Contrast%20Limited%20Adaptive%20Histogram%20Equalization%20Graphics%20Gems%20IV&ots=mtft15JJbl&sig=acQg6XLt7jzqR0MjO6sYUa0Sjtc#v=onepage&q=Contrast%20Limited%20Adaptive%20Histogram%20Equalization%20Graphics%20Gems%20IV&f=false]
+  * Luminosity equalization using [CLAHE](http://books.google.com.au/books?hl=en&lr=&id=CCqzMm_-WucC&oi=fnd&pg=PR11&dq=Contrast%20Limited%20Adaptive%20Histogram%20Equalization%20Graphics%20Gems%20IV&ots=mtft15JJbl&sig=acQg6XLt7jzqR0MjO6sYUa0Sjtc#v=onepage&q=Contrast%20Limited%20Adaptive%20Histogram%20Equalization%20Graphics%20Gems%20IV&f=false)
   * Watershed (post-filter).
 
 Filter and board detection parameters can be changed through the interface and saved to property file (.JSON). The property file is loaded automatically when an image is loaded for processing. Board recognition parameters can also be saved in another JSON file with .JGF extension.
@@ -68,7 +68,7 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 02/10/2019
 
-* Image can now be transformed to rectangular suitable for recognigion even if picture was taken from some angle or skewed by using 4-point transformation algorithm implemented in Adrian Rosebrock's [PyImageSearch](https://www.pyimagesearch.com/) imutils package.
+* Image can now be transformed to rectangular suitable for recognigion even if picture was taken from some angle or skewed by using 4-point transformation algorithm implemented in imutils package.
 * New ImageTransform class to support setting image transformation parameters
 * New filter: luminocity equalization, can be applied when different part of an image are exposed differently.
 
