@@ -392,7 +392,7 @@ class GbrGUI(object):
                 return
 
         # Generate board using analysis results
-        self.genImgPanel.image = self.board.show_board(show_state = self.buttonState)
+        self.genImgPanel.set_image(self.board.show_board(show_state = self.buttonState))
 
         if self.board.results is None:
             self.boardInfo.set("")
@@ -432,7 +432,7 @@ class GbrGUI(object):
         GrLog.clear()
         try:
             params_loaded = self.board.load_image(fn, f_with_params = True)
-            self.origImgPanel.image = self.board.image
+            self.origImgPanel.set_image(self.board.image)
             self.origImgPanel.image_mask.scaled_mask = self.board.area_mask
 
             # Reset button state to default

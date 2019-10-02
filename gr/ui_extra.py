@@ -670,13 +670,13 @@ class ImageMask(object):
         """Mask as it is displayed on canvas"""
         was_shown = not self.mask_rect is None
         self.hide()
-        self.__mask = m.copy()
+        self.__mask = list(m)
         if was_shown: self.show()
 
     @property
     def scaled_mask(self):
         """Mask scaled to actual image size"""
-        m = self.__mask.copy()
+        m = list(self.__mask)
         m[0] = int(m[0] / self.__scale[0])
         m[1] = int(m[1] / self.__scale[1])
         m[2] = int(m[2] / self.__scale[0])
@@ -688,7 +688,7 @@ class ImageMask(object):
         """Mask scaled to actual image size"""
         was_shown = not self.mask_rect is None
         self.hide()
-        m = mask.copy()
+        m = list(mask)
         m[0] = int(m[0] * self.__scale[0])
         m[1] = int(m[1] * self.__scale[1])
         m[2] = int(m[2] * self.__scale[0])
