@@ -10,44 +10,45 @@
     "HC_MAXRADIUS": 20,
     "HC_MINDIST": 1,
     "HC_SENSITIVITY_B": 10,
-    "HC_SENSITIVITY_W": 12,
+    "HC_SENSITIVITY_W": 11,
     "HL_MINLEN": 0,
     "HL_RHO": 1,
     "HL_RHO2": 1,
     "HL_THETA": 90,
-    "HL_THETA2": 90,
+    "HL_THETA2": 5,
     "HL_THRESHOLD": 0,
-    "HL_THRESHOLD2": 60,
+    "HL_THRESHOLD2": 110,
+    "LUM_EQ": 1,
     "PYRAMID_B": 0,
     "PYRAMID_W": 0,
-    "STONES_DILATE_B": 1,
+    "STONES_DILATE_B": 0,
     "STONES_DILATE_W": 0,
-    "STONES_ERODE_B": 1,
-    "STONES_ERODE_W": 2,
+    "STONES_ERODE_B": 0,
+    "STONES_ERODE_W": 0,
     "STONES_MAXVAL_B": 255,
     "STONES_MAXVAL_W": 255,
-    "STONES_THRESHOLD_B": 83,
-    "STONES_THRESHOLD_W": 203,
+    "STONES_THRESHOLD_B": 42,
+    "STONES_THRESHOLD_W": 214,
     "TRANSFORM": [
         [
-            231,
-            89
+            277,
+            108
         ],
         [
-            9,
-            223
+            13,
+            268
         ],
         [
-            276,
-            463
+            328,
+            549
         ],
         [
-            489,
-            222
+            582,
+            266
         ]
     ],
-    "WATERSHED_B": 0,
-    "WATERSHED_W": 0,
+    "WATERSHED_B": 215,
+    "WATERSHED_W": 164,
     "WS_MORPH_B": 0,
-    "WS_MORPH_W": 0
+    "WS_MORPH_W": 1
 }
