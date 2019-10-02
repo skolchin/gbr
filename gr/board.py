@@ -125,6 +125,9 @@ class GrBoard(object):
             if key in p:
                 self._params[key] = p[key]
                 r[key] = p[key]
+            elif key in DEF_GR_PARAMS:
+                self._params[key] = DEF_GR_PARAMS[key]
+                r[key] = DEF_GR_PARAMS[key]
         return r
 
     def load_board_info(self, filename, f_use_gen_img = True, path_override = None):
@@ -303,11 +306,23 @@ class GrBoard(object):
         if 'AREA_MASK' in self._params and type(self._params['AREA_MASK']) is list:
            return self._params['AREA_MASK']
         else:
-           return [0, 0, self._img.shape[CV_WIDTH], self._img.shape[CV_HEIGTH]]
+           return None
 
     @area_mask.setter
     def area_mask(self, mask):
         self._params['AREA_MASK'] = mask
+
+    @property
+    def transform_rect(self):
+        """Board image transformation rectangle"""
+        if 'TRANSFORM' in self._params and type(self._params['TRANSFORM']) is list:
+           return self._params['TRANSFORM']
+        else:
+           return None
+
+    @transform_rect.setter
+    def transform_rect(self, rect):
+        self._params['TRANSFORM'] = rect
 
     @property
     def results(self):
@@ -319,13 +334,15 @@ class GrBoard(object):
         """Board image"""
         return self._img
 
+    @image.setter
+    def image(self, im):
+        """Board image"""
+        self._img = im
+
     @property
     def src_image(self):
         """Board image as it was loaded"""
         return self._src_img
-##    @image.setter
-##    def image(self, im):
-##        self._img = im
 
     @property
     def image_file(self):
@@ -412,6 +429,9 @@ class GrBoard(object):
            self._params['TRANSFORM'] = transform_rect
 
     def reset_image(self):
-        """Reset board image as it was loaded"""
         self._img = self._src_img
         self._params['TRANSFORM'] = None
+
+    @property
+    def can_reset_image(self):
+        return not self._img is None and np.any(self._img != self._src_img)

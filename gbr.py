@@ -60,6 +60,8 @@ class GbrGUI(object):
 
     def __setup_img_frame(self):
         """Internal - initialize image frame"""
+
+        # Original image
         self.origImgPanel = addImagePanel(self.imgFrame,
             caption = "Original",
             btn_params = [["area", False, self.set_area_callback],
@@ -67,15 +69,20 @@ class GbrGUI(object):
                           ['edge', False, self.transform_callback, "Transform image"]],
             image = self.board.image,
             max_size = self.max_img_size,
-            frame_callback = self.orig_img_mouse_callback,
-            use_mask = True,
-            show_mask = False,
-            allow_change = True,
-            mask_callback = self.mask_changed_callback)
+            frame_callback = self.orig_img_mouse_callback)
 
         self.imgButtons.update(self.origImgPanel.buttons)
         self.imgButtons['reset'].disabled = True
         self.origImgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
+
+        # Mask on original image
+        self.imgMask = ImageMask(self.origImgPanel,
+            allow_change = True,
+            mask_callback = self.mask_changed_callback)
+
+        # Transform on original image
+        self.imgTransform = ImageTransform(self.origImgPanel,
+            callback = self.end_transform_callback)
 
         # Generated image
         self.genImgPanel = addImagePanel(self.imgFrame,
@@ -258,9 +265,9 @@ class GbrGUI(object):
             return False
         else:
             if state:
-               self.origImgPanel.image_mask.show()
+               self.imgMask.show()
             else:
-               self.origImgPanel.image_mask.hide()
+               self.imgMask.hide()
             return True
 
     def mask_changed_callback(self, mask):
@@ -272,34 +279,35 @@ class GbrGUI(object):
         if self.board.is_gen_board:
            return False
 
-        if not self.transform is None:
-           self.transform.cancel()
-           self.transform = None
+        if not state and self.imgTransform.started:
+           self.imgTransform.cancel()
         else:
-            self.origImgPanel.image_mask.hide()
-            self.transform = ImageTransform(self.origImgPanel.canvas, self.origImgPanel.image, self.end_transform_callback)
-            self.transform.start()
+            self.origImgPanel.buttons['edge'].state = False
+            self.imgMask.hide()
+            self.imgTransform.start()
         return True
 
     def end_transform_callback(self, t, state):
         """Callback for transformation ending"""
-        if not t.transformed is None:
-           self.board.transform_image(t.transform_rect)
-           self.update_board(reprocess = True)
+        self.origImgPanel.buttons['edge'].state = False
+        if state:
+           self.origImgPanel.buttons['reset'].disabled = not state
 
-           self.origImgPanel.image = self.board.image
-           self.imgButtons['reset'].disabled = False
-
-        self.imgButtons['edge'].state = False
-        self.transform = None
+           self.board.image = t.image
+           self.board.transform_rect = t.scaled_rect
+           self.update_board(True)
 
     def transf_reset_callback(self, event, tag, state):
         """Transformed image reset button handler"""
-        self.board.reset_image()
-        self.update_board(reprocess = True)
+        self.imgMask.hide()
+        self.imgTransform.cancel()
 
-        self.origImgPanel.image = self.board.image
-        self.imgButtons['reset'].disabled = True
+        #self.imgTransform.reset()
+        self.origImgPanel.image = self.board.src_image
+        self.update_board(True)
+
+        self.origImgPanel.buttons['edge'].state = False
+        self.origImgPanel.buttons['reset'].disabled = True
         return False
 
     # Add Scale widgets with board recognition parameters
@@ -446,8 +454,8 @@ class GbrGUI(object):
         try:
             params_loaded = self.board.load_image(fn, f_with_params = True)
             self.origImgPanel.image = self.board.image
-            self.origImgPanel.image_mask.scaled_mask = self.board.area_mask
-            self.imgButtons['reset'].disabled = (self.board.image == self.board.src_image)
+            self.imgMask.scaled_mask = self.board.area_mask
+            self.imgButtons['reset'].disabled = not self.board.can_reset_image
 
             # Reset button state to default
             for key in self.imgButtons.keys():

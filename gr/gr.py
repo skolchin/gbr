@@ -114,6 +114,28 @@ def find_stones(src_img, params, res, f_bw):
         else:
             return cv2.blur(img, (n_blur, n_blur))
 
+    # Pre-filter: luminosity equaliztion
+    def _apply_clahe(img, params, f_bw):
+        n_lum_eq = params['LUM_EQ']
+        if n_lum_eq == 0:
+            logging.info("Filter skipped")
+            return img
+        else:
+            # Convert to LAB color space
+            lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+
+            # Split channels
+            l, a, b = cv2.split(lab)
+
+            # Apply CLAHE to l_channel
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+            cl = clahe.apply(l)
+
+            # Merge back and convert to RGB color space
+            merged = cv2.merge((cl,a,b))
+            final = cv2.cvtColor(merged, cv2.COLOR_LAB2BGR)
+            return final
+
     # Post-filter: houghCircle
     def _apply_houghc(img, filtered_img, params, f_bw, prev_stones):
         n_mindist = params['HC_MINDIST']
@@ -172,6 +194,7 @@ def find_stones(src_img, params, res, f_bw):
     def _init():
         return ({
             "PMF": _apply_pmf,
+            'LUM_EQ': _apply_clahe,
             "CHANNEL": _apply_channel_mask,
             #"GRAY": _apply_gray,
             "THRESH": _apply_thresh,
