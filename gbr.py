@@ -303,7 +303,7 @@ class GbrGUI(object):
         self.imgTransform.cancel()
 
         #self.imgTransform.reset()
-        self.origImgPanel.image = self.board.src_image
+        self.origImgPanel.set_image(self.board.src_image)
         self.update_board(True)
 
         self.origImgPanel.buttons['edge'].state = False
@@ -425,7 +425,7 @@ class GbrGUI(object):
         btn_state = dict()
         for key in self.imgButtons.keys():
             btn_state[key] = self.imgButtons[key].state
-        self.genImgPanel.image = self.board.show_board(show_state = btn_state)
+        self.genImgPanel.set_image(self.board.show_board(show_state = btn_state))
 
         if self.board.results is None:
             self.boardInfo.set("")
