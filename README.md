@@ -46,13 +46,13 @@ Examples of source images and results of their processing:
 | Source | Generated |
 | ---    | ---       |
 | ![1](../master/img/go_board_1.png) | ![1](../master/img/go_board_1_gen.jpg) |
-| Plain computer board ([source](https://images.app.goo.gl/qtziTu6xfNFH46o88)) with non-standard number of lines |
+| Plain computer board ([source](https://images.app.goo.gl/qtziTu6xfNFH46o88)) with non-standard number of lines ||
 | ![2](../master/img/go_board_13.png) | ![2](../master/img/go_board_13_gen.png) |
-| A computer board showing results of score calculation |
+| A computer board showing results of score calculation ||
 | ![3](../master/img/go_board_8a.png) | ![3](../master/img/go_board_8a_gen.jpg) |
-| Real board ([source](https://www.theverge.com/2016/3/8/11178462/google-deepmind-go-challenge-ai-vs-lee-sedol)) stripped from larger image |
+| Real board ([source](https://www.theverge.com/2016/3/8/11178462/google-deepmind-go-challenge-ai-vs-lee-sedol)) stripped from larger image ||
 | ![4](../master/img/go_board_47.jpg) | ![3](../master/img/go_board_47_gen.jpg) |
-| Real board ([source](https://images.app.goo.gl/tXP2Yp9GBajHgJEr9)) with 4-points transformation and luminosity normalization applied |
+| Real board ([source](https://images.app.goo.gl/tXP2Yp9GBajHgJEr9)) with 4-points transformation and luminosity normalization applied ||
 
 More images are available at [img](../master/img) directory. All of them were either from my parties or found on the Internet.
 
