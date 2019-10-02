@@ -54,7 +54,7 @@ Examples of source images and results of their processing:
 | ![4](../master/img/go_board_47.jpg) | ![3](../master/img/go_board_47_gen.jpg) |
 | Real board ([source](https://images.app.goo.gl/tXP2Yp9GBajHgJEr9)) with 4-points transformation and luminosity normalization applied ||
 
-More images are available at [img](../master/img) directory. All of them were either from my parties or found on the Internet.
+More images are available at [img](../master/img) directory. All of them are either taken from my games or found on the Internet.
 
 
 ## Requirements
