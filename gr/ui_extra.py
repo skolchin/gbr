@@ -13,6 +13,9 @@ import os
 from PIL import Image, ImageTk
 from pathlib import Path
 import random
+import numpy as np
+import cv2
+from imutils.perspective import four_point_transform
 
 if sys.version_info[0] < 3:
     from grdef import *
@@ -49,6 +52,7 @@ class ImgButton(tk.Label):
             master     Tk windows/frame
             tag        Button tag. Files names "<tag>_down.png" and "<tag>_up.png" must exist in UI_DIR.
             state      Initial pressing state (true/false)
+            disabled   True/False
             tooltip    A tooltip text
             callback   Callback function. Function signature:
                           event - Tk event
@@ -56,51 +60,67 @@ class ImgButton(tk.Label):
                           state - target state (true/false)
                        Function shall return if new state accepted, or false otherwise
         """
-        self._tag = kwargs.pop('tag', None)
-        if self._tag is None:
+        self.__tag = kwargs.pop('tag', None)
+        if self.__tag is None:
             raise Exception('tag not provided')
-        self._state = kwargs.pop('state', False)
-        self._callback = kwargs.pop('callback', None)
+        self.__state = kwargs.pop('state', False)
+        self.__disabled = kwargs.pop('disabled', False)
+        self.__callback = kwargs.pop('callback', None)
         tooltip = kwargs.pop('tooltip', None)
+        self.__DS_MAP = ['normal', 'disabled']
 
         tk.Label.__init__(self, master, *args, **kwargs)
 
         if not tooltip is None:
-            self._tooltip = createToolTip(self, tooltip)
+            self.__tooltip = createToolTip(self, tooltip)
 
         # Load button images
-        self._images = [ImageTk.PhotoImage(Image.open(os.path.join(UI_DIR, self._tag + '_up.png'))),
-                        ImageTk.PhotoImage(Image.open(os.path.join(UI_DIR, self._tag + '_down.png')))]
+        self.__images = [ImageTk.PhotoImage(Image.open(os.path.join(UI_DIR, self.__tag + '_up.png'))),
+                        ImageTk.PhotoImage(Image.open(os.path.join(UI_DIR, self.__tag + '_down.png')))]
 
         # Update kwargs
-        w = self._images[0].width() + 4
-        h = self._images[0].height() + 4
+        w = self.__images[0].width() + 4
+        h = self.__images[0].height() + 4
         self.configure(borderwidth = 1, relief = "groove", width = w, height = h)
-        self.configure(image = self._images[self._state])
+        self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
 
         self.bind("<Button-1>", self.mouse_click)
 
     def mouse_click(self, event):
-        new_state = not self._state
-        self.configure(image = self._images[new_state])
+        cur_state = self.__state
+        new_state = not self.__state
+        self.configure(image = self.__images[new_state], state = self.__DS_MAP[self.__disabled])
         if new_state: self._root().update()
-        if self._callback(event = event, tag = self._tag, state = new_state):
-            self._state = new_state
-        else:
-            if new_state:
-                # Unpress after small delay
-                self.after(300, lambda: self.configure(image = self._images[self._state]))
-            else:
-                self.configure(image = self._images[self._state])
+        self.__state = new_state
+
+        if not self.__callback is None:
+           if not self.__callback(event = event, tag = self.__tag, state = new_state):
+              self.__state = cur_state
+              if new_state:
+                 # Unpress after small delay
+                 self.after(300, lambda: self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled]))
+              else:
+                 self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
 
     @property
     def state(self):
-        return self._state
+        return self.__state
 
     @state.setter
     def state(self, new_state):
-        self._state = new_state
-        self.configure(image = self._images[new_state])
+        if new_state != self.__state:
+            self.__state = new_state
+            self.configure(image = self.__images[new_state], state = self.__DS_MAP[self.__disabled])
+
+    @property
+    def disabled(self):
+        return self.__disabled
+
+    @state.setter
+    def disabled(self, ds):
+        if ds != self.__disabled:
+            self.__disabled = ds
+            self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
 
 # Tooltip
 class ToolTip(object):
@@ -112,14 +132,18 @@ class ToolTip(object):
         self.id = None
         self.x = self.y = 0
 
-    def showtip(self, text):
+    def showtip(self, text, c = None):
         "Display text in tooltip window"
         self.text = text
         if self.tipwindow or not self.text:
             return
-        x, y, cx, cy = self.widget.bbox("insert")
+        bb = self.widget.bbox("insert")
+        if bb is None: bb = self.widget.bbox("all")
+        x, y, cx, cy = bb
         x = x + self.widget.winfo_rootx() + 27
-        y = y + cy + self.widget.winfo_rooty() +27
+        y = y + cy + self.widget.winfo_rooty() + 27
+        if not c is None:
+           x, y = c
         self.tipwindow = tw = tk.Toplevel(self.widget)
         tw.wm_overrideredirect(1)
         tw.wm_geometry("+%d+%d" % (x, y))
@@ -135,15 +159,18 @@ class ToolTip(object):
             tw.destroy()
 
 # Add a toolip
-def createToolTip(widget, text):
+def createToolTip(widget, text, coord = None):
     """Creates a tooltip with given text for given widget"""
     toolTip = ToolTip(widget)
-    def enter(event):
-        toolTip.showtip(text)
-    def leave(event):
-        toolTip.hidetip()
-    widget.bind('<Enter>', enter)
-    widget.bind('<Leave>', leave)
+    widget.bind('<Enter>', lambda f: toolTip.showtip(text, coord))
+    widget.bind('<Leave>', lambda f: toolTip.hidetip())
+    return toolTip
+
+# Remove a tooltip
+def removeToolTip(toolTip):
+    toolTip.hidetip()
+    toolTip.widget.unbind('<Enter>')
+    toolTip.widget.unbind('<Leave>')
 
 class StatusPanel(tk.Frame):
     """Status panel class"""
@@ -229,6 +256,70 @@ class StatusPanel(tk.Frame):
 
         self._var.set(text + file)
 
+class NBinder(object):
+    """ Supplementary class to manage widget bindings"""
+
+    # Tkinter bind/unbind seems not working
+    # This variable will keep all bindings set before
+    __bindings = dict()
+
+    def __init__(self):
+        self.bnd_ref = dict()
+
+    def bind(self, widget, event, callback, add = ''):
+        """Bind a callback to widget event and keep the reference"""
+
+        # Store binding in this instance
+        key = str(widget.winfo_id()) + '__' + str(event)
+        bnd_id = widget.bind(event, callback, add)
+        self.bnd_ref[key] = [bnd_id, widget, event]
+
+        # Store global binding
+        ref = []
+        if key in NBinder.__bindings: ref = NBinder.__bindings[key]
+        ref.append([self, widget, event, callback])
+        NBinder.__bindings[key] = ref
+
+    def unbind(self, widget, event):
+        """Unbind all callbacks for given event from a widget"""
+
+        key = str(widget.winfo_id()) + '__' + str(event)
+        if key in self.bnd_ref:
+           # Unbind from this instance
+           bnd_id = self.bnd_ref[key][0]
+           widget.unbind(event, bnd_id)
+           del self.bnd_ref[key]
+
+           # Unbind/rebind globally
+           NBinder.__unbind(self, key)
+
+    def unbind_all(self):
+        """Unbind all callbacks"""
+
+        # Unbind all in this instance
+        for key in self.bnd_ref.keys():
+            bnd_id, widget, event = self.bnd_ref[key]
+            widget.unbind(event, bnd_id)
+            NBinder.__unbind(self, key)
+
+        self.bnd_ref = dict()
+
+    @staticmethod
+    def __unbind(owner, key):
+        if not key in NBinder.__bindings:
+            return
+        refs = NBinder.__bindings[key]
+        for i in range(len(refs)):
+            w = refs[i][0]
+            if w == owner:
+               # This is my binding, remove it and rebind everything remaining
+               refs.pop(i)
+               for ref2 in refs:
+                   w2, widget, event, callback = ref2
+                   widget.bind(event, callback)
+
+
+
 # Image panel class
 class ImagePanel(tk.Frame):
     def __init__(self, master, *args, **kwargs):
@@ -244,11 +335,6 @@ class ImagePanel(tk.Frame):
                               Can be used only for OpenCV images (default is 0)
                scrollbars     Boolean or tuple of booleans. If True both x and y scrollbars attached to canvas.
                               If tuple provided, it specify where scrollbars are attached (horiz, vert)
-               use_mask       If True, an ImageMask is created
-               mask           If use_mask = True, specifies initial mask
-               allow_change   If use_mask = True, specifies whether the mask can be changed
-               show_mask      If use_mask = True, specifies whether the mask should be displayed immediatelly
-               mask_callback  If use_mask = True, a callback function called when mask is changed
         """
 
         # Panel parameters
@@ -260,19 +346,15 @@ class ImagePanel(tk.Frame):
         f_sb = kwargs.pop('scrollbars', (False, False))
         if not type(f_sb) is tuple: f_sb = (f_sb, f_sb)
 
-        # Mask parameters
-        use_mask = kwargs.pop('use_mask', False)
-        mask = kwargs.pop('mask', None)
-        allow_change = kwargs.pop('allow_change', False)
-        show_mask = kwargs.pop('show_mask', False)
-        min_dist = kwargs.pop('min_dist', 0)
-        mask_cb = kwargs.pop('mask_callback', None)
+        self.__image_mask = None
+        self.__image_transf = None
 
         # Init
         tk.Frame.__init__(self, master, *args, **kwargs)
         self.__scale = [1.0, 1.0]
         self.__offset = [0, 0]
         self.__image_shape = []
+        self.__src_image = img
         self.__set_image(img)
 
         # Panel to hold everything
@@ -326,22 +408,20 @@ class ImagePanel(tk.Frame):
             self.canvas.config(yscrollcommand=sbr.set)
 
         # Frame click callback
+        self.__binder = None
         if not frame_callback is None:
-            self.canvas.bind('<Button-1>', frame_callback)
-
-        # Image mask
-        self.__image_mask = None
-        if use_mask:
-           self.create_image_mask(mask = mask,
-                allow_change = allow_change,
-                show_mask = show_mask,
-                min_dist = min_dist,
-                mask_callback = mask_cb)
+           self.__binder = NBinder()
+           self.__binder.bind(self.canvas, '<Button-1>', frame_callback)
 
     @property
     def image(self):
-        """OpenCv image"""
+        """Image adjusted to panel's area"""
         return self.__image
+
+    @property
+    def src_image(self):
+        """Original image"""
+        return self.__src_image
 
     @property
     def imagetk(self):
@@ -351,10 +431,6 @@ class ImagePanel(tk.Frame):
     @image.setter
     def image(self, img):
         self.set_image(img)
-
-    @imagetk.setter
-    def imagetk(self, imgtk):
-        self.set_image(imgtk)
 
     @property
     def scale(self):
@@ -405,8 +481,23 @@ class ImagePanel(tk.Frame):
 
     @property
     def image_mask(self):
-        """Image mask or None"""
+        """Image mask object or None"""
         return self.__image_mask
+
+    @image_mask.setter
+    def image_mask(self, m):
+        """Image mask object"""
+        self.__image_mask = m
+
+    @property
+    def image_shape(self):
+        """Actual image shape"""
+        return self.__image_shape
+
+    @property
+    def scaled_shape(self):
+        """Image shape as it is displayed on canvas"""
+        return self.__image_shape if max(self.__scale) >= 1.0 else self.__image.shape
 
     def set_image(self, img):
         """Changes image. img can be either OpenCv or PhotoImage"""
@@ -437,25 +528,13 @@ class ImagePanel(tk.Frame):
         return (int((p[0] - self.offset[0]) / self.scale[0]),
                 int((p[1] - self.offset[1]) / self.scale[1]))
 
-    def create_image_mask(self, **kwargs):
-        """Creates ImageMask if it was not created upon init"""
-        if self.__image is None:
-           raise Exception('Cannot create ImageMask if image is not assigned')
-        kwargs['offset'] = self.__offset
-        kwargs['scale'] = self.__scale
-        shape = self.__image_shape
-        if min(self.__scale) < 1.0: shape = self.__image.shape
-        self.__image_mask = ImageMask(self.canvas, shape, **kwargs)
-
     def __set_image(self, image):
         """Internal function to assign image"""
         if image is None:
             self.__image = None
             self.__image_shape = [0,0]
+            self.__offset = [0, 0]
             self.__imgtk = None
-        elif type(image) is ImageTk.PhotoImage:
-            self.__image = None
-            self.__imgtk = image
         else:
             self.__image = image.copy()
             self.__image_shape = self.__image.shape
@@ -469,19 +548,19 @@ class ImagePanel(tk.Frame):
         if not self.__image is None and self.max_size > 0:
             c = self.winfo_rgb(self['bg'])
             r, g, b = c[0]/256, c[1]/256, c[2]/256
+            orig_shape = self.__image.shape
             self.__image, self.__scale, self.__offset = resize3(self.__image,
                           max_size = self.__max_size,
                           f_upsize = False,
                           f_center = True,
                           pad_color = (r, g, b))
-            #print('Shape: {}, scale: {}, offset: {}'.format(orig_shape, self.__scale, self.__offset))
-            try:
-               if not self.__image_mask is None:
-                  shape = self.__image_shape
-                  if min(self.__scale) < 1.0: shape = self.__image.shape
-                  self.__image_mask.set_shape(shape, self.__offset, self.__scale)
-            except AttributeError:
-               pass
+            #print('{} -> {} x {} + {}'.format(orig_shape, self.__image.shape, self.__scale, self.__offset))
+
+##           if not self.__image_mask is None:
+##              shape = self.__image_shape
+##              if min(self.__scale) < 1.0: shape = self.__image.shape
+##              self.__image_mask.set_shape(shape, self.__offset, self.__scale)
+
 
     def __update_image(self):
         """Internal function to update image"""
@@ -491,7 +570,6 @@ class ImagePanel(tk.Frame):
             self.__image_id = self.canvas.create_image(0, 0, anchor = tk.NW, image = self.__imgtk)
         else:
             self.canvas.itemconfig(self.__image_id, image = self.__imgtk)
-
 
 def addImagePanel(parent, **kwargs):
     """Creates a panel with caption and buttons
@@ -546,6 +624,7 @@ def addField(parent, type_, caption, nrow, ncol, def_val):
     _entry.grid(row = nrow, column = ncol + 1)
     return _var, _entry
 
+# Binder
 def is_on(a, b, c):
     """Return true if point c intersects the line segment from a to b."""
 
@@ -576,33 +655,24 @@ def is_on_w(a,b,c,delta=1):
 class ImageMask(object):
     """Support class for drawing and changing mask on an image drawn on canvas"""
 
-    def __init__(self, canvas, image_shape, **kwargs):
+    def __init__(self, panel, **kwargs):
         """Creates a mask object.
 
         Parameters:
-            canvas        A canvas object (required)
-            image_shape   Shape of image drawn on canvas- tuple (height, width)
-            offset        Offset of image on canvas ([x, y])
-            scale         Image scale [x, y]
-                          The scale is used only to calculate actual mask area
+            panel         ImagePanel reference
             mask          Initial mask (if None, default mask is generated)
             allow_change  True to allow mask reshaping by user (dragging by mouse)
             show_mask     True to show mask initially
-            min_dist      Minimal allowed distance to edges
             mask_callback A function to be called when mask has changed
 
         Mask shading and colors can be set by shade_fill, shade_stipple, mask_color attributes
-        Resulting mask can be obtained through mask attribute
+        Resulting mask can be obtained through mask or scaled_mask attributes
         """
         # Parameters
-        self.__canvas = canvas
-        self.__image_shape = image_shape
-        self.__offset = kwargs.pop('offset', [0,0])
-        self.__scale = kwargs.pop('scale', [1.0,1.0])
+        self.__panel = panel
         self.__mask = kwargs.pop('mask', None)
         self.__allow_change = kwargs.pop('allow_change', True)
-        self.__min_dist = kwargs.pop('min_dist', 0)
-        f_show = kwargs.pop('show_mask', True)
+        f_show = kwargs.pop('show_mask', False)
         self.__callback = kwargs.pop('mask_callback', None)
 
         if self.__mask is None:
@@ -624,41 +694,21 @@ class ImageMask(object):
         if f_show: self.show()
 
         # Set handlers if required
+        self.__bindings = NBinder()
         if self.__allow_change:
-            self.canvas.bind("<Motion>", self.motion_callback)
-            self.canvas.bind('<B1-Motion>', self.drag_callback)
-            self.canvas.bind('<B1-ButtonRelease>', self.end_drag_callback)
+            self.__bindings.bind(self.__panel.canvas, "<Motion>", self.motion_callback)
+            self.__bindings.bind(self.__panel.canvas, '<B1-Motion>', self.drag_callback)
+            self.__bindings.bind(self.__panel.canvas, '<B1-ButtonRelease>', self.end_drag_callback)
+
+    @property
+    def panel(self):
+        """ImagePanel"""
+        return self.__panel
 
     @property
     def canvas(self):
         """Canvas"""
-        return self.__canvas
-
-    @property
-    def image_shape(self):
-        """Image size (height, width)"""
-        return self.__image_shape
-
-    @image_shape.setter
-    def image_shape(self, shape):
-        """Image size (height, width)"""
-        was_shown = not self.mask_rect is None
-        self.hide()
-        self.__image_shape = shape
-        if was_shown: self.show()
-
-    @property
-    def offset(self):
-        """Image offset on canvas"""
-        return self.__offset
-
-    @offset.setter
-    def offset(self, ofs):
-        """Image offset on canvas"""
-        was_shown = not self.mask_rect is None
-        self.hide()
-        self.__offset = ofs
-        if was_shown: self.show()
+        return self.__panel.canvas
 
     @property
     def mask(self):
@@ -668,7 +718,6 @@ class ImageMask(object):
     @mask.setter
     def mask(self, m):
         """Mask as it is displayed on canvas"""
-        was_shown = not self.mask_rect is None
         self.hide()
         self.__mask = list(m)
         if was_shown: self.show()
@@ -676,25 +725,27 @@ class ImageMask(object):
     @property
     def scaled_mask(self):
         """Mask scaled to actual image size"""
-        m = list(self.__mask)
-        m[0] = int(m[0] / self.__scale[0])
-        m[1] = int(m[1] / self.__scale[1])
-        m[2] = int(m[2] / self.__scale[0])
-        m[3] = int(m[3] / self.__scale[1])
+        if self.__mask is None:
+           return None
+        m = self.__mask.copy()
+        m[0] = int(m[0] / self.__panel.scale[0])
+        m[1] = int(m[1] / self.__panel.scale[1])
+        m[2] = int(m[2] / self.__panel.scale[0])
+        m[3] = int(m[3] / self.__panel.scale[1])
         return m
 
     @scaled_mask.setter
     def scaled_mask(self, mask):
         """Mask scaled to actual image size"""
-        was_shown = not self.mask_rect is None
-        self.hide()
-        m = list(mask)
-        m[0] = int(m[0] * self.__scale[0])
-        m[1] = int(m[1] * self.__scale[1])
-        m[2] = int(m[2] * self.__scale[0])
-        m[3] = int(m[3] * self.__scale[1])
-        self.__mask = m
-        if was_shown: self.show()
+        if mask is None:
+           self.__mask = None
+        else:
+           m = mask.copy()
+           m[0] = int(m[0] * self.__panel.scale[0])
+           m[1] = int(m[1] * self.__panel.scale[1])
+           m[2] = int(m[2] * self.__panel.scale[0])
+           m[3] = int(m[3] * self.__panel.scale[1])
+           self.__mask = m
 
     @property
     def allow_change(self):
@@ -704,32 +755,11 @@ class ImageMask(object):
     def allow_change(self, f):
         self.__allow_change = f
         if self.__allow_change:
-            self.canvas.bind("<Motion>", self.motion_callback)
-            self.canvas.bind('<B1-Motion>', self.drag_callback)
-            self.canvas.bind('<B1-ButtonRelease>', self.end_drag_callback)
+            self.__bindings.bind(self.__panel.canvas, "<Motion>", self.motion_callback)
+            self.__bindings.bind(self.__panel.canvas, '<B1-Motion>', self.drag_callback)
+            self.__bindings.bind(self.__panel.canvas, '<B1-ButtonRelease>', self.end_drag_callback)
         else:
-            self.canvas.unbind("<Motion>")
-            self.canvas.unbind('<B1-Motion>')
-            self.canvas.unbind('<B1-ButtonRelease>')
-
-    @property
-    def min_dist(self):
-        """Minimal distance to edges"""
-        return self.__min_dist
-
-    @min_dist.setter
-    def min_dist(self, m):
-        """Minimal distance to edges"""
-        self.__min_dist = m
-
-    def set_shape(self, shape, ofs = None, scale = None):
-        """Changes image shape and offset"""
-        was_shown = not self.mask_rect is None
-        self.hide()
-        self.__image_shape = shape
-        if not ofs is None: self.__offset = ofs
-        if not scale is None: self.__scale = scale
-        if was_shown: show()
+            self.__bindings.unbind_all()
 
     def motion_callback(self, event):
         """Callback for mouse move event"""
@@ -753,34 +783,34 @@ class ImageMask(object):
         if self.drag_side is None:
             self.drag_side = self.__get_mask_rect_side(event.x, event.y)
         if not self.drag_side is None:
-            p = (self.canvas.canvasx(event.x) - self.__offset[0],
-                 self.canvas.canvasy(event.y) - self.__offset[1])
+            p = (self.canvas.canvasx(event.x) - self.__panel.offset[0],
+                 self.canvas.canvasy(event.y) - self.__panel.offset[1])
             if self.drag_side == 0:
-                self.__mask[0] = int(max(p[0], self.__min_dist))
+                self.__mask[0] = int(max(p[0], 0))
             elif self.drag_side == 1:
-                self.__mask[1] = int(max(p[1], self.__min_dist))
+                self.__mask[1] = int(max(p[1], 0))
             elif self.drag_side == 2:
-                self.__mask[2] = int(min(p[0], self.__image_shape[1]-self.__min_dist))
+                self.__mask[2] = int(min(p[0], self.__panel.scaled_shape[1]))
             elif self.drag_side == 3:
-                self.__mask[3] = int(min(p[1], self.__image_shape[0]-self.__min_dist))
+                self.__mask[3] = int(min(p[1], self.__panel.scaled_shape[0]))
 
             self.canvas.coords(self.mask_rect,
-                 self.__mask[0] + self.__offset[0],
-                 self.__mask[1] + self.__offset[1],
-                 self.__mask[2] + self.__offset[0],
-                 self.__mask[3] + self.__offset[1])
+                 self.__mask[0] + self.__panel.offset[0] + self.mask_width,
+                 self.__mask[1] + self.__panel.offset[1] + self.mask_width,
+                 self.__mask[2] + self.__panel.offset[0],
+                 self.__mask[3] + self.__panel.offset[1])
 
             self.__draw_mask_shading()
 
     def end_drag_callback(self, event):
         """Callback for mouse button release event"""
-        #print('Drag end')
         if not self.drag_side is None and not self.__callback is None:
            self.__callback(self)
         self.drag_side = None
 
     def show(self):
         """Draw a mask on canvas"""
+        if self.__mask is None: self.default_mask()
         self.__draw_mask_shading()
         self.__draw_mask_rect()
 
@@ -796,29 +826,27 @@ class ImageMask(object):
 
     def random_mask(self):
         """Generates a random mask"""
-        dx = self.__min_dist
-        dy = self.__min_dist
-        cx = int(self.__image_shape[CV_WIDTH] / 2) - dx
-        cy = int(self.__image_shape[CV_HEIGTH] / 2) - dy
-        mx = self.__image_shape[CV_WIDTH] - 2*dx
-        my = self.__image_shape[CV_HEIGTH] - 2*dy
+        dx = 0
+        dy = 0
+        cx = int(self.__panel.scaled_shape[CV_WIDTH] / 2) - dx
+        cy = int(self.__panel.scaled_shape[CV_HEIGTH] / 2) - dy
+        mx = self.__panel.scaled_shape[CV_WIDTH] - 2*dx
+        my = self.__panel.scaled_shape[CV_HEIGTH] - 2*dy
         self.__mask = [
                 random.randint(dx, cx),
                 random.randint(dy, cy),
                 random.randint(cx+1, mx),
                 random.randint(cy+1, my)]
-        #print(self.__image_shape, '->', self.__mask)
 
     def default_mask(self):
         """Generates default mask"""
-        dx = self.__min_dist
-        dy = self.__min_dist
+        dx = 0
+        dy = 0
         self.__mask = [
                 dx,
                 dy,
-                self.__image_shape[CV_WIDTH] - 2*dx,
-                self.__image_shape[CV_HEIGTH] - 2*dy]
-        #print(self.__image_shape, '->', self.__mask)
+                self.__panel.scaled_shape[CV_WIDTH] - 2*dx,
+                self.__panel.scaled_shape[CV_HEIGTH] - 2*dy]
 
     def __draw_mask_shading(self):
         """Internal function. Draw a shading part of mask"""
@@ -836,14 +864,17 @@ class ImageMask(object):
             self.mask_area = None
 
         # Create mask points array
-        sx = self.__offset[0]
-        sy = self.__offset[1]
-        ix = sx + self.__image_shape[1]
-        iy = sy + self.__image_shape[0]
+        sx = self.__panel.offset[0]
+        sy = self.__panel.offset[1]
+        ix = sx + self.__panel.scaled_shape[1]
+        iy = sy + self.__panel.scaled_shape[0]
         mx = sx + self.__mask[0]
         my = sy + self.__mask[1]
         wx = sx + self.__mask[2]
         wy = sy + self.__mask[3]
+        if sx == 0: sx += self.mask_width
+        if sy == 0: sy += self.mask_width
+
         self.mask_area = [
           _rect([sx, sy, ix, sy, ix, my, sx, my, sx, sy]),
           _rect([sx, my, mx, my, mx, iy, sx, iy, sx, my]),
@@ -879,10 +910,10 @@ class ImageMask(object):
             self.mask_rect = None
 
         # Draw rect
-        sx = self.__offset[0]
-        sy = self.__offset[1]
-        mx = sx + self.__mask[0]
-        my = sy + self.__mask[1]
+        sx = self.__panel.offset[0]
+        sy = self.__panel.offset[1]
+        mx = sx + self.__mask[0] + self.mask_width
+        my = sy + self.__mask[1] + self.mask_width
         wx = sx + self.__mask[2]
         wy = sy + self.__mask[3]
         #print('Offset {} + mask {} -> rect {}'.format((sx, sy), self.__mask, (mx, my, wx, wy)))
@@ -892,4 +923,185 @@ class ImageMask(object):
           outline = self.mask_color,
           width = self.mask_width
         )
+
+# Image transformer
+class ImageTransform(object):
+    def __init__(self, panel, callback = None):
+        """Create ImageTransorm instance
+
+            Parameters:
+                panel     An ImagePanel object with Image displayed on
+                callback  A callback function to be called upon transform completed or cancelled
+                          Function signature: f(transformer, state) where
+                            tranformer ImageTranform object
+                            state      True if transformation completed or False if cancelled
+        """
+        self.__panel = panel
+        self.__transform_state = False
+        self.__tranform_rect = None
+        self.__transform_help = None
+        self.__transform_scale = None
+        self.__transform_offset = None
+        self.__src_image = None
+        self.__callback = callback
+        self.__bindings = NBinder()
+
+        # Public properties
+        self.show_coord = False
+
+    @property
+    def started(self):
+        """True if transformation is running"""
+        return self.__transform_state
+
+    @property
+    def image(self):
+        """Source image"""
+        return self.__panel.image
+
+    @property
+    def src_image(self):
+        """Image before transformation. Assigned when transformation starts"""
+        return self.__src_image
+
+    @property
+    def transform_rect(self):
+        """Transformation rectangle (TL, TR, BL, BR) as it is displayed on screen"""
+        if self.__tranform_rect is None:
+           return None
+        else:
+           t = [t[:2].view(int).tolist() for t in self.__tranform_rect]
+           return t
+
+    @property
+    def scaled_rect(self):
+        """Transformation rectangle (TL, TR, BL, BR) scaled to actual image size"""
+        t = self.transform_rect
+        if t is None:
+           return None
+        else:
+           t2 = []
+           for i in t:
+               t2.append([
+                    int(i[0] / self.__transform_scale[0]) - self.__transform_offset[0],
+                    int(i[1] / self.__transform_scale[1]) - self.__transform_offset[1] ])
+           print('{} -> {}'.format(t, t2))
+           return t2
+
+    @property
+    def callback(self):
+        """A callback function"""
+        return self.__callback
+
+    @callback.setter
+    def callback(self, c):
+        """A callback function"""
+        self.__callback = callback
+
+    def start(self):
+        """Initiates a transform operation"""
+        if self.__transform_state:
+           self.cancel()
+           return False
+
+        # Clean up
+        self.__clean_up()
+
+        # Register bindings, display help message
+        self.__bindings.bind(self.__panel.canvas, "<Button-1>", self.mouse_callback)
+        self.__bindings.bind(self.__panel.winfo_toplevel(), "<Escape>", self.key_callback)
+
+        bb_help = self.__panel.canvas.bbox(tk.ALL)
+        cx = int((bb_help[0] + bb_help[2])/2)
+        cy = int((bb_help[1] + bb_help[3])/2)
+        self.__transform_help = createToolTip(self.__panel.canvas,
+            'Click on 4 image corners or press ESC to cancel', (cx, cy))
+
+        # Initiate user actions
+        self.__transform_state = True
+        self.__src_image = self.__panel.src_image
+        self.__panel.canvas.after(100, self.check_transform_state)
+        return True
+
+    def cancel(self):
+        """Cancel transformation which was already started"""
+        self.__clean_up()
+        if not self.__callback is None:
+           self.__callback(self, False)
+
+    def reset(self):
+        """Reset to source image"""
+        if self.__src_image is None: return
+        if self.__transform_state: self.cancel()
+        self.__panel.image = self.__src_image
+
+    def mouse_callback(self, event):
+        """Mouse callback"""
+        def show_click(n):
+            circle_id = self.__panel.canvas.create_oval(event.x-4, event.y-4,
+                event.x+4, event.y+4, fill="red", outline = "red")
+            text_id = 0
+            if self.show_coord:
+               text_id = self.__panel.canvas.create_text(event.x, event.y+10,
+                            text = "({},{})".format(event.x, event.y), fill = "red")
+            self.__tranform_rect[n,0] = event.x
+            self.__tranform_rect[n,1] = event.y
+            self.__tranform_rect[n,2] = circle_id
+            self.__tranform_rect[n,3] = text_id
+
+        if not self.__transform_state: return
+
+        if self.__tranform_rect is None:
+           self.__tranform_rect = np.zeros((4,4), dtype = np.uint32)
+           show_click(0)
+        else:
+           # Count 4 clicks
+           for n in range(len(self.__tranform_rect)):
+               if self.__tranform_rect[n][2] == 0:
+                  show_click(n)
+                  self.__transform_state = (n < len(self.__tranform_rect)-1)
+                  return
+           self.__transform_state = False
+
+    def key_callback(self, event):
+        """ESC key press callback"""
+        self.cancel()
+
+    def check_transform_state(self):
+        """Timer callback"""
+        if self.__transform_state:
+           # Still running, repeat check
+           self.__panel.canvas.after(100, self.check_transform_state)
+        else:
+           if not self.__tranform_rect is None:
+              # Save current scale and offset since they will change with image change
+              self.__transform_scale = self.__panel.scale
+              self.__transform_offset = self.__panel.offset
+
+              # Do 4-points transform
+              t = np.array([t[:2] for t in self.__tranform_rect])
+              self.__panel.set_image(four_point_transform(self.__panel.image, t))
+
+              if not self.__callback is None:
+                 self.__callback(self, True)
+           # Clean up
+           self.__clean_up()
+
+    def __clean_up(self):
+        """Internal function to clear after transformation cancelling"""
+        # Remove selection points
+        self.__transform_state = False
+        if self.__tranform_rect is not None:
+           for i in self.__tranform_rect:
+               self.__panel.canvas.delete(i[2])
+               if i[3] > 0: self.__panel.canvas.delete(i[3])
+           self.__tranform_rect = None
+
+        # Remove tooltip
+        if not self.__transform_help is None:
+           removeToolTip(self.__transform_help)
+           self.__transform_help = None
+
+        # Cancel bindings
+        self.__bindings.unbind_all()
 

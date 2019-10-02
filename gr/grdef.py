@@ -65,22 +65,26 @@ DEF_GR_PARAMS = {
     "WS_MORPH_W": 0,
     "PYRAMID_B": 0,
     "PYRAMID_W": 0,
-    'AREA_MASK': None
+    'AREA_MASK': None,
+    'TRANSFORM': None,
+    'LUM_EQ': 0
 }
 
 # Parameter properties: min, max, group
+# Parameters where group is not None can be changed through UI
 GR_PARAMS_PROP = {
     "CANNY_MINVAL": (1, 255, None),
     "CANNY_MAXVAL": (1, 255, None),
     "CANNY_APERTURE": (3, 7, None),
 
-#    "HL_RHO": (1, 5, "Lines detection"),
-    "HL_THETA": (1, 90, "Lines detection"),
-    "HL_THRESHOLD": (0, 255, "Lines detection"),
-    "HL_MINLEN": (0, 255, "Lines detection"),
-#    "HL_RHO2": (1, 5, "Lines detection"),
-    "HL_THETA2": (1, 90, "Lines detection"),
-    "HL_THRESHOLD2": (1, 255, "Lines detection"),
+#    "HL_RHO": (1, 5, "Board recognition"),
+    "HL_THETA": (1, 90, "Board recognition"),
+    "HL_THRESHOLD": (0, 255, "Board recognition"),
+    "HL_MINLEN": (0, 255, "Board recognition"),
+#    "HL_RHO2": (1, 5, "Board recognition"),
+    "HL_THETA2": (1, 90, "Board recognition"),
+    "HL_THRESHOLD2": (1, 255, "Board recognition"),
+    "LUM_EQ": (0, 1, "Board recognition"),
 
     "HC_MINDIST": (1, 30, None),
     "HC_MAXRADIUS": (1, 40, None),
@@ -107,7 +111,8 @@ GR_PARAMS_PROP = {
     "WS_MORPH_W": (0, 10, "White stones detection"),
     "PYRAMID_W": (0, 1, "White stones detection"),
 
-    'AREA_MASK': (0,0,None)
+    'AREA_MASK': (0,0,None),
+    'TRANSFORM': (0,0,None)
 }
 
 # Analysis results

@@ -35,67 +35,87 @@ class GrBoardEdit(object):
 
     def __init__(self, root, img, board_size = 19):
         self.root = root
-        self.src_img = img
         self.board_size = board_size
-        self.max_size = 500
+        self.max_size = 700
 
         # Top-level frames
         self.imgFrame = tk.Frame(self.root)
         self.imgFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX, pady = PADY)
-##        self.configFrame = tk.Frame(self.root, bd = 1, relief = tk.RAISED)
-##        self.configFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX)
-##        self.buttonFrame = tk.Frame(self.root, width = max_size + 10, height = 70, bd = 1, relief = tk.RAISED)
-##        self.buttonFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX)
 
-        # Image panel
+        # Image panel and mask
         self.imgPanel = addImagePanel(self.imgFrame,
               caption = "Image",
-              btn_params = [["edge", True, self.set_edges_callback, "Set board area"]],
-              image = self.src_img,
+              btn_params = [["area", True, self.set_area_callback, "Set board area"],
+                            ["reset", False, self.transf_reset_callback, "Reset after transformation"],
+                            ['edge', False, self.transform_callback, "Transform image"]],
+              image = img,
               max_size = self.max_size,
-              scrollbars = False,
-              use_mask = True,
-              show_mask = True,
-              allow_change = True,
-              mask_callback = self.mask_callback)
+              scrollbars = False)
+
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
-        self.mask_callback(self.imgPanel.image_mask)
+        self.imgPanel.buttons['reset'].disabled = True
+
+        # Image mask
+        self.imgMask = ImageMask(self.imgPanel,
+            allow_change = True,
+            mask_callback = self.mask_callback)
+        self.mask_callback(self.imgMask)
+
+        self.binder = NBinder()
+        self.binder.bind(self.imgPanel.canvas, '<Button-1>', self.update_callback)
+
+        # Image transformer
+        self.imgTransform = ImageTransform(self.imgPanel,
+            callback = self.end_transform_callback)
+        self.imgTransform.show_coord = True
 
 
-##        # Editors and buttons
-##        self.editorFrame = tk.Frame(self.configFrame)
-##        self.editorFrame.pack(side = tk.LEFT, padx = PADX, pady = PADY)
-##
-##        self.sizeVar, self.sizeEntry = addField(self.editorFrame, "e", "Board size", 0, 0, self.board_size)
-##
-##        self.updateBtn = tk.Button(self.configFrame, text = "Update",
-##                                                    command = self.update_callback)
-##        self.updateBtn.pack(side = tk.LEFT, padx = PADX, pady = PADX)
-
-
-    def set_edges_callback(self, event, tag, state):
+    def set_area_callback(self, event, tag, state):
         if state:
-            self.imgPanel.image_mask.random_mask()
-            self.mask_callback(self.imgPanel.image_mask)
-            self.imgPanel.image_mask.show()
+            self.imgMask.random_mask()
+            self.mask_callback(self.imgMask)
+            self.imgMask.show()
         else:
-            self.imgPanel.image_mask.hide()
+            self.imgMask.hide()
         return True
 
     def mask_callback(self, mask):
         self.imgPanel.caption = "Mask {}".format(mask.scaled_mask)
 
     def transform_callback(self, event, tag, state):
+        if not state and self.imgTransform.started:
+           self.imgTransform.cancel()
+        else:
+            self.imgPanel.buttons['edge'].state = False
+            self.imgMask.hide()
+            self.imgTransform.start()
+        return True
+
+    def end_transform_callback(self, t, state):
+        if not state:
+           self.imgPanel.buttons['edge'].state = False
+        else:
+           self.imgPanel.buttons['edge'].state = False
+           self.imgPanel.buttons['reset'].disabled = not state
+           self.imgPanel.caption = "TRect {}".format(t.scaled_rect)
+
+    def transf_reset_callback(self, event, tag, state):
+        self.imgPanel.buttons['edge'].state = False
+        self.imgMask.hide()
+        self.imgTransform.reset()
+        self.imgPanel.buttons['reset'].disabled = True
         return False
 
-    def update_callback(self):
-        pass
+
+    def update_callback(self, event):
+        cv2.imwrite('C:\\Users\\skolchin\\Documents\\kol\\gbr\\img\\go_board_47a.png', self.imgPanel.image)
 
 
 # Main function
 def main():
 
-    img = cv2.imread('img\\go_board_23.png')
+    img = cv2.imread('img\\go_board_47.jpg')
+    #img = cv2.imread('img\\go_board_15_large.jpg')
     if img is None:
         raise Exception('File not found')
 
