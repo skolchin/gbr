@@ -1,4 +1,5 @@
 {
+    "AREA_MASK": null,
     "BLUR_MASK_B": 0,
     "BLUR_MASK_W": 0,
     "CANNY_APERTURE": 3,
@@ -10,12 +11,14 @@
     "HC_MINDIST": 1,
     "HC_SENSITIVITY_B": 14,
     "HC_SENSITIVITY_W": 16,
+    "HL_MINLEN": 0,
     "HL_RHO": 1,
     "HL_RHO2": 1,
-    "HL_THETA": 6,
-    "HL_THETA2": 5,
-    "HL_THRESHOLD": 25,
-    "HL_THRESHOLD2": 22,
+    "HL_THETA": 1,
+    "HL_THETA2": 90,
+    "HL_THRESHOLD": 0,
+    "HL_THRESHOLD2": 126,
+    "LUM_EQ": 0,
     "PYRAMID_B": 0,
     "PYRAMID_W": 0,
     "STONES_DILATE_B": 0,
@@ -26,6 +29,9 @@
     "STONES_MAXVAL_W": 255,
     "STONES_THRESHOLD_B": 79,
     "STONES_THRESHOLD_W": 145,
+    "TRANSFORM": null,
     "WATERSHED_B": 139,
-    "WATERSHED_W": 143
+    "WATERSHED_W": 143,
+    "WS_MORPH_B": 0,
+    "WS_MORPH_W": 0
 }
