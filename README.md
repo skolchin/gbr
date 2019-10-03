@@ -43,10 +43,17 @@ As for real board images, they have to be manually adjusted to have all edges to
 
 Examples of source images (left) and results of their processing (right):
 
-| ![1](../master/demo/screen_1.png) | Plain computer board ([source](https://senseis.xmp.net/diagrams/5/f5577987ee77807acfcfb4ed125f38eb.png)) with non-standard number of lines |
-| ![2](../master/demo/screen_13.png) | A computer board showing results of score calculation |
-| ![3](../master/demo/screen_8.png) | Real board ([source](https://www.theverge.com/2016/3/8/11178462/google-deepmind-go-challenge-ai-vs-lee-sedol)) separated from larger image |
-| ![4](../master/demo/screen_47.png) | Real board ([source](https://images.app.goo.gl/tXP2Yp9GBajHgJEr9)) with 4-points transformation and luminosity normalization applied |
+![1](../master/demo/screen_1.png)
+Plain computer board ([source](https://senseis.xmp.net/diagrams/5/f5577987ee77807acfcfb4ed125f38eb.png)) with non-standard number of lines
+
+![2](../master/demo/screen_13.png)
+A computer board showing results of score calculation
+
+![3](../master/demo/screen_8.png)
+Real board ([source](https://www.theverge.com/2016/3/8/11178462/google-deepmind-go-challenge-ai-vs-lee-sedol)) separated from larger image
+
+![4](../master/demo/screen_47.png)
+Real board ([source](https://images.app.goo.gl/tXP2Yp9GBajHgJEr9)) with 4-points transformation and luminosity normalization applied
 
 More images are available at [img](../master/img) directory. All of them are either taken from my games or found on the Internet.
 
