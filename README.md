@@ -4,19 +4,19 @@ This project is aiming to create a program which would be able to analyse a Go b
 
 The project is build on wonderfull [OpenCV](https://opencv.org/) library.
 
-A lot of ideas and algorithms was found on excellent Adrian Rosebrock's [PyImageSearch](https://www.pyimagesearch.com/) site and
-thematical [Slashdot](https://stackoverflow.com/questions/tagged/opencv) threads.
+A lot of ideas and algorithms were found on excellent Adrian Rosebrock's [PyImageSearch](https://www.pyimagesearch.com/) site and borrowed from thematical [Slashdot](https://stackoverflow.com/questions/tagged/opencv) threads.
 
 The algorithm per se is the following:
 
 1. Detect board properties (board edges, spacing and board size):
-    * Transform image using 4-points transformation and set area to be recognized
-    * If parameters set - run HoughLinesP to determine line segments, filter out small lines and reconstruct the image. This allows to remove board labels.
-    * Run HoughLines to find the lines
+    * Transform image using 4-points transformation
+    * Set area to be recognized
+    * If parameters set - run HoughLinesP to determine line segments, filter out small lines and reconstruct the image, allowing to remove board labels (this step seems obsolete, currently its easier to apply area mask excluding labels)
+    * Run HoughLines to find all the lines across the board
     * Separate lines to vertical/horizontal ones
     * Remove duplicates and lines too close to each other
     * Calculate board edges as minimum and maximum coordinates of horizontal/vertical lines
-    * Detect a board size as number of horizontal/vertical lines found
+    * Detect a board size as number of horizontal/vertical lines found.
 
 2. Find stones (black and white):
     * Apply pre-filters with parameters specified through the interface
