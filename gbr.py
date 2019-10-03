@@ -174,7 +174,7 @@ class GbrGUI(object):
                 x = round(p[GR_X],0),
                 y = round(p[GR_Y],0),
                 r = round(p[GR_R],0))
-            print(ct)
+            #print(ct)
             self.statusInfo.set(ct)
 
     def orig_img_mouse_callback(self, event):
@@ -282,9 +282,8 @@ class GbrGUI(object):
         if not state and self.imgTransform.started:
            self.imgTransform.cancel()
         else:
-            self.origImgPanel.buttons['edge'].state = False
-            self.imgMask.hide()
-            self.imgTransform.start()
+           self.imgMask.hide()
+           self.imgTransform.start()
         return True
 
     def end_transform_callback(self, t, state):

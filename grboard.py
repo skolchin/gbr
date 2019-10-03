@@ -86,7 +86,6 @@ class GrBoardEdit(object):
         if not state and self.imgTransform.started:
            self.imgTransform.cancel()
         else:
-            self.imgPanel.buttons['edge'].state = False
             self.imgMask.hide()
             self.imgTransform.start()
         return True
@@ -97,7 +96,7 @@ class GrBoardEdit(object):
         else:
            self.imgPanel.buttons['edge'].state = False
            self.imgPanel.buttons['reset'].disabled = not state
-           self.imgPanel.caption = "TRect {}".format(t.scaled_rect)
+           self.imgPanel.caption = "Transf rect {}".format(t.scaled_rect)
 
     def transf_reset_callback(self, event, tag, state):
         self.imgPanel.buttons['edge'].state = False

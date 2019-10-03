@@ -76,6 +76,10 @@ def show_lines(title, shape, lines, img = None):
 
 # Convert CV2 image to Tkinter format
 def img_to_imgtk(img):
+    """ Convert OpenCV image to PIL PhotoImage"""
+    if img is None:
+       return None
+
     if len(img.shape) ==3 and img.shape[2] == 3:
         b,g,r = cv2.split(img)
         img = cv2.merge((r,g,b))
@@ -88,79 +92,16 @@ def unique_rows(a):
     unique_a = np.unique(a.view([('', a.dtype)]*a.shape[1]))
     return unique_a.view(a.dtype).reshape((unique_a.shape[0], a.shape[1]))
 
-# Remove values too close to each other
-def remove_nearest(a, axis1 = 0, axis2 = None, delta = 5):
-
-    # Subfunction for tuples
-    def remove_nearest_t(a, axis1, axis2, delta):
-        b = None
-        if axis2 is None: b = sorted(a, key = lambda x: x[axis1])
-        else:             b = sorted(a, key = lambda x: x[axis1][axis2])
-        r = []
-        vp = None
-        for i in b:
-            v = None
-            if axis2 is None: v = i[axis1]
-            else:             v = i[axis1][axis2]
-            if vp is None or abs(v - vp) > delta: r.append(i)
-            vp = v
-        return r
-
-    # Subfunction for ndarrays
-    def remove_nearest_a(a, axis1, axis2, delta):
-        b = np.sort(a, axis1)
-        r = []
-        vp = [None, None]
-        vf = np.vectorize(lambda t: t > delta)
-
-        for i in b:
-            v = None
-            if axis2 is None:
-               v = [i[axis1], None]
-            else:
-               v = [i[axis1], i[axis2]]
-            if vp[0] is None: r.append(i)
-            else:
-                t = np.abs(np.subtract(v, vp))
-                ft = vf(t)
-                if ft.any(): r.append(i)
-
-            vp = v
-        return np.asarray(r)
-
-    # Subfunction for other types
-    def remove_nearest_r(a, axis1, axis2, delta):
-        b = sorted(a)
-        r = []
-        vp = None
-        for i in b:
-            v = i
-            if vp is None or abs(v - vp) > delta: r.append(i)
-            vp = v
-        return r
-
-    if a is None or len(a) == 0:
-       return a
-    elif type(a[0]) is tuple:
-       return remove_nearest_t(a, axis1, axis2, delta)
-    elif type(a) is np.ndarray:
-       return remove_nearest_a(a, axis1, axis2, delta)
-    else:
-       return remove_nearest_r(a, axis1, axis2, delta)
-
-# Convert 1-channel image to 3-channel
 def img1_to_img3(img):
+    """ Convert 1-channel (BW) image to 3-channel"""
+    if img is None:
+       return None
+    if len(img.shape) > 2:
+       raise ValueError('Image is not 1-channel')
+
     img3 = np.empty((img.shape[0], img.shape[1], 3), dtype=np.uint8)
     for i in range(3): img3[:,:,i] = img
     return img3
-
-# Check horizontal and vertical lines are intersecting
-def has_intersection(lh, lv):
-    min_y = min(lv[GR_FROM][GR_Y], lv[GR_TO][GR_Y])
-    max_y = max(lv[GR_FROM][GR_Y], lv[GR_TO][GR_Y])
-    y = lh[GR_FROM][GR_Y]
-    f = min_y <= y and max_y >= y
-    return f
 
 def format_stone_pos(stone, axis = None):
     if axis is None:
@@ -288,10 +229,10 @@ def resize3(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 
        else:
           # Make a bigger image and center initial image on it
           if len(img.shape) > 2:
-             im = np.full((max_size, max_size, img.shape[2]), pad_color, dtype=np.uint8)
+             im = np.full((max_size, max_size, img.shape[2]), pad_color, dtype=img.dtype)
           else:
              c = pad_color[0] if type(pad_color) is tuple else pad_color
-             im = np.full((max_size, max_size), c, dtype=np.uint8)
+             im = np.full((max_size, max_size), c, dtype=img.dtype)
 
           w = img.shape[CV_WIDTH]
           h = img.shape[CV_HEIGTH]
@@ -311,4 +252,30 @@ def board_spacing(edges, size):
     space_x = (edges[1][0] - edges[0][0]) / float(size-1)
     space_y = (edges[1][1] - edges[0][1]) / float(size-1)
     return space_x, space_y
+
+def get_image_area(img, r):
+    """Get area of an image
+
+    Parameters:
+        img      An OpenCv image
+        r        Area to extract (list or tuple [x1,y1,x2,y2])
+
+    Returns:
+        Extracted area
+    """
+    if r[0] < 0 or r[1] < 0:
+       raise ValueError('Invalid area origin: {}'.format(r))
+    dx = r[2] - r[0]
+    dy = r[3] - r[1]
+    if dx <= 0 or dy <= 0:
+       raise ValueError('Invalid area length: {}'.format(r))
+
+    im = None
+    if len(img.shape) > 2:
+       im = np.empty((dy, dx, img.shape[2]), dtype=img.dtype)
+    else:
+       im = np.empty((dy, dx), dtype=img.dtype)
+
+    im[:] = img[r[1]:r[3], r[0]:r[2]]
+    return im
 
