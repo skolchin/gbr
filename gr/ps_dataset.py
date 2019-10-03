@@ -20,18 +20,15 @@ import sys
 if sys.version_info[0] < 3:
     from board import GrBoard
     from dataset import *
-    from utils import gres_to_jgf
+    from grdef import *
 else:
     from gr.board import GrBoard
     from gr.dataset import *
-    from gr.utils import gres_to_jgf
+    from gr.grdef import *
 
 class GrPascalDataset(GrDataset):
     def __init__(self, src_path = None, ds_path = None, img_size = DS_DEF_IMG_SIZE):
         GrDataset.__init__(self, src_path, ds_path, img_size)
-
-        self.use_image_ids = False
-        self.separate_stages = False
 
         self.meta_path = ensure_path(self.ds_path,"data", "Annotations")
         self.img_path = ensure_path(self.ds_path,"data", "Images")
@@ -44,6 +41,7 @@ class GrPascalDataset(GrDataset):
         """Dataset directory name"""
         return "gbr_ds"
 
+    @property
     def ds_format(self):
         """Dataset format name"""
         return DS_FMT_PASCAL
@@ -53,268 +51,79 @@ class GrPascalDataset(GrDataset):
         """Meta file extension"""
         return '.xml'
 
-    def generate_dataset(self):
-        """Regenerates a dataset"""
-
-        # Prepare file list
-        file_list = dict()
-        file_list['test'] = []
-        file_list['train'] = []
-
-        # Check dirs
-        if self.separate_stages:
-            for t in file_list.keys():
-                ensure_path(self.img_path, t)
-                ensure_path(self.meta_path, t)
-
-        # Process all JGF (board descr) files in source path
-        try:
-            for file in os.listdir(self.src_path):
-                src_file = os.path.join(self.src_path, file)
-                board = GrBoard()
-                stage = ""
-                max_size = None
-
-                if file.endswith('.jgf'):
-                    # Process JGF file. Images with JGF would go training dataset
-                    board.load_board_info(src_file, f_use_gen_img = False, path_override = self.src_path)
-                    stage = "train"
-                elif file.endswith('.jpg') or file.endswith('.png'):
-                    # Find JGF. Images without board info will be used in testing dataset
-                    jgf_file = os.path.splitext(src_file)[0] + '.jgf'
-                    if os.path.exists(jgf_file): continue
-
-                    # Process image file
-                    logging.info ("Processing {}".format(src_file))
-                    board.load_image(src_file, f_process = False)
-                    stage = "test"
-                else:
-                    continue
-
-                logging.info ("Appending to stage {}".format(stage))
-
-                # Convert to PNG
-                image_file = os.path.basename(board.image_file)
-                if self.use_image_ids:
-                    # Dataset image name is index wihin the stage
-                    png_fname = stage + '_' + str(len(file_list[stage])).zfill(4)
-                else:
-                    # Dataset image name is source file name
-                    png_fname = image_file
-                if self.separate_stages:
-                    # Create separate directories for each stage
-                    png_file = os.path.splitext(os.path.join(self.img_path, stage, png_fname))[0] + '.png'
-                else:
-                    # Use one directory
-                    png_file = os.path.splitext(os.path.join(self.img_path, png_fname))[0] + '.png'
-
-                if not self.img_size[stage] is None and self.img_size[stage] > 0:
-                    board.resize_board(self.img_size[stage])
-
-                logging.info ("Saving image as {}".format(png_file))
-                board.save_image(str(png_file))
-
-                # Save annotation
-                if self.use_image_ids:
-                    # Dataset image name is index wihin the stage
-                    meta_fname = str(len(file_list[stage])).zfill(4)
-                else:
-                    # Dataset image name is source file name
-                    meta_fname = image_file
-                if self.separate_stages:
-                    # Create separate directories for each stage
-                    meta_file = os.path.splitext(os.path.join(self.meta_path, stage, meta_fname))[0] + '.xml'
-                else:
-                    # Use one directory
-                    meta_file = os.path.splitext(os.path.join(self.meta_path, meta_fname))[0] + '.xml'
-                board.save_annotation(meta_file)
-
-                # Add to file list
-                file_list[stage].append(os.path.splitext(os.path.basename(png_file))[0])
-
-            # Save datasets
-            for mode in file_list:
-                ds_name = os.path.join(self.sets_path, mode+'.txt')
-                logging.info("Creating dataset {}".format(ds_name))
-                count = 0
-                with open(str(ds_name), "w+") as f:
-                    for file in file_list[mode]:
-                        f.write("{}\n".format(file))
-                        count += 1
-                    f.close()
-                logging.info("{} entries written".format(count))
-        except:
-            logging.exception('Error in GrPascalDataset.save_dataset()')
-            raise
-
-
-    def save_annotation(self, board, extra_param = None, file_name = None, anno_only = True, stage = "train"):
-        """Saves annotation of GrBoard instance
-
-        Parameters:
-            board       GrBoard with or without recognition results
-            file_name   Name of file to save annotation to.
-                        If omitted, when is constructed from board.image_file according to this dataset schema
-            anno_only   If True, only annotation file created, otherwise all dataset-related work is performed
-                        Cannot be True with file_name is not None
-            stage       Stage to save annotation for
-
-        Returns:
-            filename    Name of file annotation was saved to
-            bbox        Tuple of bounding boxes for black and white stones
-
-        Note that if board is saved to dataset (anno_only == false), board will be resized
-        to image size specified upon dataset construction for given stage
-        """
-
-        def annotate_stones(file, jgf, shape, cls):
-            # Init
-            if not cls in jgf:
-                return
-
-            stones = jgf[cls]
-            if stones is None or len(stones) == 0:
-               return
-            bbox = np.empty((len(stones),5), dtype = np.float)
-
-            # Find radius which appears most often
-            rlist = [f[1]['R'] for f in stones.items()]
-            unique, counts = np.unique(rlist, return_counts=True)
-            summary = dict(zip(unique, counts))
-            max_r = max(summary, key = lambda x: summary[x])
-
-            # Proceed
-            n = 0
-            for i in stones:
-                x = stones[i]['X']
-                y = stones[i]['Y']
-                r = stones[i]['R']
-                #r = max_r
-                pos = stones[i]['A'] + stones[i]['B']
-
-                a = r + 2
-                xmin = x - int(a)
-                if xmin <= 0: xmin = 1
-                ymin = y - int(a)
-                if ymin <= 0: ymin = 1
-                xmax = x + int(a)
-                if xmax > shape[1]: xmax = shape[1]
-                ymax = y + int(a)
-                if ymax > shape[0]: ymax = shape[0]
-
-                bbox[n,0] = xmin
-                bbox[n,1] = ymin
-                bbox[n,2] = xmax
-                bbox[n,3] = ymax
-                bbox[n,4] = 100.0
-                n += 1
-
-                line = '\n\t<object>'
-                line += '\n\t\t<name>' + cls + '</name>'
-                line += '\n\t\t<pose>Unspecified</pose>'
-                line += '\n\t\t<truncated>Unspecified</truncated>\n\t\t<difficult>Unspecified</difficult>'
-                line += '\n\t\t<position>' + pos + '</position>'
-
-                line += '\n\t\t<bndbox>\n\t\t\t<xmin>' + str(xmin) + '</xmin>'
-                line += '\n\t\t\t<ymin>' + str(ymin) + '</ymin>'
-                line += '\n\t\t\t<xmax>' + str(xmax) + '</xmax>'
-                line += '\n\t\t\t<ymax>' + str(ymax) + '</ymax>'
-                line += '\n\t\t</bndbox>'
-
-                line += '\n\t</object>'
-
-                file.write(line)
-
-            return bbox
-
-        # Get file name
-        meta_file = file_name
-        if meta_file is None:
-            meta_file = Path(board.image_file).with_suffix('.xml')
-            meta_file = Path(self.meta_path).joinpath(meta_file.name)
-            meta_file = str(meta_file)
-        logging.info('Saving annotation to {}'.format(meta_file))
-
-        # Resize and save image to dataset directory if requested
-        if not anno_only:
-           st = self.get_stage(board.image_file)
-           logging.info('Stages: {} -> {}'.format(st, stage))
-           png_file = Path(board.image_file).with_suffix('.png')
-           png_file = Path(self.img_path).joinpath(png_file.name)
-           logging.info('Saving image to {}'.format(png_file))
-
-           if not self.img_size[stage] is None and self.img_size[stage] > 0:
-              logging.info('Resizing to {}'.format(self.img_size[stage]))
-              board.resize_board(self.img_size[stage])
-
-           board.save_image(str(png_file))
-
-        # Image parameters
-        (height, width, depth) = board.image.shape
-
-        # Setup jgf dictionary
-        jgf = None
-        if not board.results is None:
-            jgf = gres_to_jgf(board.results)
-        else:
-            jgf = dict()
-        if not extra_param is None:
-           for k in extra_param.keys():
-               jgf[k] = extra_param[k]
-
-        # Find image source
-        source = ''
-        if not jgf is None and 'source_file' in jgf:
-            source = jgf['source_file']
-
-        # Write header
-        f = open(str(meta_file),'w')
+    def annotate_board(self, file, jgf, meta_file, image_file, source_file, image_shape):
+        """Internal method to generate annotation for board"""
         line = "<annotation>" + '\n'
-        f.write(line)
+        file.write(line)
         line = '\t<folder>' + "folder" + '</folder>' + '\n'
-        f.write(line)
-        line = '\t<filename>' + Path(board.image_file).name + '</filename>' + '\n'
-        f.write(line)
-        line = '\t<path>' + board.image_file + '</path>' + '\n'
-        f.write(line)
-        line = '\t<source>' + source + '</source>' + '\n'
-        f.write(line)
+        file.write(line)
+        line = '\t<filename>' + Path(image_file).name + '</filename>' + '\n'
+        file.write(line)
+        line = '\t<path>' + image_file + '</path>' + '\n'
+        file.write(line)
+        line = '\t<source>' + source_file + '</source>' + '\n'
+        file.write(line)
         line = '\t<size>\n'
-        line += '\t\t<width>'+ str(width) + '</width>\n'
-        line += '\t\t<height>' + str(height) + '</height>\n'
-        line += '\t\t<depth>' + str(depth) + '</depth>\n'
+        line += '\t\t<width>'+ str(image_shape[CV_WIDTH]) + '</width>\n'
+        line += '\t\t<height>' + str(image_shape[CV_HEIGTH]) + '</height>\n'
+        line += '\t\t<depth>' + str(image_shape[CV_CHANNEL]) + '</depth>\n'
         line += '\t</size>\n'
-        f.write(line)
+        file.write(line)
         line = '\t<segmented>Unspecified</segmented>'
-        f.write(line)
+        file.write(line)
+        return None
 
-        # Write objects (stones)
-        bb_b = None
-        bb_w = None
-        if not jgf is None:
-            bb_b = annotate_stones(f, jgf, (height, width), 'black')
-            bb_w = annotate_stones(f, jgf, (height, width), 'white')
+    def annotate_stones(self, file, jgf, meta_file, image_shape, stone_class):
+        """Internal method to generate annotation for stones"""
+        if not stone_class in jgf: return None
 
-        # Close
+        stones = jgf[stone_class]
+        if stones is None or len(stones) == 0: return None
+        bbox = np.empty((len(stones),5), dtype = np.float)
+
+        # Proceed
+        n = 0
+        for i in stones:
+            x = stones[i]['X']
+            y = stones[i]['Y']
+            r = stones[i]['R']
+            pos = stones[i]['A'] + stones[i]['B']
+
+            a = r + 2
+            xmin = max(x - int(a), 1)
+            ymin = max(y - int(a), 1)
+            xmax = min(x + int(a), image_shape[CV_WIDTH])
+            ymax = min(y + int(a), CV_HEIGTH)
+
+            bbox[n,0] = xmin
+            bbox[n,1] = ymin
+            bbox[n,2] = xmax
+            bbox[n,3] = ymax
+            bbox[n,4] = 100.0
+            n += 1
+
+            line = '\n\t<object>'
+            line += '\n\t\t<name>' + stone_class + '</name>'
+            line += '\n\t\t<pose>Unspecified</pose>'
+            line += '\n\t\t<truncated>Unspecified</truncated>\n\t\t<difficult>Unspecified</difficult>'
+            line += '\n\t\t<position>' + pos + '</position>'
+
+            line += '\n\t\t<bndbox>\n\t\t\t<xmin>' + str(xmin) + '</xmin>'
+            line += '\n\t\t\t<ymin>' + str(ymin) + '</ymin>'
+            line += '\n\t\t\t<xmax>' + str(xmax) + '</xmax>'
+            line += '\n\t\t\t<ymax>' + str(ymax) + '</ymax>'
+            line += '\n\t\t</bndbox>'
+
+            line += '\n\t</object>'
+
+            file.write(line)
+
+        return bbox
+
+    def annotation_close(self, file, jgf, meta_file):
+        """Internal method to close annotation"""
         line = "\n</annotation>" + '\n'
-        f.write(line)
-        f.close()
-
-        # Update dataset metadata
-        if not anno_only:
-           cur_st = self.get_stage(board.image_file)
-           if cur_st is None:
-              self._stage_files[stage].append(str(png_file.stem))
-              self.save_metadata()
-              logging.info('Image added to {} stage'.format(stage))
-           elif cur_st != stage:
-               self._stage_files[cur_st].remove(str(png_file.stem))
-               self._stage_files[stage].append(str(png_file.stem))
-               self.save_metadata()
-               logging.info('Image moved to {} stage'.format(stage))
-
-        return meta_file, (bb_b, bb_w)
-
+        file.write(line)
 
     def load_annotation(self, file_name):
         """Loads annotation from given file

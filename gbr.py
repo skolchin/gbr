@@ -302,7 +302,7 @@ class GbrGUI(object):
         self.imgTransform.cancel()
 
         #self.imgTransform.reset()
-        self.origImgPanel.image = self.board.src_image
+        self.origImgPanel.set_image(self.board.src_image)
         self.update_board(True)
 
         self.origImgPanel.buttons['edge'].state = False
@@ -424,7 +424,7 @@ class GbrGUI(object):
         btn_state = dict()
         for key in self.imgButtons.keys():
             btn_state[key] = self.imgButtons[key].state
-        self.genImgPanel.image = self.board.show_board(show_state = btn_state)
+        self.genImgPanel.set_image(self.board.show_board(show_state = btn_state))
 
         if self.board.results is None:
             self.boardInfo.set("")
@@ -452,7 +452,7 @@ class GbrGUI(object):
         GrLog.clear()
         try:
             params_loaded = self.board.load_image(fn, f_with_params = True)
-            self.origImgPanel.image = self.board.image
+            self.origImgPanel.set_image(self.board.image)
             self.imgMask.scaled_mask = self.board.area_mask
             self.imgButtons['reset'].disabled = not self.board.can_reset_image
 
@@ -486,10 +486,6 @@ def main():
 
     log = GrLog.init()
     gui = GbrGUI(window)
-
-    #window.grid_columnconfigure(0, weight=1)
-    #window.grid_rowconfigure(0, weight=1)
-    #window.resizable(True, True)
 
     # Main loop
     window.mainloop()

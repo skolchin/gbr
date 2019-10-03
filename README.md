@@ -4,19 +4,19 @@ This project is aiming to create a program which would be able to analyse a Go b
 
 The project is build on wonderfull [OpenCV](https://opencv.org/) library.
 
-A lot of ideas and algorithms was found on excellent Adrian Rosebrock's [PyImageSearch](https://www.pyimagesearch.com/) site and
-thematical [Slashdot](https://stackoverflow.com/questions/tagged/opencv) threads.
+A lot of ideas and algorithms were found on excellent Adrian Rosebrock's [PyImageSearch](https://www.pyimagesearch.com/) site and borrowed from thematical [Slashdot](https://stackoverflow.com/questions/tagged/opencv) threads.
 
 The algorithm per se is the following:
 
 1. Detect board properties (board edges, spacing and board size):
-    * Transform image using 4-points transformation and set area to be recognized
-    * If parameters set - run HoughLinesP to determine line segments, filter out small lines and reconstruct the image. This allows to remove board labels.
-    * Run HoughLines to find the lines
+    * Transform image using 4-points transformation
+    * Set area to be recognized
+    * If parameters set - run HoughLinesP to determine line segments, filter out small lines and reconstruct the image, allowing to remove board labels (this step seems obsolete, currently its easier to apply area mask excluding labels)
+    * Run HoughLines to find all the lines across the board
     * Separate lines to vertical/horizontal ones
     * Remove duplicates and lines too close to each other
     * Calculate board edges as minimum and maximum coordinates of horizontal/vertical lines
-    * Detect a board size as number of horizontal/vertical lines found
+    * Detect a board size as number of horizontal/vertical lines found.
 
 2. Find stones (black and white):
     * Apply pre-filters with parameters specified through the interface
@@ -56,82 +56,11 @@ Examples of source images and results of their processing:
 
 More images are available at [img](../master/img) directory. All of them are either taken from my games or found on the Internet.
 
-
 ## Requirements
 
 Python 2.7/3.5, numpy, opencv2
 
 For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-faster-rcnn) or any other fork)
-
-
-## Changelog
-
-02/10/2019
-
-* Image can now be transformed to rectangular suitable for recognigion even if picture was taken from some angle or skewed by using 4-point transformation algorithm implemented in imutils package.
-* New ImageTransform class to support setting image transformation parameters
-* New filter: luminocity equalization, can be applied when different part of an image are exposed differently.
-
-
-26/09/2019:
-
-* Now it is possible to define exact board area for recognition. This allows to take off board labels and stuff outside the board
-* New ImagePanel and ImageMask classses containing all the code to display images and area masks. UI modules adopted to support them.
-
-22/09/2019:
-
-* Line/edges detection completelly rewritten to simplify the code. HoughLinesP detection is now optional and runs only if threshold/minlen params set.
-
-04/09/2019:
-
-* New GrTag module added to support easy image database navigation and usage
-* gr.find_board() rewritten to better recognize board edges/net
-* Added: logging in gr and grboard modules, log processing and "Show Log" button in user interfaces
-* Added: watershed morphing parameter WS_MORPH_(B|W). If set, image is dilated/eroded before applying watershed allowing to separate connected stone circles
-* Changed: ViewAnno GUI layout
-
-22/08/2019:
-
-* Changed: gr.gr find_stones() refactored to support adding new filters
-* Added: pyramin mean shift filter to smooth complex stone surface
-
-19/08/2019:
-
-* Added: waterhed transformation to determine stone radius more precisely
-
-16/08/2019:
-
-* Changed: gr.py, grdef.py, grutils.py finally assembled as a package
-* Added: GrBoard class. Code refactored to work with the board class.
-* Bugfixes
-
-
-13/08/2019:
-
-* Added: update_jgf.py script to update all board info files for images where recognition parameters (JSON) exist
-* Added: simple stone position reconcilation (white stones precendent)
-* Added: function to show detections on generated board
-
-07/08/2019:
-
-* Changed: net/make_dataset.py now creates both test and training DS in PASCAL VOC format
-* Changed: net/test_net.py uses Caffe to run network (not OpenCV.dnn)
-
-01/08/2019:
-
-* Added: support for large images
-* Added: stone radius saving in JGF file
-
-30/07/2019:
-
-* Added Python 2.7 support
-
-
-24/07/2019:
-
-* GUI rewritten: all code moved from main() to GbrGUI class
-
-* Extra info on board save
 
 ## TODO
 

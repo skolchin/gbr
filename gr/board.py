@@ -13,12 +13,12 @@ if sys.version_info[0] < 3:
     from grdef import *
     from gr import process_img, generate_board, find_coord
     from utils import gres_to_jgf, jgf_to_gres, resize2
-    from dataset import GrDataset
+    import dataset as gds
 else:
     from gr.grdef import *
     from gr.gr import process_img, generate_board, find_coord
     from gr.utils import gres_to_jgf, jgf_to_gres, resize2
-    from gr.dataset import GrDataset
+    import gr.dataset as gds
 
 from pathlib import Path
 import cv2
@@ -208,7 +208,7 @@ class GrBoard(object):
         extra_param['source_file'] = self._src_img_file
 
         # Get a dataset and save
-        ds = GrDataset.getDataset(ds_format)
+        ds = gds.GrDataset.getDataset(ds_format)
         file, _ = ds.save_annotation(board = self, extra_param = extra_param, \
                                         file_name = filename, anno_only = anno_only, \
                                         stage = stage)

@@ -719,7 +719,7 @@ class ImageMask(object):
     def mask(self, m):
         """Mask as it is displayed on canvas"""
         self.hide()
-        self.__mask = m.copy()
+        self.__mask = list(m)
         if was_shown: self.show()
 
     @property
