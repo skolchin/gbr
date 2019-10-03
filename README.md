@@ -37,9 +37,7 @@ Currently, the following filters are implemented:
 
 Filter and board detection parameters can be changed through the interface and saved to property file (.JSON). The property file is loaded automatically when an image is loaded for processing. Board recognition parameters can also be saved in another JSON file with .JGF extension.
 
-Currently, the program performs quite well on a computer-generated boards. In complex cases, additional parameter tuning might be needed.
-
-As for real board images, they have to be manually adjusted to have all edges to be equal to abount 90 degree and board lines - to be horizontal/vertical. After that, they are processed satisfactory, but more tuning on parameters might be required.
+Currently, the program performs quite well on a computer-generated and even real boards. In complex cases, additional parameter tuning might be needed.
 
 Examples of source images (left) and results of their processing (right):
 
