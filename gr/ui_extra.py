@@ -19,10 +19,10 @@ from imutils.perspective import four_point_transform
 
 if sys.version_info[0] < 3:
     from grdef import *
-    from utils import img_to_imgtk, resize3
+    from utils import img_to_imgtk, resize3, board_spacing, is_on_w
 else:
     from gr.grdef import *
-    from gr.utils import img_to_imgtk, resize3
+    from gr.utils import img_to_imgtk, resize3, board_spacing, is_on_w
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
@@ -625,32 +625,6 @@ def addField(parent, type_, caption, nrow, ncol, def_val):
     return _var, _entry
 
 # Binder
-def is_on(a, b, c):
-    """Return true if point c intersects the line segment from a to b."""
-
-    def collinear(a, b, c):
-        "Return true iff a, b, and c all lie on the same line."
-        return (b[0] - a[0]) * (c[1] - a[1]) == (c[0] - a[0]) * (b[1] - a[1])
-
-    def within(p, q, r):
-        "Return true iff q is between p and r (inclusive)."
-        return p <= q <= r or r <= q <= p
-
-    # (or the degenerate case that all 3 points are coincident)
-    return (collinear(a, b, c)
-            and (within(a[0], c[0], b[0]) if a[0] != b[0] else
-                 within(a[1], c[1], b[1])))
-
-def is_on_w(a,b,c,delta=1):
-    """Return true if point c intersects the line segment from a to b. Delta specifies a gap"""
-    for i in range(delta*3):
-        x = c[0] + i - 1
-        for j in range(delta*3):
-            y = c[1] + j - 1
-            if is_on(a, b, (x, y)): return True
-    return False
-
-
 # Mask class
 class ImageMask(object):
     """Support class for drawing and changing mask on an image drawn on canvas"""
@@ -660,8 +634,10 @@ class ImageMask(object):
 
         Parameters:
             panel         ImagePanel reference
+            mode          Either 'area' to use to set board area mask or 'grid' to set board grid. Default is 'area'
+            size          Board size for 'grid' mode (default is grdef.DEF_BOARD_SIZE)
             mask          Initial mask (if None, default mask is generated)
-            allow_change  True to allow mask reshaping by user (dragging by mouse)
+            allow_change  True to allow mask reshaping by user
             show_mask     True to show mask initially
             mask_callback A function to be called when mask has changed
 
@@ -670,6 +646,10 @@ class ImageMask(object):
         """
         # Parameters
         self.__panel = panel
+        self.__mode = kwargs.pop('mode', 'area').lower()
+        if self.__mode != 'area' and self.__mode != 'grid':
+           raise ValueError('Invalid mode', self.__mode)
+        self.__size = kwargs.pop('size', DEF_BOARD_SIZE)
         self.__mask = kwargs.pop('mask', None)
         self.__allow_change = kwargs.pop('allow_change', True)
         f_show = kwargs.pop('show_mask', False)
@@ -684,16 +664,16 @@ class ImageMask(object):
         self.mask_color = "red"
         self.mask_width = 2
 
-        # Internal parameters - should not be changed
-        self.mask_area = None
-        self.mask_rect = None
-        self.last_cursor = None
-        self.drag_side = None
+        # Internal parameters
+        self.__mask_area = None
+        self.__mask_rect = None
+        self.__last_cursor = None
+        self.__drag_side = None
 
         # Draw initial mask
         if f_show: self.show()
 
-        # Set handlers if required
+        # Set handlers
         self.__bindings = NBinder()
         if self.__allow_change:
             self.__bindings.bind(self.__panel.canvas, "<Motion>", self.motion_callback)
@@ -720,7 +700,6 @@ class ImageMask(object):
         """Mask as it is displayed on canvas"""
         self.hide()
         self.__mask = list(m)
-        if was_shown: self.show()
 
     @property
     def scaled_mask(self):
@@ -761,68 +740,102 @@ class ImageMask(object):
         else:
             self.__bindings.unbind_all()
 
+    @property
+    def mode(self):
+        """ImageMask mode ('area', 'grid')"""
+        return self.__mode
+
+    @mode.setter
+    def mode(self, m):
+        """ImageMask mode ('area', 'grid')"""
+        m_ = m.lower()
+        if m_ != 'area' and m_ != 'grid':
+           raise ValueError('Invalid mode', m_)
+        self.hide()
+        self.__mode = m_
+
+    @property
+    def size(self):
+        """Board size"""
+        return self.__size
+
+    @size.setter
+    def size(self, sz):
+        """Board size"""
+        self.hide()
+        self.__size = sz
+
     def motion_callback(self, event):
         """Callback for mouse move event"""
         CURSORS = ["left_side", "top_side", "right_side", "bottom_side"]
         c = None
-        if not self.mask_rect is None:
+        if not self.__mask_rect is None:
             side = self.__get_mask_rect_side(event.x, event.y)
             if not side is None: c = CURSORS[side]
 
-        if c is None and not self.last_cursor is None:
+        if c is None and not self.__last_cursor is None:
             # Left rectangle, set cursor to default
             self.canvas.config(cursor='')
-            self.last_cursor = None
-        elif not c is None and self.last_cursor != c:
+            self.__last_cursor = None
+        elif not c is None and self.__last_cursor != c:
             # On a line, set a cursor
             self.canvas.config(cursor=c)
-            self.last_cursor = c
+            self.__last_cursor = c
 
     def drag_callback(self, event):
         """Callback for mouse drag event"""
-        if self.drag_side is None:
-            self.drag_side = self.__get_mask_rect_side(event.x, event.y)
-        if not self.drag_side is None:
+        if self.__drag_side is None:
+            self.__drag_side = self.__get_mask_rect_side(event.x, event.y)
+        if not self.__drag_side is None:
+            # Calculate new coordinates
             p = (self.canvas.canvasx(event.x) - self.__panel.offset[0],
                  self.canvas.canvasy(event.y) - self.__panel.offset[1])
-            if self.drag_side == 0:
+            if self.__drag_side == 0:
                 self.__mask[0] = int(max(p[0], 0))
-            elif self.drag_side == 1:
+            elif self.__drag_side == 1:
                 self.__mask[1] = int(max(p[1], 0))
-            elif self.drag_side == 2:
+            elif self.__drag_side == 2:
                 self.__mask[2] = int(min(p[0], self.__panel.scaled_shape[1]))
-            elif self.drag_side == 3:
+            elif self.__drag_side == 3:
                 self.__mask[3] = int(min(p[1], self.__panel.scaled_shape[0]))
 
-            self.canvas.coords(self.mask_rect,
+            # Reposition mask rect
+            self.canvas.coords(self.__mask_rect,
                  self.__mask[0] + self.__panel.offset[0] + self.mask_width,
                  self.__mask[1] + self.__panel.offset[1] + self.mask_width,
                  self.__mask[2] + self.__panel.offset[0],
                  self.__mask[3] + self.__panel.offset[1])
 
-            self.__draw_mask_shading()
+            # Draw shading or grid
+            if self.__mode == 'area':
+                self.__draw_mask_shading()
+            else:
+                self.__draw_mask_grid()
 
     def end_drag_callback(self, event):
         """Callback for mouse button release event"""
-        if not self.drag_side is None and not self.__callback is None:
+        if not self.__drag_side is None and not self.__callback is None:
            self.__callback(self)
-        self.drag_side = None
+        self.__drag_side = None
 
     def show(self):
-        """Draw a mask on canvas"""
+        """Draw a mask or grid on canvas"""
         if self.__mask is None: self.default_mask()
-        self.__draw_mask_shading()
+        if self.__mode == 'area':
+            self.__draw_mask_shading()
+        else:
+            self.__draw_mask_grid()
         self.__draw_mask_rect()
 
     def hide(self):
-        """Hide a previously shown mask"""
-        if not self.mask_area is None:
-            for m in self.mask_area:
+        """Hide a previously shown mask or grid"""
+        if not self.__mask_area is None:
+            for m in self.__mask_area:
                 self.canvas.delete(m)
-            self.mask_area = None
-        if not self.mask_rect is None:
-            self.canvas.delete(self.mask_rect)
-            self.mask_rect = None
+            self.__mask_area = None
+        if not self.__mask_rect is None:
+            self.canvas.delete(self.__mask_rect)
+            self.__mask_rect = None
 
     def random_mask(self):
         """Generates a random mask"""
@@ -848,47 +861,13 @@ class ImageMask(object):
                 self.__panel.scaled_shape[CV_WIDTH] - 2*dx,
                 self.__panel.scaled_shape[CV_HEIGTH] - 2*dy]
 
-    def __draw_mask_shading(self):
-        """Internal function. Draw a shading part of mask"""
-        def _rect(points):
-            return self.canvas.create_polygon(
-                  *points,
-                  outline = "",
-                  fill = self.shade_fill,
-                  stipple = self.shade_stipple)
-
-        # Clean up
-        if not self.mask_area is None:
-            for m in self.mask_area:
-                self.canvas.delete(m)
-            self.mask_area = None
-
-        # Create mask points array
-        sx = self.__panel.offset[0]
-        sy = self.__panel.offset[1]
-        ix = sx + self.__panel.scaled_shape[1]
-        iy = sy + self.__panel.scaled_shape[0]
-        mx = sx + self.__mask[0]
-        my = sy + self.__mask[1]
-        wx = sx + self.__mask[2]
-        wy = sy + self.__mask[3]
-        if sx == 0: sx += self.mask_width
-        if sy == 0: sy += self.mask_width
-
-        self.mask_area = [
-          _rect([sx, sy, ix, sy, ix, my, sx, my, sx, sy]),
-          _rect([sx, my, mx, my, mx, iy, sx, iy, sx, my]),
-          _rect([mx, wy, ix, wy, ix, iy, mx, iy, mx, wy]),
-          _rect([wx, my, ix, my, ix, wy, wx, wy, wx, my])
-        ]
-
     def __get_mask_rect_side(self, x, y):
         """Internal function. Returns a side where the cursor is on or None"""
-        if self.mask_rect is None:
+        if self.__mask_rect is None:
             return None
 
         p = (self.canvas.canvasx(x), self.canvas.canvasy(y))
-        b = self.canvas.coords(self.mask_rect)
+        b = self.canvas.coords(self.__mask_rect)
 
         side = None
         if is_on_w((b[0], b[1]), (b[0], b[3]), p):
@@ -902,12 +881,46 @@ class ImageMask(object):
 
         return side
 
+    def __draw_mask_shading(self):
+        """Internal function. Draw a shading part of mask"""
+        def _rect(points):
+            return self.canvas.create_polygon(
+                  *points,
+                  outline = "",
+                  fill = self.shade_fill,
+                  stipple = self.shade_stipple)
+
+        # Clean up
+        if not self.__mask_area is None:
+            for m in self.__mask_area:
+                self.canvas.delete(m)
+            self.__mask_area = None
+
+        # Create mask points array
+        sx = self.__panel.offset[0]
+        sy = self.__panel.offset[1]
+        ix = sx + self.__panel.scaled_shape[1]
+        iy = sy + self.__panel.scaled_shape[0]
+        mx = sx + self.__mask[0]
+        my = sy + self.__mask[1]
+        wx = sx + self.__mask[2]
+        wy = sy + self.__mask[3]
+        if sx == 0: sx += self.mask_width
+        if sy == 0: sy += self.mask_width
+
+        self.__mask_area = [
+          _rect([sx, sy, ix, sy, ix, my, sx, my, sx, sy]),
+          _rect([sx, my, mx, my, mx, iy, sx, iy, sx, my]),
+          _rect([mx, wy, ix, wy, ix, iy, mx, iy, mx, wy]),
+          _rect([wx, my, ix, my, ix, wy, wx, wy, wx, my])
+        ]
+
     def __draw_mask_rect(self):
         """Internal function. Draws a mask rectangle"""
         # Clean up
-        if not self.mask_rect is None:
-            self.canvas.delete(self.mask_rect)
-            self.mask_rect = None
+        if not self.__mask_rect is None:
+            self.canvas.delete(self.__mask_rect)
+            self.__mask_rect = None
 
         # Draw rect
         sx = self.__panel.offset[0]
@@ -916,13 +929,53 @@ class ImageMask(object):
         my = sy + self.__mask[1] + self.mask_width
         wx = sx + self.__mask[2]
         wy = sy + self.__mask[3]
-        #print('Offset {} + mask {} -> rect {}'.format((sx, sy), self.__mask, (mx, my, wx, wy)))
-        self.mask_rect = self.canvas.create_rectangle(
+
+        self.__mask_rect = self.canvas.create_rectangle(
           mx, my,
           wx, wy,
           outline = self.mask_color,
           width = self.mask_width
         )
+
+    def __draw_mask_grid(self):
+        """Internal function. Draws a grid"""
+
+        # Clean up
+        if not self.__mask_area is None:
+            for m in self.__mask_area:
+                self.canvas.delete(m)
+            self.__mask_area = None
+
+        # Params
+        sx = self.__panel.offset[0]
+        sy = self.__panel.offset[1]
+        mx = sx + self.__mask[0] + self.mask_width
+        my = sy + self.__mask[1] + self.mask_width
+        wx = sx + self.__mask[2]
+        wy = sy + self.__mask[3]
+        space_x, space_y = board_spacing( ((mx, my),(wx,wy)), self.__size)
+
+        # Draw V-lines
+        # Actual rectangle is drawn by __draw_rect, so skip 1st and last lines
+        self.__mask_area = []
+        for i in range(self.__size-2):
+            x1 = int(mx + ((i+1) * space_x))
+            y1 = int(my)
+            x2 = x1
+            y2 = int(wy)
+            m = self.canvas.create_line(x1, y1, x2, y2, fill = self.mask_color, width = self.mask_width)
+            self.__mask_area.append(m)
+
+        # Draw H-lines
+        # Actual rectangle is drawn by __draw_rect, so skip 1st and last lines
+        for i in range(self.__size-2):
+            x1 = int(mx)
+            y1 = int(my + ((i+1) * space_y))
+            x2 = int(wx)
+            y2 = y1
+            m = self.canvas.create_line(x1, y1, x2, y2, fill = self.mask_color, width = self.mask_width)
+            self.__mask_area.append(m)
+
 
 # Image transformer
 class ImageTransform(object):

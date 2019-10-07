@@ -2,7 +2,9 @@
 # Name:        Go board recognition project
 # Purpose:     Misc functions
 #
-# Author:      kol
+# Author:      kol et all
+#              Parts of the code were found obtained from public sources
+#              (specifically, from slashdot.org)
 #
 # Created:     04.07.2019
 # Copyright:   (c) kol 2019
@@ -19,17 +21,22 @@ import numpy as np
 from PIL import Image, ImageTk
 import string as ss
 
-# Show image
-# Simple wrapper on cv2.imshow
 def show(title, img):
+    """Show an image and wait for key press"""
     cv2.imshow(title, img)
     cv2.waitKey()
 
-# Make image displaying stones
-# The function takes image shape and array of stone coordinates (X,Y,R)
-# The function creates a new image with the same shape and draw the stones there
 def make_stones_img(shape, points, color = COLOR_BLACK, img = None):
-    if (img is None):
+    """ Draw stones on an image
+        Parameters:
+           shape   Image shape to generate
+           points  Array of stone coordinates (X,Y,R)
+           color   Stone color
+           img     If not None, this image is used to plot stones (shape is ignored)
+        Returns:
+            An image
+    """
+    if img is None:
        img = np.full(shape, COLOR_WHITE[0], dtype=np.uint8)
 
     for i in points:
@@ -86,8 +93,8 @@ def img_to_imgtk(img):
     imgtk = ImageTk.PhotoImage(image=Image.fromarray(img))
     return imgtk
 
-# Utility function - elmininates duplicates in an array
 def unique_rows(a):
+    """Elmininates duplicates in an array"""
     a = np.ascontiguousarray(a)
     unique_a = np.unique(a.view([('', a.dtype)]*a.shape[1]))
     return unique_a.view(a.dtype).reshape((unique_a.shape[0], a.shape[1]))
@@ -113,9 +120,8 @@ def format_stone_pos(stone, axis = None):
     else:
          return int(round(stone[axis],0))
 
-# Convert GR results to JGF dictionary
 def gres_to_jgf(res):
-
+    """Converts board recognition results to JGF dictionary"""
     def sp(stones):
         p = dict()
         for stone in stones:
@@ -139,8 +145,8 @@ def gres_to_jgf(res):
     jgf['white'] = sp(res[GR_STONES_W])
     return jgf
 
-# JGF to GR results
 def jgf_to_gres(jgf):
+    """Converts JGF dictionary to board recognition results"""
     def sp(stones):
         p = np.zeros((len(stones), 5), dtype = np.int32)
         n = 0
@@ -164,8 +170,6 @@ def jgf_to_gres(jgf):
     res[GR_STONES_W] = sp(jgf['white'])
     return res
 
-# Resize the image proportionally so no side will exceed given max_size
-# if f_upsize = False, images with size less than max_size are not upscaled
 def resize(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
     """Resizes an image so neither of its sides will be bigger that max_size saving proportions
 
@@ -247,14 +251,14 @@ def resize3(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 
        im = cv2.resize(img, dsize = None, fx = im_scale, fy = im_scale)
        return im, [im_scale, im_scale], [0, 0]
 
-# Calculate spacing
 def board_spacing(edges, size):
+    """ Calculate board spacing"""
     space_x = (edges[1][0] - edges[0][0]) / float(size-1)
     space_y = (edges[1][1] - edges[0][1]) / float(size-1)
     return space_x, space_y
 
 def get_image_area(img, r):
-    """Get area of an image
+    """Get part of an image defined by rectangular area.
 
     Parameters:
         img      An OpenCv image
@@ -278,4 +282,30 @@ def get_image_area(img, r):
 
     im[:] = img[r[1]:r[3], r[0]:r[2]]
     return im
+
+def is_on(a, b, c):
+    """Return true if point c is exactly on the line from a to b"""
+
+    def collinear(a, b, c):
+        "Return true iff a, b, and c all lie on the same line."
+        return (b[0] - a[0]) * (c[1] - a[1]) == (c[0] - a[0]) * (b[1] - a[1])
+
+    def within(p, q, r):
+        "Return true iff q is between p and r (inclusive)."
+        return p <= q <= r or r <= q <= p
+
+    # (or the degenerate case that all 3 points are coincident)
+    return (collinear(a, b, c)
+            and (within(a[0], c[0], b[0]) if a[0] != b[0] else
+                 within(a[1], c[1], b[1])))
+
+def is_on_w(a,b,c,delta=1):
+    """Return true if point c is on a line from a to b with some gap provided"""
+    for i in range(delta*3):
+        x = c[0] + i - 1
+        for j in range(delta*3):
+            y = c[1] + j - 1
+            if is_on(a, b, (x, y)): return True
+    return False
+
 

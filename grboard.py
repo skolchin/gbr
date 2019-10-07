@@ -58,6 +58,9 @@ class GrBoardEdit(object):
         # Image mask
         self.imgMask = ImageMask(self.imgPanel,
             allow_change = True,
+            show_mask = True,
+            mode = 'grid',
+            size = 21,
             mask_callback = self.mask_callback)
         self.mask_callback(self.imgMask)
 
@@ -80,7 +83,7 @@ class GrBoardEdit(object):
         return True
 
     def mask_callback(self, mask):
-        self.imgPanel.caption = "Mask {}".format(mask.scaled_mask)
+        self.imgPanel.caption = "{} {}".format(mask.mode, mask.scaled_mask)
 
     def transform_callback(self, event, tag, state):
         if not state and self.imgTransform.started:
@@ -107,13 +110,15 @@ class GrBoardEdit(object):
 
 
     def update_callback(self, event):
-        cv2.imwrite('C:\\Users\\skolchin\\Documents\\kol\\gbr\\img\\go_board_47a.png', self.imgPanel.image)
+        pass
+        #cv2.imwrite('C:\\Users\\skolchin\\Documents\\kol\\gbr\\img\\go_board_47a.png', self.imgPanel.image)
 
 
 # Main function
 def main():
 
-    img = cv2.imread('img\\go_board_47.jpg')
+    img = cv2.imread('img\\go_board_1.png')
+    #img = cv2.imread('img\\go_board_47.jpg')
     #img = cv2.imread('img\\go_board_15_large.jpg')
     if img is None:
         raise Exception('File not found')
