@@ -90,9 +90,14 @@ class GrBoard(object):
         return f_params_loaded
 
     def generate(self, shape = DEF_IMG_SIZE):
-        """Generates a new board image of given shape.
-        if source image was processed, displays recognition results on the image.
-        Returns generated OpenCV image.
+        """Generates a new board image of given shape and stores it in this instance.
+        If stones were recognized, displays them on the image. Sets is_gen_board flag to True.
+
+        Parameters:
+            shape       Shape of image to generate
+
+        Returns:
+            img         OpenCV image generated
         """
         self._img = generate_board(shape, res = self._res)
         self._img_file = None
@@ -226,7 +231,9 @@ class GrBoard(object):
                if self._res[GR_STONES_W] is None: self._res[GR_STONES_W] = np.array([])
 
     def show_board(self, f_black = True, f_white = True, f_det = False, show_state = None):
-        """Generates board image. If a source image was processed, plots recognition results onto the image
+        """Generates a new board image of given shape and returns it.
+        If stones were found on the source image, displays them on the image.
+        Does not change internal image or is_gen_board flag.
 
         Parameters:
             f_black     If True, black stones are displayed. Not used if show_state is provided

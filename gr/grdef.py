@@ -71,7 +71,7 @@ DEF_GR_PARAMS = {
 }
 
 # Parameter properties: min, max, group
-# Parameters where group is not None can be changed through UI
+# Parameters with group is not None can be changed through UI
 GR_PARAMS_PROP = {
     "CANNY_MINVAL": (1, 255, None),
     "CANNY_MAXVAL": (1, 255, None),
