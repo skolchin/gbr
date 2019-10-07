@@ -12,7 +12,6 @@ from pathlib import Path
 import logging
 from gr.dataset import GrDataset
 
-
 def main():
     logging.basicConfig(format='%(levelname)s: %(message)s', level = logging.INFO)
 

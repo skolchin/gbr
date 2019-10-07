@@ -20,15 +20,17 @@ import sys
 if sys.version_info[0] < 3:
     from board import GrBoard
     from dataset import *
+    from gr_dataset import GrDatasetBase
     from grdef import *
 else:
     from gr.board import GrBoard
     from gr.dataset import *
+    from gr.gr_dataset import GrDatasetBase
     from gr.grdef import *
 
-class GrPascalDataset(GrDataset):
+class GrPascalDataset(GrDatasetBase):
     def __init__(self, src_path = None, ds_path = None, img_size = DS_DEF_IMG_SIZE):
-        GrDataset.__init__(self, src_path, ds_path, img_size)
+        GrDatasetBase.__init__(self, src_path, ds_path, img_size)
 
         self.meta_path = ensure_path(self.ds_path,"data", "Annotations")
         self.img_path = ensure_path(self.ds_path,"data", "Images")
