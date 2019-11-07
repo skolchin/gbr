@@ -117,8 +117,8 @@ class GrBoardEdit(object):
 # Main function
 def main():
 
-    img = cv2.imread('img\\go_board_1.png')
-    #img = cv2.imread('img\\go_board_47.jpg')
+    #img = cv2.imread('img\\go_board_1.png')
+    img = cv2.imread('img\\go_board_47.jpg')
     #img = cv2.imread('img\\go_board_15_large.jpg')
     if img is None:
         raise Exception('File not found')
