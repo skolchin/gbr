@@ -13,15 +13,9 @@ from pathlib import Path
 import logging
 import os
 
-import sys
-if sys.version_info[0] < 3:
-    from board import GrBoard
-    from utils import gres_to_jgf
-    from dataset import *
-else:
-    from gr.board import GrBoard
-    from gr.utils import gres_to_jgf
-    from gr.dataset import *
+from .board import GrBoard
+from .utils import gres_to_jgf
+from .dataset import *
 
 class GrDatasetBase(object):
 

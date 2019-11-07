@@ -9,12 +9,7 @@
 # Licence:     MIT
 #-------------------------------------------------------------------------------
 
-import sys
-if sys.version_info[0] < 3:
-    from grdef import *
-else:
-    from gr.grdef import *
-    from gr.utils import format_stone_pos
+from .grdef import *
 import cv2
 import string as ss
 

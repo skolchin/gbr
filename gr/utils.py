@@ -11,11 +11,7 @@
 # Licence:     MIT
 #-------------------------------------------------------------------------------
 
-import sys
-if sys.version_info[0] < 3:
-    from grdef import *
-else:
-    from gr.grdef import *
+from .grdef import *
 import cv2
 import numpy as np
 from PIL import Image, ImageTk

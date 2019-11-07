@@ -17,14 +17,9 @@ from pathlib import Path
 import xml.dom.minidom as minidom
 
 import sys
-if sys.version_info[0] < 3:
-    from board import GrBoard
-    from dataset import *
-    from utils import gres_to_jgf
-else:
-    from gr.board import GrBoard
-    from gr.dataset import *
-    from gr.utils import gres_to_jgf
+from .board import GrBoard
+from .dataset import *
+from .utils import gres_to_jgf
 
 class GrCocoDataset(GrDataset):
     def __init__(self, src_path = None, ds_path = None, img_size = DS_DEF_IMG_SIZE):

@@ -8,7 +8,6 @@
 # Copyright:   (c) kol 2019
 # Licence:     MIT
 #-------------------------------------------------------------------------------
-import sys
 import os
 from PIL import Image, ImageTk
 from pathlib import Path
@@ -17,13 +16,10 @@ import numpy as np
 import cv2
 from imutils.perspective import four_point_transform
 
-if sys.version_info[0] < 3:
-    from grdef import *
-    from utils import img_to_imgtk, resize3, board_spacing, is_on_w
-else:
-    from gr.grdef import *
-    from gr.utils import img_to_imgtk, resize3, board_spacing, is_on_w
+from .grdef import *
+from .utils import img_to_imgtk, resize3, board_spacing, is_on_w
 
+import sys
 if sys.version_info[0] < 3:
     import Tkinter as tk
     import ttk

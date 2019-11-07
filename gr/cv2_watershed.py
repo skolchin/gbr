@@ -148,7 +148,7 @@ def apply_watershed(gray, stones, n_thresh, f_bw, n_morph = 0, f_debug = False):
         if c <= 0: continue
         mask = np.zeros(markers.shape, dtype=np.uint8)
         mask[markers == c] = 255
-        cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[1]
         cm = max(cnts, key=cv2.contourArea)
         ((x, y), r) = cv2.minEnclosingCircle(cm)
         if f_debug: logging.info("CV2_WATERSHED: marker {}: ({}, {}, {})".format(c,x,y,r))

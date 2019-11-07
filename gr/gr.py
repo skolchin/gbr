@@ -10,16 +10,11 @@
 #-------------------------------------------------------------------------------
 
 import sys
-if sys.version_info[0] < 3:
-    from grdef import *
-    from utils import *
-    from cv2_watershed import apply_watershed
-    from py_accumulate import accumulate
-else:
-    from gr.grdef import *
-    from gr.utils import *
-    from gr.cv2_watershed import apply_watershed
-    from itertools import accumulate
+from .grdef import *
+from .utils import *
+from .cv2_watershed import apply_watershed
+from .py_accumulate import accumulate
+
 import cv2
 import numpy as np
 import logging

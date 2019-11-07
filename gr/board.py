@@ -8,17 +8,10 @@
 # Copyright:   (c) kol 2019
 # Licence:     MIT
 #-------------------------------------------------------------------------------
-import sys
-if sys.version_info[0] < 3:
-    from grdef import *
-    from gr import process_img, generate_board, find_coord
-    from utils import gres_to_jgf, jgf_to_gres, resize2
-    import dataset as gds
-else:
-    from gr.grdef import *
-    from gr.gr import process_img, generate_board, find_coord
-    from gr.dataset import GrDataset
-    from gr.utils import gres_to_jgf, jgf_to_gres, resize2
+from .grdef import *
+from .gr import process_img, generate_board, find_coord
+from .utils import gres_to_jgf, jgf_to_gres, resize2
+from .dataset import GrDataset
 
 from pathlib import Path
 import cv2

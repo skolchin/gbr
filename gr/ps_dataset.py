@@ -16,17 +16,10 @@ import logging
 from pathlib import Path
 import xml.dom.minidom as minidom
 
-import sys
-if sys.version_info[0] < 3:
-    from board import GrBoard
-    from dataset import *
-    from gr_dataset import GrDatasetBase
-    from grdef import *
-else:
-    from gr.board import GrBoard
-    from gr.dataset import *
-    from gr.gr_dataset import GrDatasetBase
-    from gr.grdef import *
+from .grdef import *
+from .board import GrBoard
+from .dataset import *
+from .gr_dataset import GrDatasetBase
 
 class GrPascalDataset(GrDatasetBase):
     def __init__(self, src_path = None, ds_path = None, img_size = DS_DEF_IMG_SIZE):
