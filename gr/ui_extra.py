@@ -318,19 +318,24 @@ class NBinder(object):
 
 # Image panel class
 class ImagePanel(tk.Frame):
-    def __init__(self, master, *args, **kwargs):
+    def __init__(self, master, **kwargs):
         """Creates ImagePanel instance.
 
-           Allowed keyworded parameters:
+           Parameters:
                master         master frame
-               caption        Panel caption
-               btn_params     Params for ImgButtons: tag, initial state, callback function, (optional) tooltip
-               image          OpenCv or PhotoImage. If none provided, an empty frame is created (default is None)
-               frame_callback Callback for panel mouse click (default is None)
-               max_size       maximal image size (if image is larger, it will be resized down to this size)
-                              Can be used only for OpenCV images (default is 0)
-               scrollbars     Boolean or tuple of booleans. If True both x and y scrollbars attached to canvas.
-                              If tuple provided, it specify where scrollbars are attached (horiz, vert)
+
+           Keyworded parameters:
+               caption          Panel caption
+               btn_params       Params for ImgButtons: tag, initial state, callback function, (optional) tooltip
+               image            OpenCv or PhotoImage. If none provided, an empty frame is created (default is None)
+               frame_callback   Callback for panel mouse click (default is None)
+               max_size         Maximum image size (if image is larger, it will be resized down to this size)
+                                Can be used only for OpenCV images (default is 0)
+               allow_resize     If True, image can be resized. Works only when .pack(fill="both", expand=True) is used
+               min_size         Minimum image size. Used with allow_resize.
+               resize_callback  A function to be called upon resizing
+               scrollbars       Boolean or tuple of booleans. If True both x and y scrollbars attached to canvas.
+                                If tuple provided, it specify where scrollbars are attached (horiz, vert)
         """
 
         # Panel parameters
@@ -341,12 +346,15 @@ class ImagePanel(tk.Frame):
         frame_callback = kwargs.pop('frame_callback', None)
         f_sb = kwargs.pop('scrollbars', (False, False))
         if not type(f_sb) is tuple: f_sb = (f_sb, f_sb)
+        self.__allow_resize = kwargs.pop('allow_resize',False)
+        self.__min_size = kwargs.pop('min_size',0)
+        self.resize_callback = kwargs.pop('resize_callback', None)
 
         self.__image_mask = None
         self.__image_transf = None
 
         # Init
-        tk.Frame.__init__(self, master, *args, **kwargs)
+        tk.Frame.__init__(self, master, None, **kwargs)
         self.__scale = [1.0, 1.0]
         self.__offset = [0, 0]
         self.__image_shape = []
@@ -409,6 +417,10 @@ class ImagePanel(tk.Frame):
            self.__binder = NBinder()
            self.__binder.bind(self.canvas, '<Button-1>', frame_callback)
 
+        # Resize handler
+        if self.__allow_resize:
+            self.canvas.bind("<Configure>", self.__on_configure)
+
     @property
     def image(self):
         """Image adjusted to panel's area"""
@@ -440,7 +452,7 @@ class ImagePanel(tk.Frame):
 
     @property
     def max_size(self):
-        """Maximum panel size"""
+        """Maximum image size"""
         return self.__max_size
 
     @max_size.setter
@@ -448,6 +460,15 @@ class ImagePanel(tk.Frame):
         self.__max_size = ms
         self.__resize()
         self.__update_image()
+
+    @property
+    def min_size(self):
+        """Minimum image size"""
+        return self.__min_size
+
+    @min_size.setter
+    def min_size(self, ms):
+        self.__min_size = ms
 
     @property
     def caption(self):
@@ -537,26 +558,23 @@ class ImagePanel(tk.Frame):
             self.__resize()
             self.__imgtk = img_to_imgtk(self.__image)
 
-    def __resize(self):
+    def __resize(self, sz = None):
         """Internal function to resize image"""
+        if sz is None: sz = self.__max_size
+
         self.__scale = [1.0, 1.0]
         self.__offset = [0, 0]
-        if not self.__image is None and self.max_size > 0:
+        if not self.__image is None and sz > 0:
             c = self.winfo_rgb(self['bg'])
             r, g, b = c[0]/256, c[1]/256, c[2]/256
             orig_shape = self.__image.shape
-            self.__image, self.__scale, self.__offset = resize3(self.__image,
-                          max_size = self.__max_size,
+            self.__image, self.__scale, self.__offset = resize3(self.__src_image,
+                          max_size = sz,
                           f_upsize = False,
                           f_center = True,
                           pad_color = (r, g, b))
             #print('{} -> {} x {} + {}'.format(orig_shape, self.__image.shape, self.__scale, self.__offset))
-
-##           if not self.__image_mask is None:
-##              shape = self.__image_shape
-##              if min(self.__scale) < 1.0: shape = self.__image.shape
-##              self.__image_mask.set_shape(shape, self.__offset, self.__scale)
-
+            self.__imgtk = img_to_imgtk(self.__image)
 
     def __update_image(self):
         """Internal function to update image"""
@@ -567,22 +585,25 @@ class ImagePanel(tk.Frame):
         else:
             self.canvas.itemconfig(self.__image_id, image = self.__imgtk)
 
-def addImagePanel(parent, **kwargs):
-    """Creates a panel with caption and buttons
+    def __on_configure(self, event):
+        """ Event handler for resize events"""
+        m = min(event.width, event.height)
+        if m < self.__max_size and m > self.__min_size:
+            old_shape = self.__image.shape
+            self.__resize(sz = m)
+            self.__update_image()
+            new_shape = self.__image.shape
 
-       Allowed parameters:
-           master         master frame
-           caption        Panel caption
-           btn_params     Params for ImgButtons: tag, initial state, callback function, (optional) tooltip
-           image          OpenCv or PhotoImage. If none provided, an empty frame is created
-           frame_callback Callback for panel mouse click
-           max_size       maximal image size (if image is larger, it will be resized down to this size)
-                          Can be used only for OpenCV images.
+            if self.resize_callback is not None:
+                self.resize_callback(self, old_shape, new_shape)
+
+def addImagePanel(master, **kwargs):
+    """Creates a panel with caption and buttons. Provided for backward compatibility.
 
     Returns:
         panel          A panel frame
     """
-    return ImagePanel(parent, None, **kwargs)
+    return ImagePanel(master, **kwargs)
 
 def treeview_sort_columns(tv):
     """Set up Treeview tv for column sorting (see https://stackoverflow.com/questions/1966929/tk-treeview-column-sort)"""
@@ -654,6 +675,8 @@ class ImageMask(object):
         if self.__mask is None:
             self.default_mask()
 
+        self.__panel.resize_callback = self.__on_panel_resize
+
         # Public parameters
         self.shade_fill = "gray"
         self.shade_stipple = "gray50"
@@ -688,8 +711,10 @@ class ImageMask(object):
 
     @property
     def mask(self):
-        """Mask as it is displayed on canvas"""
-        return self.__mask
+        """Mask as it is displayed on canvas.
+           Note that internally mask can be a double due to rounding, but this
+           property always return integer"""
+        return np.array(self.__mask).astype('int').tolist() if self.__mask is not None else None
 
     @mask.setter
     def mask(self, m):
@@ -787,20 +812,21 @@ class ImageMask(object):
             p = (self.canvas.canvasx(event.x) - self.__panel.offset[0],
                  self.canvas.canvasy(event.y) - self.__panel.offset[1])
             if self.__drag_side == 0:
-                self.__mask[0] = int(max(p[0], 0))
+                self.__mask[0] = max(p[0], 0)
             elif self.__drag_side == 1:
-                self.__mask[1] = int(max(p[1], 0))
+                self.__mask[1] = max(p[1], 0)
             elif self.__drag_side == 2:
-                self.__mask[2] = int(min(p[0], self.__panel.scaled_shape[1]))
+                self.__mask[2] = min(p[0], self.__panel.scaled_shape[1])
             elif self.__drag_side == 3:
-                self.__mask[3] = int(min(p[1], self.__panel.scaled_shape[0]))
+                self.__mask[3] = min(p[1], self.__panel.scaled_shape[0])
 
             # Reposition mask rect
+            m = self.mask
             self.canvas.coords(self.__mask_rect,
-                 self.__mask[0] + self.__panel.offset[0] + self.mask_width,
-                 self.__mask[1] + self.__panel.offset[1] + self.mask_width,
-                 self.__mask[2] + self.__panel.offset[0],
-                 self.__mask[3] + self.__panel.offset[1])
+                 m[0] + self.__panel.offset[0] + self.mask_width,
+                 m[1] + self.__panel.offset[1] + self.mask_width,
+                 m[2] + self.__panel.offset[0],
+                 m[3] + self.__panel.offset[1])
 
             # Draw shading or grid
             if self.__mode == 'area':
@@ -832,6 +858,10 @@ class ImageMask(object):
         if not self.__mask_rect is None:
             self.canvas.delete(self.__mask_rect)
             self.__mask_rect = None
+
+    def is_shown(self):
+        """ True if mask is currently shown"""
+        return self.__mask_area is not None or self.__mask_rect is not None
 
     def random_mask(self):
         """Generates a random mask"""
@@ -893,14 +923,15 @@ class ImageMask(object):
             self.__mask_area = None
 
         # Create mask points array
+        m = self.mask
         sx = self.__panel.offset[0]
         sy = self.__panel.offset[1]
         ix = sx + self.__panel.scaled_shape[1]
         iy = sy + self.__panel.scaled_shape[0]
-        mx = sx + self.__mask[0]
-        my = sy + self.__mask[1]
-        wx = sx + self.__mask[2]
-        wy = sy + self.__mask[3]
+        mx = sx + m[0]
+        my = sy + m[1]
+        wx = sx + m[2]
+        wy = sy + m[3]
         if sx == 0: sx += self.mask_width
         if sy == 0: sy += self.mask_width
 
@@ -919,12 +950,13 @@ class ImageMask(object):
             self.__mask_rect = None
 
         # Draw rect
+        m = self.mask
         sx = self.__panel.offset[0]
         sy = self.__panel.offset[1]
-        mx = sx + self.__mask[0] + self.mask_width
-        my = sy + self.__mask[1] + self.mask_width
-        wx = sx + self.__mask[2]
-        wy = sy + self.__mask[3]
+        mx = sx + m[0] + self.mask_width
+        my = sy + m[1] + self.mask_width
+        wx = sx + m[2]
+        wy = sy + m[3]
 
         self.__mask_rect = self.canvas.create_rectangle(
           mx, my,
@@ -943,12 +975,13 @@ class ImageMask(object):
             self.__mask_area = None
 
         # Params
+        m = self.mask
         sx = self.__panel.offset[0]
         sy = self.__panel.offset[1]
-        mx = sx + self.__mask[0] + self.mask_width
-        my = sy + self.__mask[1] + self.mask_width
-        wx = sx + self.__mask[2]
-        wy = sy + self.__mask[3]
+        mx = sx + m[0] + self.mask_width
+        my = sy + m[1] + self.mask_width
+        wx = sx + m[2]
+        wy = sy + m[3]
         space_x, space_y = board_spacing( ((mx, my),(wx,wy)), self.__size)
 
         # Draw V-lines
@@ -971,6 +1004,16 @@ class ImageMask(object):
             y2 = y1
             m = self.canvas.create_line(x1, y1, x2, y2, fill = self.mask_color, width = self.mask_width)
             self.__mask_area.append(m)
+
+    def __on_panel_resize(self, panel, old_shape, new_shape):
+        """Callback for panel resize (internal function)"""
+        m = self.__mask.copy()
+        m[0] = m[0] / old_shape[CV_WIDTH] * new_shape[CV_WIDTH]
+        m[1] = m[1] / old_shape[CV_HEIGTH] * new_shape[CV_HEIGTH]
+        m[2] = m[2] / old_shape[CV_WIDTH] * new_shape[CV_WIDTH]
+        m[3] = m[3] / old_shape[CV_HEIGTH] * new_shape[CV_HEIGTH]
+        self.__mask = m
+        if self.is_shown: self.show()
 
 
 # Image transformer

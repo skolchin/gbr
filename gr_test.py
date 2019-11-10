@@ -36,7 +36,6 @@ class GrBoardEdit(object):
     def __init__(self, root, img, board_size = 19):
         self.root = root
         self.board_size = board_size
-        self.max_size = 700
 
         # Top-level frames
         self.imgFrame = tk.Frame(self.root)
@@ -49,8 +48,10 @@ class GrBoardEdit(object):
                             ["reset", False, self.transf_reset_callback, "Reset after transformation"],
                             ['edge', False, self.transform_callback, "Transform image"]],
               image = img,
-              max_size = self.max_size,
-              scrollbars = False)
+              max_size = 700,
+              min_size = 500,
+              scrollbars = False,
+              allow_resize = True)
 
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
         self.imgPanel.buttons['reset'].disabled = True
@@ -118,8 +119,9 @@ class GrBoardEdit(object):
 def main():
 
     #img = cv2.imread('img\\go_board_1.png')
-    img = cv2.imread('img\\go_board_47.jpg')
+    #img = cv2.imread('img\\go_board_47.jpg')
     #img = cv2.imread('img\\go_board_15_large.jpg')
+    img = cv2.imread('img\\go_board_8.png')
     if img is None:
         raise Exception('File not found')
 
