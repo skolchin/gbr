@@ -414,14 +414,13 @@ class ImagePanel(tk.Frame):
             self.canvas.config(yscrollcommand=sbr.set)
 
         # Frame click callback
-        self.__binder = None
+        self.__binder = NBinder()
         if not frame_callback is None:
-           self.__binder = NBinder()
            self.__binder.bind(self.canvas, '<Button-1>', frame_callback)
 
         # Resize handler
         if self.__mode == "fit":
-            self.canvas.bind("<Configure>", self.__on_configure)
+           self.__binder.bind(self.canvas, "<Configure>", self.__on_configure)
 
     @property
     def image(self):
@@ -459,8 +458,14 @@ class ImagePanel(tk.Frame):
 
     @scale.setter
     def scale(self, scale):
-        # TODO: scale change
-        pass
+        if self.__mode == "clip":
+            old_shape = self.__image.shape
+            self.__resize(scale = scale)
+            self.__update_image()
+            new_shape = self.__image.shape
+
+            if self.resize_callback is not None:
+                self.resize_callback(self, old_shape, new_shape)
 
     @property
     def offset(self):
@@ -563,23 +568,26 @@ class ImagePanel(tk.Frame):
             self.__offset = [0, 0]
             self.__imgtk = None
         else:
-            self.__image = image.copy()
-            self.__image_shape = self.__image.shape
+            self.__image = image
+            self.__image_shape = image.shape
             self.__resize()
             self.__imgtk = img_to_imgtk(self.__image)
 
-    def __resize(self, sz = None):
+    def __resize(self, size = None, scale = None):
         """Internal function to resize image"""
-        if sz is None: sz = self.__max_size
+        if self.__image is None: return
+        if size is None and scale is None and self.__max_size > 0:
+            size = self.__max_size   # legacy
 
         self.__scale = [1.0, 1.0]
         self.__offset = [0, 0]
-        if not self.__image is None and sz > 0:
+        if size is not None or scale is not None:
             c = self.winfo_rgb(self['bg'])
             r, g, b = c[0]/256, c[1]/256, c[2]/256
             orig_shape = self.__image.shape
             self.__image, self.__scale, self.__offset = resize3(self.__src_image,
-                          max_size = sz,
+                          max_size = size,
+                          scale = scale,
                           f_upsize = False,
                           f_center = True,
                           pad_color = (r, g, b))
@@ -600,7 +608,7 @@ class ImagePanel(tk.Frame):
         m = min(event.width, event.height)
         if self.__mode == "fit" and m < self.__max_size and m > self.__min_size:
             old_shape = self.__image.shape
-            self.__resize(sz = m)
+            self.__resize(size = m)
             self.__update_image()
             new_shape = self.__image.shape
 
