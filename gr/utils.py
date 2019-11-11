@@ -194,7 +194,7 @@ def resize2(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 
 
     Returns:
         Resized image
-        Scale [scale_x, scale_y]. Scale < 0 means image was downsized
+        Scale [scale_x, scale_y]. Scale < 1 means image was downsized
     """
     im, scale, _ = resize3(img, max_size, f_upsize, f_center, pad_color)
     return im, scale
@@ -211,7 +211,7 @@ def resize3(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 
 
     Returns:
         Resized image
-        Scale [scale_x, scale_y]. Scale < 0 means image was downsized
+        Scale [scale_x, scale_y]. Scale < 1 means image was downsized
         Offset [x, y]. If image was centered, offset of image location
     """
     im_size_max = np.max(img.shape[0:2])

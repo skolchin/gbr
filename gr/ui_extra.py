@@ -329,29 +329,31 @@ class ImagePanel(tk.Frame):
                btn_params       Params for ImgButtons: tag, initial state, callback function, (optional) tooltip
                image            OpenCv or PhotoImage. If none provided, an empty frame is created (default is None)
                frame_callback   Callback for panel mouse click (default is None)
-               max_size         Maximum image size (if image is larger, it will be resized down to this size)
-                                Can be used only for OpenCV images (default is 0)
-               allow_resize     If True, image can be resized. Works only when .pack(fill="both", expand=True) is used
-               min_size         Minimum image size. Used with allow_resize.
-               resize_callback  A function to be called upon resizing
+               mode             Either 'clip' (default) or 'fit'.
+                                If 'clip', the image is statically scaled to max_size and clipped to parent frame.
+                                Scale can be changed by 'scale' property. If image is scaled down, panning is allowed.
+                                If 'fit, the image is scaled dynamically (resp.min_size and max_size). Parent frame
+                                should have been aligned with pack(fill="both", expand = True). No scaling/panning is allowed.
+               max_size         Maximum image size. If image is larger, it will be resized down to this size (default 0).
+               min_size         Minimum image size when image is dynamically resized
+               resize_callback  A function to be called after resizing: f(panel, old_shape, new_shape).
                scrollbars       Boolean or tuple of booleans. If True both x and y scrollbars attached to canvas.
                                 If tuple provided, it specify where scrollbars are attached (horiz, vert)
         """
 
         # Panel parameters
-        self.__max_size = kwargs.pop('max_size', 0)
         img = kwargs.pop('image', None)
         self.__caption = kwargs.pop('caption', '')
         btn_params = kwargs.pop('btn_params', None)
         frame_callback = kwargs.pop('frame_callback', None)
         f_sb = kwargs.pop('scrollbars', (False, False))
         if not type(f_sb) is tuple: f_sb = (f_sb, f_sb)
-        self.__allow_resize = kwargs.pop('allow_resize',False)
+        self.__mode = kwargs.pop('mode',"clip")
+        self.__max_size = kwargs.pop('max_size', 0)
         self.__min_size = kwargs.pop('min_size',0)
         self.resize_callback = kwargs.pop('resize_callback', None)
-
-        self.__image_mask = None
-        self.__image_transf = None
+        if self.__mode != "clip" and self.__mode != "fit":
+            raise ValueError("Invalid mode ", self.__mode)
 
         # Init
         tk.Frame.__init__(self, master, None, **kwargs)
@@ -418,7 +420,7 @@ class ImagePanel(tk.Frame):
            self.__binder.bind(self.canvas, '<Button-1>', frame_callback)
 
         # Resize handler
-        if self.__allow_resize:
+        if self.__mode == "fit":
             self.canvas.bind("<Configure>", self.__on_configure)
 
     @property
@@ -441,9 +443,24 @@ class ImagePanel(tk.Frame):
         self.set_image(img)
 
     @property
+    def mode(self):
+        """Mode"""
+        return self.__mode
+
+    @mode.setter
+    def image(self, m):
+        # TODO: mode change
+        self.__mode = m
+
+    @property
     def scale(self):
         """Image scale"""
         return self.__scale
+
+    @scale.setter
+    def scale(self, scale):
+        # TODO: scale change
+        pass
 
     @property
     def offset(self):
@@ -468,7 +485,10 @@ class ImagePanel(tk.Frame):
 
     @min_size.setter
     def min_size(self, ms):
+        # TODO: size change
         self.__min_size = ms
+        self.__resize()
+        self.__update_image()
 
     @property
     def caption(self):
@@ -495,16 +515,6 @@ class ImagePanel(tk.Frame):
             return (self.__image.shape[CV_WIDTH], self.__image.shape[CV_HEIGTH])
         else:
             return DEF_IMG_SIZE
-
-    @property
-    def image_mask(self):
-        """Image mask object or None"""
-        return self.__image_mask
-
-    @image_mask.setter
-    def image_mask(self, m):
-        """Image mask object"""
-        self.__image_mask = m
 
     @property
     def image_shape(self):
@@ -588,7 +598,7 @@ class ImagePanel(tk.Frame):
     def __on_configure(self, event):
         """ Event handler for resize events"""
         m = min(event.width, event.height)
-        if m < self.__max_size and m > self.__min_size:
+        if self.__mode == "fit" and m < self.__max_size and m > self.__min_size:
             old_shape = self.__image.shape
             self.__resize(sz = m)
             self.__update_image()
