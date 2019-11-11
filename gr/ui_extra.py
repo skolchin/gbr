@@ -620,6 +620,7 @@ class ImagePanel(tk.Frame):
 
 def addImagePanel(master, **kwargs):
     """Creates a panel with caption and buttons. Provided for backward compatibility.
+    See ImagePanel.init for arguments.
 
     Returns:
         panel          A panel frame
