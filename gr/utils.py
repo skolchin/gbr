@@ -167,14 +167,8 @@ def jgf_to_gres(jgf):
     return res
 
 def resize(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
-    """Resizes an image so neither of its sides will be bigger that max_size saving proportions
-
-    Parameters:
-        img         An OpenCv image
-        max_size    Size to resize to
-        f_upsize    If True, images less than max_size will be upsized
-        f_center    If True, smaller images will be centered on bigger image with padding
-        pad_color   Padding color
+    """Resizes an image so neither of its sides will be bigger that max_size saving proportions.
+    See resize3 for paramaters definition.
 
     Returns:
         Resized image
@@ -183,14 +177,8 @@ def resize(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 2
     return im
 
 def resize2(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
-    """Resizes an image so neither of its sides will be bigger that max_size saving proportions
-
-    Parameters:
-        img         An OpenCv image
-        max_size    Size to resize to
-        f_upsize    If True, images with size less than max_size will be upsized
-        f_center    If True, smaller images will be centered on bigger image with padding
-        pad_color   Padding color
+    """Resizes an image so neither of its sides will be bigger that max_size saving proportions.
+    See resize3 for paramaters definition.
 
     Returns:
         Resized image
@@ -199,12 +187,15 @@ def resize2(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 
     im, scale, _ = resize3(img, max_size, f_upsize, f_center, pad_color)
     return im, scale
 
-def resize3(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
-    """Resizes an image so neither of its sides will be bigger that max_size saving proportions
+def resize3(img, max_size = None, scale = None, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
+    """Resizes an image either to specified scale or to specified size.
+    In latter case neither of its sides will be bigger that max_size.
+    In both cases image proportions will be retained.
 
     Parameters:
         img         An OpenCv image
         max_size    Size to resize to
+        scale       Scale to resize. If list, tuple or array is provided, only 1st element is used
         f_upsize    If True, images with size less than max_size will be upsized
         f_center    If True, smaller images will be centered on bigger image with padding
         pad_color   Padding color
@@ -214,12 +205,22 @@ def resize3(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 
         Scale [scale_x, scale_y]. Scale < 1 means image was downsized
         Offset [x, y]. If image was centered, offset of image location
     """
-    im_size_max = np.max(img.shape[0:2])
-    im_size_min = np.min(img.shape[0:2])
-    im_scale = float(max_size) / float(im_size_min)
+    if max_size is None and scale is None:
+        raise ValueError("Either max_size or scale has to be provided")
 
-    if np.round(im_scale * im_size_max) > max_size:
-        im_scale = float(max_size) / float(im_size_max)
+    if scale is not None:
+        if isinstance(scale, (list, tuple, np.ndarray)):
+            im_scale = scale[0]
+        else:
+            im_scale = scale
+        max_size = int(np.max(img.shape[0:2]) * im_scale)
+    else:
+        im_size_max = np.max(img.shape[0:2])
+        im_size_min = np.min(img.shape[0:2])
+        im_scale = float(max_size) / float(im_size_min)
+
+        if np.round(im_scale * im_size_max) > max_size:
+            im_scale = float(max_size) / float(im_size_max)
 
     if not f_upsize and im_scale > 1.0:
        # Image size is less than max_size and upsize not specified

@@ -50,6 +50,7 @@ class GrBoardEdit(object):
               image = img,
               mode = "clip",
               max_size = 700,
+              mode = "clip",
               min_size = 500,
               scrollbars = False)
 
@@ -66,7 +67,8 @@ class GrBoardEdit(object):
         self.mask_callback(self.imgMask)
 
         self.binder = NBinder()
-        self.binder.bind(self.imgPanel.canvas, '<Button-1>', self.update_callback)
+        self.binder.bind(self.imgPanel.canvas, '<Button-1>', self.zoom_in_callback)
+        self.binder.bind(self.imgPanel.canvas, '<Button-3>', self.zoom_out_callback)
 
         # Image transformer
         self.imgTransform = ImageTransform(self.imgPanel,
@@ -110,9 +112,13 @@ class GrBoardEdit(object):
         return False
 
 
-    def update_callback(self, event):
-        pass
-        #cv2.imwrite('C:\\Users\\skolchin\\Documents\\kol\\gbr\\img\\go_board_47a.png', self.imgPanel.image)
+    def zoom_in_callback(self, event):
+        if self.imgPanel.scale[0] > 1.5: return
+        self.imgPanel.scale = [x * 1.10 for x in self.imgPanel.scale]
+
+    def zoom_out_callback(self, event):
+        if self.imgPanel.scale[0] < 0.3: return
+        self.imgPanel.scale = [x * 0.90 for x in self.imgPanel.scale]
 
 
 # Main function
