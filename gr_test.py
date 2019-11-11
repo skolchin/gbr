@@ -48,10 +48,10 @@ class GrBoardEdit(object):
                             ["reset", False, self.transf_reset_callback, "Reset after transformation"],
                             ['edge', False, self.transform_callback, "Transform image"]],
               image = img,
+              mode = "clip",
               max_size = 700,
               min_size = 500,
-              scrollbars = False,
-              allow_resize = True)
+              scrollbars = False)
 
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
         self.imgPanel.buttons['reset'].disabled = True
