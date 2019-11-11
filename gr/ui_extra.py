@@ -340,6 +340,12 @@ class ImagePanel(tk.Frame):
                scrollbars       Boolean or tuple of booleans. If True both x and y scrollbars attached to canvas.
                                 If tuple provided, it specify where scrollbars are attached (horiz, vert)
         """
+        # will be assign after frame init
+        self.__image = None
+        self.__src_image = None
+        self.__scale = [1.0, 1.0]
+        self.__offset = [0, 0]
+        self.__image_shape = []
 
         # Panel parameters
         img = kwargs.pop('image', None)
@@ -357,9 +363,6 @@ class ImagePanel(tk.Frame):
 
         # Init
         tk.Frame.__init__(self, master, None, **kwargs)
-        self.__scale = [1.0, 1.0]
-        self.__offset = [0, 0]
-        self.__image_shape = []
         self.__src_image = img
         self.__set_image(img)
 
@@ -427,6 +430,10 @@ class ImagePanel(tk.Frame):
         """Image adjusted to panel's area"""
         return self.__image
 
+    @image.setter
+    def image(self, img):
+        self.set_image(img)
+
     @property
     def src_image(self):
         """Original image"""
@@ -437,17 +444,13 @@ class ImagePanel(tk.Frame):
         """PhotoImage image"""
         return self.__imagetk
 
-    @image.setter
-    def image(self, img):
-        self.set_image(img)
-
     @property
     def mode(self):
         """Mode"""
         return self.__mode
 
     @mode.setter
-    def image(self, m):
+    def mode(self, m):
         # TODO: mode change
         self.__mode = m
 
@@ -533,6 +536,7 @@ class ImagePanel(tk.Frame):
 
     def set_image(self, img):
         """Changes image. img can be either OpenCv or PhotoImage"""
+        self.__src_image = img
         self.__set_image(img)
         self.__update_image()
 
@@ -571,7 +575,6 @@ class ImagePanel(tk.Frame):
             self.__image = image
             self.__image_shape = image.shape
             self.__resize()
-            self.__imgtk = img_to_imgtk(self.__image)
 
     def __resize(self, size = None, scale = None):
         """Internal function to resize image"""
@@ -1190,7 +1193,8 @@ class ImageTransform(object):
 
               # Do 4-points transform
               t = np.array([t[:2] for t in self.__tranform_rect])
-              self.__panel.set_image(four_point_transform(self.__panel.image, t))
+              im = four_point_transform(self.__panel.image, t)
+              self.__panel.set_image(im)
 
               if not self.__callback is None:
                  self.__callback(self, True)

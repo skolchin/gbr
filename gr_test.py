@@ -48,14 +48,17 @@ class GrBoardEdit(object):
                             ["reset", False, self.transf_reset_callback, "Reset after transformation"],
                             ['edge', False, self.transform_callback, "Transform image"]],
               image = img,
-              mode = "clip",
               max_size = 700,
-              mode = "clip",
+              mode = "fit",
               min_size = 500,
               scrollbars = False)
 
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
         self.imgPanel.buttons['reset'].disabled = True
+
+        self.binder = NBinder()
+        self.binder.bind(self.imgPanel.canvas, '<Button-1>', self.zoom_in_callback)
+        self.binder.bind(self.imgPanel.canvas, '<Button-3>', self.zoom_out_callback)
 
         # Image mask
         self.imgMask = ImageMask(self.imgPanel,
@@ -65,10 +68,6 @@ class GrBoardEdit(object):
             size = 21,
             mask_callback = self.mask_callback)
         self.mask_callback(self.imgMask)
-
-        self.binder = NBinder()
-        self.binder.bind(self.imgPanel.canvas, '<Button-1>', self.zoom_in_callback)
-        self.binder.bind(self.imgPanel.canvas, '<Button-3>', self.zoom_out_callback)
 
         # Image transformer
         self.imgTransform = ImageTransform(self.imgPanel,
@@ -111,7 +110,6 @@ class GrBoardEdit(object):
         self.imgPanel.buttons['reset'].disabled = True
         return False
 
-
     def zoom_in_callback(self, event):
         if self.imgPanel.scale[0] > 1.5: return
         self.imgPanel.scale = [x * 1.10 for x in self.imgPanel.scale]
@@ -125,9 +123,9 @@ class GrBoardEdit(object):
 def main():
 
     #img = cv2.imread('img\\go_board_1.png')
-    #img = cv2.imread('img\\go_board_47.jpg')
+    img = cv2.imread('img\\go_board_47.jpg')
     #img = cv2.imread('img\\go_board_15_large.jpg')
-    img = cv2.imread('img\\go_board_8.png')
+    #img = cv2.imread('img\\go_board_8.png')
     if img is None:
         raise Exception('File not found')
 
