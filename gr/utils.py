@@ -188,13 +188,12 @@ def resize2(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 
     return im, scale
 
 def resize3(img, max_size = None, scale = None, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
-    """Resizes an image either to specified scale or to specified size.
-    In latter case neither of its sides will be bigger that max_size.
-    In both cases image proportions will be retained.
+    """Resizes an image either to specified scale or to specified size keeping image proportions.
+    In case of resizing to max_size, neither of resulting image sides will be bigger than that.
 
     Parameters:
         img         An OpenCv image
-        max_size    Size to resize to
+        max_size    Maximum size of biggest image side after resizing
         scale       Scale to resize. If list, tuple or array is provided, only 1st element is used
         f_upsize    If True, images with size less than max_size will be upsized
         f_center    If True, smaller images will be centered on bigger image with padding
@@ -205,16 +204,41 @@ def resize3(img, max_size = None, scale = None, f_upsize = True, f_center = Fals
         Scale [scale_x, scale_y]. Scale < 1 means image was downsized
         Offset [x, y]. If image was centered, offset of image location
     """
+    def center_image(img, max_size, pad_color, im_scale):
+        """Make a bigger image and center initial image on it"""
+        if len(img.shape) > 2:
+         im = np.full((max_size, max_size, img.shape[2]), pad_color, dtype=img.dtype)
+        else:
+         c = pad_color[0] if type(pad_color) is tuple else pad_color
+         im = np.full((max_size, max_size), c, dtype=img.dtype)
+
+        w = img.shape[CV_WIDTH]
+        h = img.shape[CV_HEIGTH]
+        dx = int((max_size - w)/2)
+        dy = int((max_size - h)/2)
+
+        im[dy:dy + h, dx:dx + w] = img
+        return im, [im_scale, im_scale], [dx, dy]
+
     if max_size is None and scale is None:
         raise ValueError("Either max_size or scale has to be provided")
 
     if scale is not None:
+        # Resizing to scale
         if isinstance(scale, (list, tuple, np.ndarray)):
             im_scale = scale[0]
         else:
             im_scale = scale
-        max_size = int(np.max(img.shape[0:2]) * im_scale)
+
+        im = cv2.resize(img, dsize = None, fx = im_scale, fy = im_scale)
+        img_size = int(np.max(im.shape[0:2]))
+        if max_size is not None and img_size < max_size and f_center:
+            return center_image(im, max_size, pad_color, im_scale)
+        else:
+            return im, [im_scale, im_scale], [0, 0]
+
     else:
+        # Resizing to max_size
         im_size_max = np.max(img.shape[0:2])
         im_size_min = np.min(img.shape[0:2])
         im_scale = float(max_size) / float(im_size_min)
@@ -222,31 +246,18 @@ def resize3(img, max_size = None, scale = None, f_upsize = True, f_center = Fals
         if np.round(im_scale * im_size_max) > max_size:
             im_scale = float(max_size) / float(im_size_max)
 
-    if not f_upsize and im_scale > 1.0:
-       # Image size is less than max_size and upsize not specified
-       if not f_center:
-          # Nothing to do!
-          return img, [1.0, 1.0], [0, 0]
-       else:
-          # Make a bigger image and center initial image on it
-          if len(img.shape) > 2:
-             im = np.full((max_size, max_size, img.shape[2]), pad_color, dtype=img.dtype)
-          else:
-             c = pad_color[0] if type(pad_color) is tuple else pad_color
-             im = np.full((max_size, max_size), c, dtype=img.dtype)
-
-          w = img.shape[CV_WIDTH]
-          h = img.shape[CV_HEIGTH]
-          dx = int((max_size - w)/2)
-          dy = int((max_size - h)/2)
-
-          im[dy:dy + h, dx:dx + w] = img
-
-          return im, [1.0, 1.0], [dx, dy]
-    else:
-       # Perform normal resize
-       im = cv2.resize(img, dsize = None, fx = im_scale, fy = im_scale)
-       return im, [im_scale, im_scale], [0, 0]
+        if not f_upsize and im_scale > 1.0:
+           # Image size is less than max_size and upsize not specified
+           if not f_center:
+              # Nothing to do!
+              return img, [1.0, 1.0], [0, 0]
+           else:
+              # Make a bigger image and center initial image on it
+              return center_image(img, max_size, pad_color, 1.0)
+        else:
+           # Perform normal resize
+           im = cv2.resize(img, dsize = None, fx = im_scale, fy = im_scale)
+           return im, [im_scale, im_scale], [0, 0]
 
 def board_spacing(edges, size):
     """ Calculate board spacing"""

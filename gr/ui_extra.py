@@ -462,13 +462,13 @@ class ImagePanel(tk.Frame):
     @scale.setter
     def scale(self, scale):
         if self.__mode == "clip":
-            old_shape = self.__image.shape
-            self.__resize(scale = scale)
+            old_scale = self.__scale
+            self.__resize(size = self.__max_size, scale = scale)
             self.__update_image()
-            new_shape = self.__image.shape
+            new_scale = self.__scale
 
             if self.resize_callback is not None:
-                self.resize_callback(self, old_shape, new_shape)
+                self.resize_callback(self, old_scale, new_scale)
 
     @property
     def offset(self):
@@ -610,13 +610,13 @@ class ImagePanel(tk.Frame):
         """ Event handler for resize events"""
         m = min(event.width, event.height)
         if self.__mode == "fit" and m < self.__max_size and m > self.__min_size:
-            old_shape = self.__image.shape
+            old_scale = self.__scale
             self.__resize(size = m)
             self.__update_image()
-            new_shape = self.__image.shape
+            new_scale = self.__scale
 
             if self.resize_callback is not None:
-                self.resize_callback(self, old_shape, new_shape)
+                self.resize_callback(self, old_scale, new_scale)
 
 def addImagePanel(master, **kwargs):
     """Creates a panel with caption and buttons. Provided for backward compatibility.
@@ -807,6 +807,11 @@ class ImageMask(object):
         self.hide()
         self.__size = sz
 
+    @property
+    def is_shown(self):
+        """ True if mask is currently shown"""
+        return self.__mask_area is not None or self.__mask_rect is not None
+
     def motion_callback(self, event):
         """Callback for mouse move event"""
         CURSORS = ["left_side", "top_side", "right_side", "bottom_side"]
@@ -879,10 +884,6 @@ class ImageMask(object):
         if not self.__mask_rect is None:
             self.canvas.delete(self.__mask_rect)
             self.__mask_rect = None
-
-    def is_shown(self):
-        """ True if mask is currently shown"""
-        return self.__mask_area is not None or self.__mask_rect is not None
 
     def random_mask(self):
         """Generates a random mask"""
@@ -1026,13 +1027,15 @@ class ImageMask(object):
             m = self.canvas.create_line(x1, y1, x2, y2, fill = self.mask_color, width = self.mask_width)
             self.__mask_area.append(m)
 
-    def __on_panel_resize(self, panel, old_shape, new_shape):
+    def __on_panel_resize(self, panel, old_scale, new_scale):
         """Callback for panel resize (internal function)"""
+        #print("{} -> {}".format(old_scale, new_scale))
+
         m = self.__mask.copy()
-        m[0] = m[0] / old_shape[CV_WIDTH] * new_shape[CV_WIDTH]
-        m[1] = m[1] / old_shape[CV_HEIGTH] * new_shape[CV_HEIGTH]
-        m[2] = m[2] / old_shape[CV_WIDTH] * new_shape[CV_WIDTH]
-        m[3] = m[3] / old_shape[CV_HEIGTH] * new_shape[CV_HEIGTH]
+        m[0] = m[0] / old_scale[0] * new_scale[0]
+        m[1] = m[1] / old_scale[1] * new_scale[1]
+        m[2] = m[2] / old_scale[0] * new_scale[0]
+        m[3] = m[3] / old_scale[1] * new_scale[1]
         self.__mask = m
         if self.is_shown: self.show()
 
@@ -1198,6 +1201,7 @@ class ImageTransform(object):
 
               if not self.__callback is None:
                  self.__callback(self, True)
+
            # Clean up
            self.__clean_up()
 

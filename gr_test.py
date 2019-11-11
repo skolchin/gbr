@@ -46,19 +46,18 @@ class GrBoardEdit(object):
               caption = "Image",
               btn_params = [["area", True, self.set_area_callback, "Set board area"],
                             ["reset", False, self.transf_reset_callback, "Reset after transformation"],
-                            ['edge', False, self.transform_callback, "Transform image"]],
+                            ['edge', False, self.transform_callback, "Transform image"],
+                            ['plus', False, self.zoom_in_callback, "Zoom in"],
+                            ['minus', False, self.zoom_out_callback, "Zoom out"]
+                            ],
               image = img,
               max_size = 700,
-              mode = "fit",
+              mode = "clip",
               min_size = 500,
               scrollbars = False)
 
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
         self.imgPanel.buttons['reset'].disabled = True
-
-        self.binder = NBinder()
-        self.binder.bind(self.imgPanel.canvas, '<Button-1>', self.zoom_in_callback)
-        self.binder.bind(self.imgPanel.canvas, '<Button-3>', self.zoom_out_callback)
 
         # Image mask
         self.imgMask = ImageMask(self.imgPanel,
@@ -110,20 +109,24 @@ class GrBoardEdit(object):
         self.imgPanel.buttons['reset'].disabled = True
         return False
 
-    def zoom_in_callback(self, event):
-        if self.imgPanel.scale[0] > 1.5: return
+    def zoom_in_callback(self, event, tag, state):
+        if self.imgPanel.scale[0] > 1.7: return
         self.imgPanel.scale = [x * 1.10 for x in self.imgPanel.scale]
+        self.imgPanel.caption = "scale {:.2f}".format(self.imgPanel.scale[0])
+        return False
 
-    def zoom_out_callback(self, event):
+    def zoom_out_callback(self, event, tag, state):
         if self.imgPanel.scale[0] < 0.3: return
         self.imgPanel.scale = [x * 0.90 for x in self.imgPanel.scale]
+        self.imgPanel.caption = "scale {:.2f}".format(self.imgPanel.scale[0])
+        return False
 
 
 # Main function
 def main():
 
-    #img = cv2.imread('img\\go_board_1.png')
-    img = cv2.imread('img\\go_board_47.jpg')
+    img = cv2.imread('img\\go_board_1.png')
+    #img = cv2.imread('img\\go_board_47.jpg')
     #img = cv2.imread('img\\go_board_15_large.jpg')
     #img = cv2.imread('img\\go_board_8.png')
     if img is None:
