@@ -44,12 +44,13 @@ class GrBoardEdit(object):
         # Image panel and mask
         self.imgPanel = addImagePanel(self.imgFrame,
               caption = "Image",
-              btn_params = [["area", True, self.set_area_callback, "Set board area"],
-                            ["reset", False, self.transf_reset_callback, "Reset after transformation"],
-                            ['edge', False, self.transform_callback, "Transform image"],
-                            ['plus', False, self.zoom_in_callback, "Zoom in"],
-                            ['minus', False, self.zoom_out_callback, "Zoom out"]
-                            ],
+              btn_params = [
+                ['plus', False, self.zoom_in_callback, "Zoom in"],
+                ['minus', False, self.zoom_out_callback, "Zoom out"],
+                ["area", True, self.set_area_callback, "Set board area"],
+                ["reset", False, self.transf_reset_callback, "Reset after transformation"],
+                ['edge', False, self.transform_callback, "Transform image"]
+              ],
               image = img,
               max_size = 700,
               mode = "clip",
@@ -120,6 +121,7 @@ class GrBoardEdit(object):
         self.imgPanel.scale = [x * 0.90 for x in self.imgPanel.scale]
         self.imgPanel.caption = "scale {:.2f}".format(self.imgPanel.scale[0])
         return False
+
 
 
 # Main function

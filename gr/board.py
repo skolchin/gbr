@@ -19,6 +19,7 @@ from imutils.perspective import four_point_transform
 import numpy as np
 import json
 import logging
+from sgfmill import sgf
 
 class GrBoard(object):
     """ Go board """
@@ -164,6 +165,33 @@ class GrBoard(object):
 
         with open(filename, "w") as f:
             json.dump(jgf, f, indent=4, sort_keys=True, ensure_ascii=False)
+        return filename
+
+    def save_sgf(self, filename = None):
+        """Saves recognition results to specified file (SGF)"""
+
+        def _add_stone(game, bw, stone):
+            node = game.extend_main_sequence()
+            node.set_move(bw, (stone[GR_B], stone[GR_A]))
+
+        if self._res is None:
+            raise Exception("Recognition results are not available")
+
+        if filename is None:
+            filename = str(Path(self._img_file).with_suffix('.sgf'))
+
+        game = sgf.Sgf_game(size = self.board_size)
+        stones = self.stones
+        for n in range(max(len(stones['W']), len(stones['B']))):
+            if n < len(stones['B']):
+                _add_stone(game, 'b', stones['B'][n]-1)
+            if n < len(stones['W']):
+                _add_stone(game, 'w', stones['W'][n]-1)
+
+        with open(filename, "wb") as f:
+            f.write(game.serialise())
+            f.close()
+
         return filename
 
     def load_annotation(self, filename, ds_format = None, f_process = True):

@@ -35,9 +35,9 @@ Currently, the following filters are implemented:
   * Luminosity equalization using [CLAHE](http://books.google.com.au/books?hl=en&lr=&id=CCqzMm_-WucC&oi=fnd&pg=PR11&dq=Contrast%20Limited%20Adaptive%20Histogram%20Equalization%20Graphics%20Gems%20IV&ots=mtft15JJbl&sig=acQg6XLt7jzqR0MjO6sYUa0Sjtc#v=onepage&q=Contrast%20Limited%20Adaptive%20Histogram%20Equalization%20Graphics%20Gems%20IV&f=false)
   * Watershed (post-filter).
 
-Filter and board detection parameters can be changed through the interface and saved to property file (.JSON). The property file is loaded automatically when an image is loaded for processing. Board recognition parameters can also be saved in another JSON file with .JGF extension.
+Filter and board detection parameters can be changed through the interface and saved to property file (.JSON). The property file is loaded automatically when an image is loaded for processing.
 
-Currently, the program performs quite well on a computer-generated and even real boards. In complex cases, additional parameter tuning might be needed.
+Recognised board can be saved to an SGF file. It creates standard SGF file, although, definetelly, it cannot reproduce actual game flow and saves stones one by one.
 
 Examples of source images (left) and results of their processing (right):
 
@@ -81,7 +81,7 @@ For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-fast
 
 - [ ] Implement score calculation
 
-- [ ] Add SGF file creation
+- [x] Add SGF file creation
 
 - [ ] Make a web interface with (probably) cloud deployment
 

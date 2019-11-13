@@ -457,7 +457,7 @@ def convert_xy(coord, res):
         stones[i,GR_X] = old_coord[0]
         stones[i,GR_Y] = old_coord[1]
         stones[i,GR_A] = stones_u[i, 0]
-        stones[i,GR_B] = stones_u[i, 1]
+        stones[i,GR_B] = size - stones_u[i, 1] + 1
         stones[i,GR_R] = old_coord[2]
 
     return stones
@@ -620,8 +620,8 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None, f_show_d
 
         if black_stones is not None:
             for i in black_stones:
-                x1 = int(edges[GR_FROM][GR_X] + (i[GR_A]-1) * space_x)      #int(i[GR_X])
-                y1 = int(edges[GR_FROM][GR_Y] + (i[GR_B]-1) * space_y)      #int(i[GR_Y])
+                x1 = int(edges[GR_FROM][GR_X] + (i[GR_A]-1) * space_x)
+                y1 = int(edges[GR_FROM][GR_Y] + (board_size - i[GR_B]) * space_y)
                 cv2.circle(img, (x1,y1), r, COLOR_BLACK, -1)
 
                 if f_show_det:
@@ -632,8 +632,8 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None, f_show_d
 
         if white_stones is not None:
             for i in white_stones:
-                x1 = int(edges[GR_FROM][GR_X] + (i[GR_A]-1) * space_x)      #int(i[GR_X])
-                y1 = int(edges[GR_FROM][GR_Y] + (i[GR_B]-1) * space_y)      #int(i[GR_Y])
+                x1 = int(edges[GR_FROM][GR_X] + (i[GR_A]-1) * space_x)
+                y1 = int(edges[GR_FROM][GR_Y] + (board_size - i[GR_B]) * space_y)
                 cv2.circle(img, (x1,y1), r, COLOR_BLACK, 1)
                 cv2.circle(img, (x1,y1), r-1, COLOR_WHITE, -1)
 

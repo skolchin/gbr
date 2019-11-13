@@ -125,7 +125,7 @@ class GbrGUI(object):
         self.saveParamBtn.pack(side = tk.LEFT, padx = PADX, pady = PADY)
 
         self.saveBrdBtn = tk.Button(self.buttonFrame, text = "Save board",
-                                                      command = self.save_jgf_callback)
+                                                      command = self.save_sgf_callback)
         self.saveBrdBtn.pack(side = tk.LEFT, padx = PADX, pady = PADY)
 
         self.applyBtn = tk.Button(self.buttonFrame, text = "Detect",
@@ -215,6 +215,15 @@ class GbrGUI(object):
             return
 
         fn = self.board.save_board_info()
+        self.statusInfo.set_file("Board saved to ", str(fn))
+
+    def save_sgf_callback(self):
+        """Save SGF button handler"""
+        if self.board.is_gen_board:
+            # Generated board - nothing to do!
+            return
+
+        fn = self.board.save_sgf()
         self.statusInfo.set_file("Board saved to ", str(fn))
 
     def apply_callback(self):

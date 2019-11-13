@@ -1,6 +1,10 @@
 
 ## Changelog
 
+13/11/2019
+
+* Added saving to SGF
+
 02/10/2019
 
 * Image can now be transformed to rectangular suitable for recognigion even if picture was taken from some angle or skewed by using 4-point transformation algorithm implemented in imutils package.
