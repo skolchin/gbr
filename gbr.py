@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------------------
 # Name:        Go board recognition project
-# Purpose:     Main functions
+# Purpose:     Gbr UI
 #
 # Author:      kol
 #
