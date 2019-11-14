@@ -406,6 +406,24 @@ class GrBoard(object):
         else:
             return { 'W': self._res[GR_STONES_W], 'B': self._res[GR_STONES_B] }
 
+    def find_stone(self, x, y):
+        """Tries to find a stone at given coordinates
+            If stone is found, returns position and B/W flag, otherwise returns None
+        """
+        if self._res is None:
+            return None, None
+
+        stone = find_coord(x, y, self.black_stones)
+        if not stone is None:
+            return stone, "B"
+        else:
+            stone = find_coord(x, y, self.white_stones)
+            if not stone is None:
+                return stone, "W"
+            else:
+                return None, None
+
+
     @property
     def debug_images(self):
         """Collection of debug images generated during image recognition"""
