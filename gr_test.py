@@ -53,7 +53,7 @@ class GrBoardEdit(object):
               ],
               image = img,
               max_size = 700,
-              mode = "clip",
+              mode = "fit",
               min_size = 500,
               scrollbars = False)
 
@@ -122,6 +122,8 @@ class GrBoardEdit(object):
         self.imgPanel.caption = "scale {:.2f}".format(self.imgPanel.scale[0])
         return False
 
+    def move_callback(self, event):
+        print(event.x, event.y)
 
 
 # Main function
