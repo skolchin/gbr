@@ -38,6 +38,72 @@ class NLabel(tk.Label):
         tk.Label.__init__(self, master, *args, **kwargs)
         self.master, self.tag = master, tag
 
+
+class NBinder(object):
+    """ Supplementary class to manage widget bindings"""
+
+    # Tkinter bind/unbind seems not working
+    # This variable will keep all bindings set before
+    __bindings = dict()
+
+    def __init__(self):
+        self.bnd_ref = dict()
+
+    def bind(self, widget, event, callback, add = ''):
+        """Bind a callback to widget event and keep the reference"""
+
+        # Store binding in this instance
+        key = str(widget.winfo_id()) + '__' + str(event)
+        bnd_id = widget.bind(event, callback, add)
+        self.bnd_ref[key] = [bnd_id, widget, event]
+
+        # Store global binding
+        ref = []
+        if key in NBinder.__bindings: ref = NBinder.__bindings[key]
+        ref.append([self, widget, event, callback])
+        NBinder.__bindings[key] = ref
+
+    def unbind(self, widget, event):
+        """Unbind all callbacks for given event from a widget"""
+
+        key = str(widget.winfo_id()) + '__' + str(event)
+        if key in self.bnd_ref:
+           # Unbind from this instance
+           bnd_id = self.bnd_ref[key][0]
+           widget.unbind(event, bnd_id)
+           del self.bnd_ref[key]
+
+           # Unbind/rebind globally
+           NBinder.__unbind(self, key)
+
+    def unbind_all(self):
+        """Unbind all callbacks"""
+
+        # Unbind all in this instance
+        for key in self.bnd_ref.keys():
+            bnd_id, widget, event = self.bnd_ref[key]
+            widget.unbind(event, bnd_id)
+            NBinder.__unbind(self, key)
+
+        self.bnd_ref = dict()
+
+    @staticmethod
+    def __unbind(owner, key):
+        if not key in NBinder.__bindings:
+            return
+        refs = NBinder.__bindings[key]
+        for i in range(len(refs)):
+            w = refs[i][0]
+            if w == owner:
+               # This is my binding, remove it and rebind everything remaining
+               refs.pop(i)
+               for ref2 in refs:
+                   w2, widget, event, callback = ref2
+                   widget.bind(event, callback)
+
+
+
+
 # ImageButton
 class ImgButton(tk.Label):
     """Button with image face"""
@@ -83,6 +149,8 @@ class ImgButton(tk.Label):
         self.bind("<Button-1>", self.mouse_click)
 
     def mouse_click(self, event):
+        if self.__disabled: return
+
         cur_state = self.__state
         new_state = not self.__state
         self.configure(image = self.__images[new_state], state = self.__DS_MAP[self.__disabled])
@@ -170,26 +238,36 @@ def removeToolTip(toolTip):
 
 class StatusPanel(tk.Frame):
     """Status panel class"""
-    def __init__(self, master, max_width, *args, **kwargs):
+    def __init__(self, master, *args, **kwargs):
         """Creates StatusPanel instance. A StatusPanel is a frame with additional methods.
 
            Parameters:
-               master          master frame
-               max_width       maximal text width
+               master           master frame
+               max_width        maximum text width
+               status           initial status
+               callback         function to be called upon mouse click
         """
+        self.__max_width = kwargs.pop('max_width', 0)
+        self.__callback = kwargs.pop('callback', None)
+        status = kwargs.pop('status', '')
+
         tk.Frame.__init__(self, master, *args, **kwargs)
 
-        self._max_width = max_width
-        self._var = tk.StringVar()
-        self._var.set("")
+        self.__var = tk.StringVar()
+        self.__var.set(status)
 
-        self._label = tk.Label(self, textvariable = self._var, anchor = tk.W)
-        self._label.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
+        self.__label = tk.Label(self, textvariable = self.__var, anchor = tk.W)
+        self.__label.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
+
+        self.__binder = None
+        if not self.__callback is None:
+            self.__binder = NBinder()
+            self.__binder.bind(self.__label, '<Button-1>', self.__callback)
 
     @property
     def status(self):
         """Status text"""
-        return self._var.get()
+        return self.__var.get()
 
     @status.setter
     def status(self, text):
@@ -199,47 +277,44 @@ class StatusPanel(tk.Frame):
     @property
     def max_width(self):
         """Max status panel width in pixels"""
-        return self._max_width
+        return self.__max_width
 
     @max_width.setter
     def max_width(self, v):
         """Max status panel width in pixels"""
-        self._max_width = v
+        self.__max_width = v
 
-    def _get_maxw(self):
-        w = self.winfo_width()
-        return w
+    def __get_maxw(self):
+        """Internal function"""
+        if self.__max_width == 0:
+            return self.winfo_width()
+        else:
+            return min(self.__max_width, self.winfo_width())
 
     def set(self, text):
         """Set status as text. If text is larger than current panel size, it's been
         truncated from the end, ... added"""
-        f = font.Font(font = self._label['font'])
+        if self.__var.get() == text: return
+
+        f = font.Font(font = self.__label['font'])
         chw = f.measure('W')
 
-        maxw = self._get_maxw()
+        maxw = self.__get_maxw()
         curw = f.measure(text)
         maxw -= chw*3
         if curw > maxw:
             strip_len = int((curw - maxw) / chw) + 3
             text = text[:-strip_len] + '...'
 
-        self._var.set(text)
+        self.__var.set(text)
 
     def set_file(self, text, file):
         """Set text + file name as status. If file name is too long, it's been
         shrinken by eliminating some path parts in the middle"""
-        f = font.Font(font = self._label['font'])
+        f = font.Font(font = self.__label['font'])
         chw = f.measure('W')
 
-        maxw = self._get_maxw()
-        if maxw == 0:
-            maxw = self.winfo_width()
-            if maxw < 20:
-                # Window not updated yet
-                self._var.set(text)
-                return
-
-        maxw -= chw*3
+        maxw = self.__get_maxw() - chw*3
         if f.measure(text + file) > maxw:
             # Exclude file path parts to fit in starting from 3 entry
             parts = list(Path(file).parts)
@@ -250,70 +325,7 @@ class StatusPanel(tk.Frame):
             file = parts[0] + '\\'.join(parts[1:-2])
             file += '\\...\\' + parts[-1]
 
-        self._var.set(text + file)
-
-class NBinder(object):
-    """ Supplementary class to manage widget bindings"""
-
-    # Tkinter bind/unbind seems not working
-    # This variable will keep all bindings set before
-    __bindings = dict()
-
-    def __init__(self):
-        self.bnd_ref = dict()
-
-    def bind(self, widget, event, callback, add = ''):
-        """Bind a callback to widget event and keep the reference"""
-
-        # Store binding in this instance
-        key = str(widget.winfo_id()) + '__' + str(event)
-        bnd_id = widget.bind(event, callback, add)
-        self.bnd_ref[key] = [bnd_id, widget, event]
-
-        # Store global binding
-        ref = []
-        if key in NBinder.__bindings: ref = NBinder.__bindings[key]
-        ref.append([self, widget, event, callback])
-        NBinder.__bindings[key] = ref
-
-    def unbind(self, widget, event):
-        """Unbind all callbacks for given event from a widget"""
-
-        key = str(widget.winfo_id()) + '__' + str(event)
-        if key in self.bnd_ref:
-           # Unbind from this instance
-           bnd_id = self.bnd_ref[key][0]
-           widget.unbind(event, bnd_id)
-           del self.bnd_ref[key]
-
-           # Unbind/rebind globally
-           NBinder.__unbind(self, key)
-
-    def unbind_all(self):
-        """Unbind all callbacks"""
-
-        # Unbind all in this instance
-        for key in self.bnd_ref.keys():
-            bnd_id, widget, event = self.bnd_ref[key]
-            widget.unbind(event, bnd_id)
-            NBinder.__unbind(self, key)
-
-        self.bnd_ref = dict()
-
-    @staticmethod
-    def __unbind(owner, key):
-        if not key in NBinder.__bindings:
-            return
-        refs = NBinder.__bindings[key]
-        for i in range(len(refs)):
-            w = refs[i][0]
-            if w == owner:
-               # This is my binding, remove it and rebind everything remaining
-               refs.pop(i)
-               for ref2 in refs:
-                   w2, widget, event, callback = ref2
-                   widget.bind(event, callback)
-
+        self.__var.set(text + " " + file)
 
 
 # Image panel class
@@ -327,6 +339,7 @@ class ImagePanel(tk.Frame):
            Keyworded parameters:
                caption          Panel caption
                btn_params       Params for ImgButtons: tag, initial state, callback function, (optional) tooltip
+               btn_align        Alignment of ImgButtons (default is tk.RIGHT)
                image            OpenCv or PhotoImage. If none provided, an empty frame is created (default is None)
                frame_callback   Callback for panel mouse click (default is None)
                mode             Either 'clip' (default) or 'fit'.
@@ -342,6 +355,7 @@ class ImagePanel(tk.Frame):
         """
         # will be assign after frame init
         self.__image = None
+        self.__imgtk = None
         self.__src_image = None
         self.__scale = [1.0, 1.0]
         self.__offset = [0, 0]
@@ -351,6 +365,7 @@ class ImagePanel(tk.Frame):
         img = kwargs.pop('image', None)
         self.__caption = kwargs.pop('caption', '')
         btn_params = kwargs.pop('btn_params', None)
+        btn_align = kwargs.pop('btn_align', tk.RIGHT)
         frame_callback = kwargs.pop('frame_callback', None)
         f_sb = kwargs.pop('scrollbars', (False, False))
         if not type(f_sb) is tuple: f_sb = (f_sb, f_sb)
@@ -371,11 +386,13 @@ class ImagePanel(tk.Frame):
         internalPanel.pack(fill = tk.BOTH, expand = True)
 
         # Header panel and label
-        headerPanel = tk.Frame(internalPanel)
-        headerPanel.pack(side = tk.TOP, fill = tk.X, expand = True)
+        if self.__caption != "" or not btn_params is None:
+            headerPanel = tk.Frame(internalPanel)
+            headerPanel.pack(side = tk.TOP, fill = tk.X, expand = True)
 
-        self.__header = tk.Label(headerPanel, text = self.__caption)
-        self.__header.pack(side = tk.LEFT, fill = tk.X, expand = True)
+        if self.__caption != "":
+            self.__header = tk.Label(headerPanel, text = self.__caption)
+            self.__header.pack(side = tk.LEFT, fill = tk.X, expand = True)
 
         # Buttons
         self.__buttons = dict()
@@ -387,7 +404,7 @@ class ImagePanel(tk.Frame):
                     callback = b[2],
                     tooltip = b[3] if len(b) > 3 else None)
                 self.__buttons[b[0]] = btn
-                btn.pack(side = tk.RIGHT, padx = 2, pady = 2)
+                btn.pack(side = btn_align, padx = 2, pady = 2)
 
         # Canvas
         canvasPanel = tk.Frame(internalPanel)
@@ -575,6 +592,7 @@ class ImagePanel(tk.Frame):
             self.__image = image
             self.__image_shape = image.shape
             self.__resize()
+            self.__imgtk = img_to_imgtk(self.__image)
 
     def __resize(self, size = None, scale = None):
         """Internal function to resize image"""
@@ -594,8 +612,8 @@ class ImagePanel(tk.Frame):
                           f_upsize = False,
                           f_center = True,
                           pad_color = (r, g, b))
-            #print('{} -> {} x {} + {}'.format(orig_shape, self.__image.shape, self.__scale, self.__offset))
             self.__imgtk = img_to_imgtk(self.__image)
+            #print('{} -> {} x {} + {}'.format(orig_shape, self.__image.shape, self.__scale, self.__offset))
 
     def __update_image(self):
         """Internal function to update image"""
@@ -1031,6 +1049,8 @@ class ImageMask(object):
     def __on_panel_resize(self, panel, old_scale, new_scale):
         """Callback for panel resize (internal function)"""
         #print("{} -> {}".format(old_scale, new_scale))
+        if self.__mask is None:
+            return
 
         m = self.__mask.copy()
         m[0] = m[0] / old_scale[0] * new_scale[0]
