@@ -19,6 +19,14 @@ import cv2
 import numpy as np
 import logging
 
+# Internal function: calculate board spacing
+def board_spacing(edges, size):
+    """Calculate board spacing"""
+    space_x = (edges[1][0] - edges[0][0]) / float(size-1)
+    space_y = (edges[1][1] - edges[0][1]) / float(size-1)
+    return space_x, space_y
+
+
 # Find stones on a board
 # Takes an image, recognition param dictionary, results dictionary and
 # kind of stones been processed ('B' or 'W')
@@ -240,7 +248,8 @@ def find_board(img, params, res):
            params      Recognition parameters (see grdef.DEF_GR_PARAMS)
            res         Results dictionary (see grdef.GR_xxx)
        Returns
-           Board edges: tuple ([x1,y1], [x2,y2])
+           edges list of lists [[x1,y1], [x2,y2]]
+           size integer
     """
 
     MIN_LINE_SPACE = 10
@@ -284,10 +293,6 @@ def find_board(img, params, res):
         else:
            return np.unique(np.array(l), axis = 0)
 
-    def draw_rect(img, p1, p2):
-        if p1[0] != p2[0] and p1[1] != p2[1]:
-           cv2.rectangle(img, p1, p2, 0, -1)
-
     # Prepare gray image
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     res[GR_IMG_GRAY] = gray
@@ -299,26 +304,11 @@ def find_board(img, params, res):
     edges = cv2.Canny(gray, n_minval, n_maxval, apertureSize = n_apsize)
     res[GR_IMG_EDGES] = edges
 
-    # Eliminate area defined by area mask. If mask is not provided, use default gap
-##    m = None
-##    if 'AREA_MASK' in params:
-##       m = params['AREA_MASK']
-##    if m is None or not type(m) is list:
-##       d = int(MIN_EDGE_DIST/2)
-##       m = [d, d, edges.shape[CV_WIDTH]-d, edges.shape[CV_HEIGTH]-d]
-##
-##    w = edges.shape[CV_WIDTH]
-##    h = edges.shape[CV_HEIGTH]
-##    draw_rect(edges, (0,0),       (m[0], h))
-##    draw_rect(edges, (m[0],0),    (w, m[1]))
-##    draw_rect(edges, (m[2],0),    (w, h))
-##    draw_rect(edges, (m[0],m[3]), (m[2], h))
-
     # Run HoughLinesP, if its parameters are set
     # HoughLinesP detects line segments and may split a single line to multiple segments
     # The goal of running it is to remove small lines (less than minlen) which are,
     # for example, labels on board positions
-    # If HoughLines is to run, its results will be used for further recognition as imput
+    # If HoughLines is to run, its results will be used for further recognition as input
     img_detect = edges
     n_rho = params['HL_RHO']
     n_theta = params['HL_THETA'] * np.pi / 180
@@ -362,17 +352,17 @@ def find_board(img, params, res):
     # Detect edges
     if len(lines_h) == 0:
        logging.error("Cannot find horizontal lines, check params")
-       return None
+       return None, None
     if len(lines_v) == 0:
        logging.error("Cannot find vertical lines, check params")
-       return None
+       return None, None
 
     top_left = [int(lines_v[0][0][0]), int(lines_h[0][0][1])]
-    bottom_right = [int(lines_v[-1][0][0]), int(lines_h[-1][0][1])]
-    edges = (top_left, bottom_right)
+    bottom_right = [int(lines_v[-1][0][0])+1, int(lines_h[-1][0][1])+1]
+    edges = [top_left, bottom_right]
 
     res[GR_EDGES] = edges
-    logging.info("Edges within board area: {}".format(edges))
+    logging.info("Board edges: {}".format(edges))
 
     # Draw a lines grid over gray image for debugging
     line_img = img1_to_img3(gray)
@@ -410,13 +400,44 @@ def find_board(img, params, res):
     space_x, space_y = board_spacing(edges, size)
     if space_x == 0 or space_y == 0:
        logging.error("Cannot determine spacing, check params")
-       return None
+       return None, None
 
-    spacing = (space_x, space_y)
+    spacing = [space_x, space_y]
     res[GR_SPACING] = spacing
     logging.info("Detected spacing: {}".format(spacing))
 
-    return edges
+    return edges, size
+
+# Define board as provided in parameters
+def get_board_from_params(params, res):
+    """Transforms board edges and size provided in params to result and calculate spacing"""
+
+    if params.get('BOARD_EDGES') is None:
+       raise Exception('Board edges parameter not found')
+
+    edges = params['BOARD_EDGES']
+
+    res[GR_EDGES] = edges
+    logging.info("Predefined board edges: {}".format(edges))
+
+    if params.get('BOARD_SIZE') is not None:
+       size = params['BOARD_SIZE']
+       logging.info("Predefined board size: {}".format(size))
+    else:
+       size = DEF_BOARD_SIZE
+       logging.warning("Board size not set while board edges is, using default board size")
+    res[GR_BOARD_SIZE] = size
+
+    space_x, space_y = board_spacing(edges, size)
+    if space_x == 0 or space_y == 0:
+       logging.error("Cannot determine spacing, check params")
+       return None, None
+
+    spacing = [space_x, space_y]
+    res[GR_SPACING] = spacing
+    logging.info("Detected spacing: {}".format(spacing))
+
+    return edges, size
 
 # Converts stone coordinates to stone positions
 # Takes an array of coordinates created by find_stones and results dictionary
@@ -479,10 +500,53 @@ def find_coord(x, y, stones):
 
     return None
 
+# Internal function: apply area mask
+def apply_area_mask(img, params):
+    """Eliminate area defined by area mask. If mask is not provided, use default gap"""
+    m = None
+    if 'AREA_MASK' in params:
+       m = params['AREA_MASK']
+    if m is None or not type(m) is list:
+        # Remove small area which might contain image borders
+        d = MIN_EDGE_DIST
+        m = [d, d, img.shape[CV_WIDTH]-d, img.shape[CV_HEIGTH]-d]
+
+    return get_image_area(img, m), [m[0], m[1]]
+
+# Internal function: move edges to specified offset
+def offset_edges(edges, offset):
+    if edges is None: return None
+    edges[0][0] += offset[0]
+    edges[0][1] += offset[1]
+    edges[1][0] += offset[0]
+    edges[1][1] += offset[1]
+    return edges
+
+# Internal function: move stones to specified offset
+def offset_stones(stones, offset):
+    if stones is None: return None
+    for st in stones:
+        st[GR_X] += offset[0]
+        st[GR_Y] += offset[1]
+    return stones
+
+
+# Internal function: duplicate elimination
+def eliminate_duplicates(bs, ws):
+    if ws is None or bs is None:
+        return bs, ws
+
+    # Priority for white stones
+    for st in ws:
+        px = st[GR_A]
+        py = st[GR_B]
+        for i in range(len(bs)):
+            if px == bs[i,GR_A] and py == bs[i, GR_B]:
+                bs = np.delete(bs, i, axis = 0)
+                break;
+    return bs, ws
+
 # Board image processing main function
-# Takes board image and recognition params
-# Returns a dictionary containing recognition results
-# Dict keys are defined in grdef module
 def process_img(img, params):
     """Main image processing function.
 
@@ -491,48 +555,6 @@ def process_img(img, params):
         params Recognition parameters (see grdef.DEF_GR_PARAMS)
 
     Returns results dictionary (see grdef.GR_xxx)"""
-
-    # Internal function: apply area mask
-    def apply_area_mask(img, params):
-        # Eliminate area defined by area mask. If mask is not provided, use default gap
-        m = None
-        if 'AREA_MASK' in params:
-           m = params['AREA_MASK']
-        if m is None or not type(m) is list:
-           d = MIN_EDGE_DIST
-           m = [d, d, img.shape[CV_WIDTH]-d, img.shape[CV_HEIGTH]-d]
-
-        return get_image_area(img, m), [m[0], m[1]]
-
-    # Internal function: duplicate elimination
-    def eliminate_duplicates(bs, ws):
-        if ws is None or bs is None:
-            return bs, ws
-
-        # Priority for white stones
-        for st in ws:
-            px = st[GR_A]
-            py = st[GR_B]
-            for i in range(len(bs)):
-                if px == bs[i,GR_A] and py == bs[i, GR_B]:
-                    bs = np.delete(bs, i, axis = 0)
-                    break;
-        return bs, ws
-
-    def offset_edges(edges, offset):
-        if edges is None: return None
-        edges[0][0] += offset[0]
-        edges[0][1] += offset[1]
-        edges[1][0] += offset[0]
-        edges[1][1] += offset[1]
-        return edges
-
-    def offset_stones(stones, offset):
-        if stones is None: return None
-        for st in stones:
-            st[GR_X] += offset[0]
-            st[GR_Y] += offset[1]
-        return stones
 
     res = dict()
     res[GR_IMAGE_SIZE] = img.shape[:2]
@@ -543,10 +565,14 @@ def process_img(img, params):
         img2, offset = apply_area_mask(img, params)
 
         # Find board edges, spacing, size
-        board_edges = find_board(img2, params, res)
-        if board_edges is None:
-           logging.error('Edges not found, processing stopped')
-           return None
+        if params.get('BOARD_EDGES') is None:
+            # Parameter not set, detecting
+            board_edges, board_size = find_board(img2, params, res)
+            if board_edges is None:
+               logging.error('Edges could not be found, processing stopped')
+               return None
+        else:
+            board_edges, board_size = get_board_from_params(params, res)
 
         # Find stones
         black_stones = find_stones(img2, params, res, 'B')
@@ -569,6 +595,37 @@ def process_img(img, params):
     res[GR_STONES_W] = white_stones
 
     return res
+
+# Detect board parameters
+def detect_board(img, params):
+    """Detect board edges, size and spacing.
+    BOARD_EDGES and BOARD_SIZE defined in params are ignored.
+
+    Parameters:
+        img    An image to process
+        params Recognition parameters (see grdef.DEF_GR_PARAMS)
+
+    Returns:
+        board_edges A tuple of tuples ((x1,y1)-(x2,y2))
+        board_size  Integer
+    """
+
+    try:
+        # Apply area mask
+        img2, offset = apply_area_mask(img, params)
+
+        # Detecting
+        res = dict()
+        board_edges, board_size = find_board(img2, params, res)
+
+        # Apply offset
+        board_edges = offset_edges(board_edges, offset)
+        return board_edges, board_size
+
+    except:
+        logging.exception("Processing error")
+        raise
+
 
 # Creates a board image for given image shape and board size
 # If recognition results are provided, plot them on the board

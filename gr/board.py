@@ -9,7 +9,7 @@
 # Licence:     MIT
 #-------------------------------------------------------------------------------
 from .grdef import *
-from .gr import process_img, generate_board, find_coord
+from .gr import process_img, detect_board, generate_board, find_coord
 from .utils import gres_to_jgf, jgf_to_gres, resize2
 from .dataset import GrDataset
 
@@ -241,6 +241,17 @@ class GrBoard(object):
 
         return file
 
+    def detect_edges(self):
+        """Runs edges and size detection and stores result in params overriding
+        BOARD_SIZE and BOARD_EDGES keys. Returns detection results."""
+        if self._img is None or self._gen_board:
+           return None, None
+        else:
+           edges, size = detect_board(self._img, self._params)
+           self._params['BOARD_EDGES'] = edges
+           self._params['BOARD_SIZE'] = size
+           return edges, size
+
     def process(self):
         """Perform recognition of board image"""
         if self._img is None or self._gen_board:
@@ -281,20 +292,10 @@ class GrBoard(object):
         img = generate_board(shape = self._img.shape, res = r, f_show_det = f_det)
         return img
 
-    def find_stone(self, coord = None, pos = None):
-        if not coord is None:
-            c = None
-            pt = find_coord(coord[0], coord[1], self.black_stones)
-            if not pt is None:
-                c = GR_STONES_B
-            else:
-                pt = find_coord(coord[0], coord[1], self.white_stones)
-                if not pt is None: c = GR_STONES_W
-            return pt, c
-        else:
-            return None, None
+    def resize_board(self, max_size = None, scale = None):
+        """Resize board image and stone coordinations to new size or scale.
+        See gr.utils.resize3() for parameters info"""
 
-    def resize_board(self, max_size):
         def resize_stones(stones, scale):
             ret_stones = []
             for st in stones:
@@ -329,27 +330,56 @@ class GrBoard(object):
                 self._params[key] = p[key]
 
     @property
-    def area_mask(self):
-        """Board recognition area mask"""
-        if 'AREA_MASK' in self._params and type(self._params['AREA_MASK']) is list:
-           return self._params['AREA_MASK']
-        else:
-           return None
+    def param_area_mask(self):
+        """Board recognition area rectangle - tuple of tuples ((x1,y1),(x2,y2)).
+        Image is clipped to this rectangle during processing.
+        """
+        p = self._params.get('AREA_MASK')
+        return list(p) if p is not None else None
 
-    @area_mask.setter
-    def area_mask(self, mask):
-        self._params['AREA_MASK'] = mask
+    @param_area_mask.setter
+    def param_area_mask(self, mask):
+        # ImageMask uses flattened list, conversion required
+        m = np.array(mask).reshape((2,2)).tolist()
+        self._params['AREA_MASK'] = m
 
     @property
-    def transform_rect(self):
-        """Board image transformation rectangle"""
-        if 'TRANSFORM' in self._params and type(self._params['TRANSFORM']) is list:
-           return self._params['TRANSFORM']
-        else:
-           return None
+    def param_board_edges(self):
+        """Board edges rectangle - tuple of tuples ((x1,y1),(x2,y2)).
+        Defines corners of actual board (where stones are placed upon).
+        If set, automatic edges/spacing detection is skipped if favour for this parameter.
+        Note that param_board_size should also be set in parameters to proper board recognition.
+        Use detect_edges() to define edges and board size before processing.
+        """
+        p = self._params.get('BOARD_EDGES')
+        return list(p) if p is not None else None
 
-    @transform_rect.setter
-    def transform_rect(self, rect):
+    @param_board_edges.setter
+    def param_board_edges(self, edges):
+        # ImageMask uses flattened list, conversion required
+        m = np.array(edges).reshape((2,2)).tolist()
+        self._params['BOARD_EDGES'] = m
+
+    @property
+    def param_board_size(self):
+        """Board size to be used for image recognition.
+        Note that param_area_size should also be set in parameters to proper board recognition.
+        Use detect_edges() to define edges and board size before processing.
+        """
+        return self._params.get('BOARD_SIZE')
+
+    @param_board_size.setter
+    def param_board_size(self, size):
+        self._params['BOARD_SIZE'] = int(size)
+
+    @property
+    def param_transform_rect(self):
+        """Board image transformation rectangle - tuple of tuples ((x1,y1),(x2,y2))"""
+        p = self._params.get('TRANSFORM')
+        return list(p) if p is not None else None
+
+    @param_transform_rect.setter
+    def param_transform_rect(self, rect):
         self._params['TRANSFORM'] = rect
 
     @property
@@ -408,8 +438,7 @@ class GrBoard(object):
 
     def find_stone(self, x, y):
         """Tries to find a stone at given coordinates
-            If stone is found, returns position and B/W flag, otherwise returns None
-        """
+            If found, returns the stone and B/W flag, otherwise returns None"""
         if self._res is None:
             return None, None
 
@@ -463,7 +492,7 @@ class GrBoard(object):
     def board_size(self):
         """Board size"""
         if self._res is None:
-            return None
+            return DEF_BOARD_SIZE
         else:
             return self._res[GR_BOARD_SIZE]
 
@@ -475,9 +504,12 @@ class GrBoard(object):
            self._params['TRANSFORM'] = transform_rect
 
     def reset_image(self):
+        """Revert image to original after a transformation"""
         self._img = self._src_img
         self._params['TRANSFORM'] = None
 
     @property
     def can_reset_image(self):
+        """Returns True if a transformation was applied to the image.
+        Use reset_image() to revert to original image"""
         return not self._img is None and np.any(self._img != self._src_img)

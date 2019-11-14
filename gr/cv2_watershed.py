@@ -80,8 +80,8 @@ def apply_watershed(gray, stones, n_thresh, f_bw, n_morph = 0, f_debug = False):
                       break
                if f: break
            if not f:
-              # No white found. Ignore the stone, but save an error
-              logging.error('WATERSHED: Cannot find peak for stone ({},{},{})'.format(x,y,r))
+              # No white found. Ignore the stone, but save a warning
+              logging.warning('WATERSHED: Cannot find peak for stone ({},{},{})'.format(x,y,r))
 
     if f_debug:
        m = np.zeros((thresh.shape[0],thresh.shape[1],3), dtype = np.uint8)

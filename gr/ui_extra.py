@@ -17,7 +17,8 @@ import cv2
 from imutils.perspective import four_point_transform
 
 from .grdef import *
-from .utils import img_to_imgtk, resize3, board_spacing, is_on_w
+from .utils import img_to_imgtk, resize3, is_on_w
+from .gr import board_spacing
 
 import sys
 if sys.version_info[0] < 3:
@@ -344,8 +345,8 @@ class ImagePanel(tk.Frame):
                frame_callback   Callback for panel mouse click (default is None)
                mode             Either 'clip' (default) or 'fit'.
                                 If 'clip', the image is statically scaled to max_size and clipped to parent frame.
-                                Scale can be changed by 'scale' property. If image is scaled down, panning is allowed.
-                                If 'fit, the image is scaled dynamically (resp.min_size and max_size). Parent frame
+                                Scale can be changed by 'scale' property.
+                                If 'fit, the image is scaled dynamically (respecting min_size and max_size). Parent frame
                                 should have been aligned with pack(fill="both", expand = True). No scaling/panning is allowed.
                max_size         Maximum image size. If image is larger, it will be resized down to this size (default 0).
                min_size         Minimum image size when image is dynamically resized
@@ -609,7 +610,7 @@ class ImagePanel(tk.Frame):
             self.__image, self.__scale, self.__offset = resize3(self.__src_image,
                           max_size = size,
                           scale = scale,
-                          f_upsize = False,
+                          f_upsize = True,
                           f_center = True,
                           pad_color = (r, g, b))
             self.__imgtk = img_to_imgtk(self.__image)
@@ -780,7 +781,8 @@ class ImageMask(object):
         if mask is None:
            self.__mask = None
         else:
-           m = mask.copy()
+           # GrBoard() uses [[x1,y1],[x2,y2]] format, flattening required
+           m = np.array(mask).flatten().tolist()
            m[0] = int(m[0] * self.__panel.scale[0])
            m[1] = int(m[1] * self.__panel.scale[1])
            m[2] = int(m[2] * self.__panel.scale[0])

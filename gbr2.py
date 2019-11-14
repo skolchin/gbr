@@ -59,8 +59,8 @@ class GbrGUI2(object):
             callback = self.transform_callback)
 
         self.buttons['area'] = ImgButton(toolbarPanel,
-            tag = "area", tooltip = "Set board area", disabled = True,
-            callback = self.set_area_callback)
+            tag = "area", tooltip = "Define board", disabled = True,
+            callback = self.set_grid_callback)
 
         self.buttons['params'] = ImgButton(toolbarPanel,
             tag = "params", tooltip = "Detection params", disabled = True,
@@ -91,13 +91,15 @@ class GbrGUI2(object):
             max_size = 500,
             min_size = 300,
             frame_callback = self.mouse_click_callback)
-        self.imagePanel.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+        self.imagePanel.pack(side = tk.TOP, fill = tk.BOTH, expand = True,
+            padx = 2, pady = 2)
 
         # Image mask
         self.imageMask = ImageMask(self.imagePanel,
             allow_change = True,
             show_mask = False,
-            mode = 'grid')
+            mode = 'grid',
+            mask_callback = self.mask_callback)
 
         # Image transformer
         self.imageTransform = ImageTransform(self.imagePanel)
@@ -117,6 +119,7 @@ class GbrGUI2(object):
     # Callbacks
     #
     def open_image_callback(self, event, tag, state):
+        """Open button click"""
         fn = filedialog.askopenfilename(title = "Select file",
            filetypes = (("PNG files","*.png"),("JPEG files","*.jpg"),("All files","*.*")))
         if fn != "":
@@ -124,44 +127,50 @@ class GbrGUI2(object):
         return False
 
     def transform_callback(self, event, tag, state):
+        """Transform button click"""
         return False
 
-    def set_area_callback(self, event, tag, state):
+    def set_grid_callback(self, event, tag, state):
+        """Board grid button click"""
         if state:
+            self.detect_edges()
             self.imageMask.show()
         else:
             self.imageMask.hide()
         return True
 
     def set_params_callback(self, event, tag, state):
+        """Detection params button click"""
         return False
 
     def detect_callback(self, event, tag, state):
+        """Detect button click"""
         if not self.board.is_gen_board:
             self.detect_stones()
         return False
 
     def save_sgf_callback(self, event, tag, state):
-        if not self.board.is_gen_board:
-            self.detect_stones()
+        """SGF save button click"""
         return False
 
     def reset_callback(self, event, tag, state):
+        """Open button click"""
         return False
 
-    def mouse_move_callback(self, event):
-        x,y = self.root.winfo_pointerxy()
-        widget = self.root.winfo_containing(x, y)
-        if widget == self.imagePanel.canvas and not self.board.results is None:
-            x, y = self.imagePanel.frame2image((event.x, event.y))
-            stone, bw = self.board.find_stone(x, y)
-            if not stone is None:
-                bw = "Black" if bw == "B" else "White"
-                self.statusBar.set("{} {}".format(bw, format_stone_pos(stone)))
-            else:
-                self.statusBar.set("")
+##    def mouse_move_callback(self, event):
+##        x,y = self.root.winfo_pointerxy()
+##        widget = self.root.winfo_containing(x, y)
+##        if widget == self.imagePanel.canvas and not self.board.results is None:
+##            x, y = self.imagePanel.frame2image((event.x, event.y))
+##            stone, bw = self.board.find_stone(x, y)
+##            if not stone is None:
+##                bw = "Black" if bw == "B" else "White"
+##                self.statusBar.set("{} {}".format(bw, format_stone_pos(stone)))
+##            else:
+##                self.statusBar.set("")
 
     def mouse_click_callback(self, event):
+        """Board image mouse click"""
         if not self.board.is_gen_board:
             x, y = self.imagePanel.frame2image((event.x, event.y))
             stone, bw = self.board.find_stone(x, y)
@@ -172,7 +181,13 @@ class GbrGUI2(object):
                 self.statusBar.set("")
 
     def status_click_callback(self, event):
+        """Status bar mouse click"""
         GrLog.show(self.root)
+
+    def mask_callback(self, mask):
+        """Mask resizing finished"""
+        if not self.board.is_gen_board:
+           self.board.param_board_edges = mask.scaled_mask
 
     #
     # Core functions
@@ -189,7 +204,7 @@ class GbrGUI2(object):
 
             # Display loaded image and mask
             self.imagePanel.set_image(self.board.image)
-            self.imageMask.scaled_mask = self.board.area_mask
+            self.imageMask.scaled_mask = self.board.param_board_edges
 
             # Reset button states
             self.buttons['reset'].disabled = not self.board.can_reset_image
@@ -198,13 +213,33 @@ class GbrGUI2(object):
 
             # Update status
             if GrLog.numErrors() > 0:
-                self.statusBar.set("Errors during file loading, click here to see the log")
+                self.statusBar.set("Errors during file loading, click here for the log")
             else:
                 self.statusBar.set_file("File loaded", self.board.image_file)
 
         except:
             logging.exception("Error")
-            self.statusBar.set("Errors during file loading, click here to see the log")
+            self.statusBar.set("Errors during file loading, click here for the log")
+
+    def detect_edges(self, f_force = False):
+        if not self.board.param_board_edges is None and not f_force:
+           return
+
+        GrLog.clear()
+        try:
+            self.board.detect_edges()
+            if GrLog.numErrors() > 0:
+               self.statusBar.set("Automatic board detection failed, click here for the log")
+            else:
+                self.statusBar.set("Board size detected as {s}x{s}".format(
+                                        s = self.board.board_size))
+                self.imageMask.scaled_mask = self.board.param_board_edges
+                self.imageMask.size = self.board.board_size
+
+        except:
+            logging.exception("Error")
+            self.statusBar.set("Errors during grid detection, click here for the log")
+
 
 
     def detect_stones(self):
@@ -215,14 +250,16 @@ class GbrGUI2(object):
 
             # Update status
             if GrLog.numErrors() > 0:
-                self.statusBar.set("Errors during processing, click here to see the log")
+                self.statusBar.set("Errors during processing, click here for the log")
             else:
-                self.statusBar.set("Detected: {} black, {} white".format(
-                    len(self.board.black_stones), len(self.board.white_stones)))
+                self.statusBar.set("{b} black, {w} white stones on {s}x{s} board detected".format(
+                    b = len(self.board.black_stones),
+                    w = len(self.board.white_stones),
+                    s = self.board.board_size))
 
         except:
             logging.exception("Error")
-            self.statusBar.set("Errors during file loading, click here to see the log")
+            self.statusBar.set("Errors during processing, click here for the log")
 
     #
     # Utility functions

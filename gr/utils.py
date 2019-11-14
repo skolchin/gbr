@@ -259,12 +259,6 @@ def resize3(img, max_size = None, scale = None, f_upsize = True, f_center = Fals
            im = cv2.resize(img, dsize = None, fx = im_scale, fy = im_scale)
            return im, [im_scale, im_scale], [0, 0]
 
-def board_spacing(edges, size):
-    """ Calculate board spacing"""
-    space_x = (edges[1][0] - edges[0][0]) / float(size-1)
-    space_y = (edges[1][1] - edges[0][1]) / float(size-1)
-    return space_x, space_y
-
 def get_image_area(img, r):
     """Get part of an image defined by rectangular area.
 

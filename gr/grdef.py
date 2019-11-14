@@ -23,11 +23,11 @@ MAX_BOARD_SIZE = 21               # maximum board size
 CV_HEIGTH = 0                     # index of height dimension of OpenCv image
 CV_WIDTH = 1                      # index of width dimension of OpenCv image
 CV_CHANNEL = 2                    # index of channel dimension of OpenCv image
-GR_X = 0                          # index of X coordinate dimension in stones array
-GR_Y = 1                          # index of Y coordinate dimension in stones array
-GR_A = 2                          # index of X board position dimension in stones array
-GR_B = 3                          # index of Y board position dimension in stones array
-GR_R = 4                          # index of stone radius dimension in stones array
+GR_X = 0                          # index of X coordinate dimension
+GR_Y = 1                          # index of Y coordinate dimension
+GR_A = 2                          # index of horizontal board position dimension
+GR_B = 3                          # index of vertical board position dimension
+GR_R = 4                          # index of stone radius dimension
 GR_FROM = 0                       # index of line start in lines array
 GR_TO = 1                         # index of line end in lines array
 
@@ -67,10 +67,12 @@ DEF_GR_PARAMS = {
     "PYRAMID_W": 0,
     'AREA_MASK': None,
     'TRANSFORM': None,
+    'BOARD_EDGES': None,
+    'BOARD_SIZE': None,
     'LUM_EQ': 0
 }
 
-# Parameter properties: min, max, group
+# Parameter properties: min, max, group, title
 # Parameters with group is not None can be changed through UI
 GR_PARAMS_PROP = {
     "CANNY_MINVAL": (1, 255, None),
@@ -112,7 +114,9 @@ GR_PARAMS_PROP = {
     "PYRAMID_W": (0, 1, "White stones detection"),
 
     'AREA_MASK': (0,0,None),
-    'TRANSFORM': (0,0,None)
+    'TRANSFORM': (0,0,None),
+    'BOARD_EDGES': (0,0,None),
+    'BOARD_SIZE': (0,0,None)
 }
 
 # Analysis results
