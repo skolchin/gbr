@@ -45,9 +45,10 @@ class GrLogWindow(simpledialog.Dialog):
         sbb = tk.Scrollbar(master, orient=tk.HORIZONTAL)
         sbb.pack(side=tk.BOTTOM, fill=tk.X)
 
-        max_len = min(len(max(self._log, key = lambda f: len(f))),50)
+        max_len = min(len(max(self._log, key = lambda f: len(f))), 60)
 
-        self.lbox = tk.Listbox(master, yscrollcommand=sbr.set, xscrollcommand=sbb.set, width=max_len)
+        self.lbox = tk.Listbox(master, yscrollcommand=sbr.set, xscrollcommand=sbb.set,
+            width=max_len)
         self.lbox.insert(tk.END, *self._log)
         self.lbox.pack(fill = tk.BOTH, expand = True, padx = 5, pady = 5)
 
@@ -65,7 +66,7 @@ class GrLogWindow(simpledialog.Dialog):
         self.bind("<Return>", self.ok)
         self.bind("<Escape>", self.ok)
 
-        box.pack(side = tk.TOP, fill = tk.Y, expand = True)
+        box.pack(side = tk.BOTTOM, fill = tk.Y, expand = False)
         self.bodyMaster.pack_configure(fill = tk.BOTH, expand = True)
 
 
