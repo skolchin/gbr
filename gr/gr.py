@@ -466,6 +466,9 @@ def convert_xy(coord, res):
 # Takes X and Y in image coordinates and a list of stones created by convert_xy
 def find_coord(x, y, stones):
     """Returns index of a stone at given (X,Y) or None"""
+    if stones is None:
+        return None
+
     for i in stones:
         min_x = max(1, int(i[GR_X]) - int(i[GR_R]))
         min_y = max(1, int(i[GR_Y]) - int(i[GR_R]))
