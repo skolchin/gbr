@@ -72,7 +72,7 @@ DEF_GR_PARAMS = {
     'LUM_EQ': 0
 }
 
-# Parameter properties: min, max, group, title
+# Parameter properties: min, max, group, title, order
 # Parameters with group is not None can be changed through UI
 GR_PARAMS_PROP = {
     "CANNY_MINVAL": (1, 255, None),
@@ -80,43 +80,43 @@ GR_PARAMS_PROP = {
     "CANNY_APERTURE": (3, 7, None),
 
 #    "HL_RHO": (1, 5, "Board recognition"),
-    "HL_THETA": (1, 90, "Board recognition"),
-    "HL_THRESHOLD": (0, 255, "Board recognition"),
-    "HL_MINLEN": (0, 255, "Board recognition"),
+    "HL_THETA": (1, 90, None),
+    "HL_THRESHOLD": (0, 255, None),
+    "HL_MINLEN": (0, 255, None),
 #    "HL_RHO2": (1, 5, "Board recognition"),
-    "HL_THETA2": (1, 90, "Board recognition"),
-    "HL_THRESHOLD2": (1, 255, "Board recognition"),
-    "LUM_EQ": (0, 1, "Board recognition"),
+    "BOARD_SIZE": (9, 21, " Board recognition", "Board size", 1),
+    "HL_THETA2": (1, 90, " Board recognition", "Theta", 2),
+    "HL_THRESHOLD2": (1, 255, " Board recognition", "Threshold", 3),
+    "LUM_EQ": (0, 1, " Board recognition", "Apply luminosity filter", 4),
 
     "HC_MINDIST": (1, 30, None),
     "HC_MAXRADIUS": (1, 40, None),
 
-    "HC_SENSITIVITY_B": (1, 40, "Black stones detection"),
-    "HC_MASK_B": (1, 10, "Black stones detection"),
-    "BLUR_MASK_B": (0, 10, "Black stones detection"),
-    "STONES_THRESHOLD_B": (1, 255, "Black stones detection"),
-    "STONES_DILATE_B": (0, 10, "Black stones detection"),
-    "STONES_ERODE_B": (0, 10, "Black stones detection"),
-    "STONES_MAXVAL_B": (1, 255, None),
-    "WATERSHED_B": (0, 255, "Black stones detection"),
-    "WS_MORPH_B": (0, 10, "Black stones detection"),
-    "PYRAMID_B": (0, 1, "Black stones detection"),
+    "STONES_THRESHOLD_B": (1, 255, "Black stones detection", "Threshold", 1),
+    "HC_SENSITIVITY_B": (1, 40, "Black stones detection", "Sensitivity", 2),
+    "HC_MASK_B": (1, 10, "Black stones detection", "Mask granularity", 3),
+    "BLUR_MASK_B": (0, 10, "Black stones detection", "Blurring", 4),
+    "STONES_DILATE_B": (0, 10, "Black stones detection", "Dilation", 5),
+    "STONES_ERODE_B": (0, 10, "Black stones detection", "Erosion", 6),
+    "STONES_MAXVAL_B": (1, 255, None, ""),
+    "WATERSHED_B": (0, 255, "Black stones detection", "Watershed", 7),
+    "WS_MORPH_B": (0, 10, "Black stones detection", "Watershed morphing", 8),
+    "PYRAMID_B": (0, 1, "Black stones detection", "Apply pyramid filter", 9),
 
-    "BLUR_MASK_W": (0, 10, "White stones detection"),
-    "HC_MASK_W": (1, 10, "White stones detection"),
-    "HC_SENSITIVITY_W": (1, 40, "White stones detection"),
-    "STONES_THRESHOLD_W": (1, 255, "White stones detection"),
-    "STONES_DILATE_W": (0, 10, "White stones detection"),
-    "STONES_ERODE_W": (0, 10, "White stones detection"),
+    "STONES_THRESHOLD_W": (1, 255, "White stones detection", "Threshold", 1),
+    "HC_SENSITIVITY_W": (1, 40, "White stones detection", "Sensitivity", 2),
+    "HC_MASK_W": (1, 10, "White stones detection", "Mask granularity", 3),
+    "BLUR_MASK_W": (0, 10, "White stones detection", "Blurring", 4),
+    "STONES_DILATE_W": (0, 10, "White stones detection", "Dilation", 5),
+    "STONES_ERODE_W": (0, 10, "White stones detection", "Erosion", 6),
     "STONES_MAXVAL_W": (1, 255, None),
-    "WATERSHED_W": (0, 255, "White stones detection"),
-    "WS_MORPH_W": (0, 10, "White stones detection"),
-    "PYRAMID_W": (0, 1, "White stones detection"),
+    "WATERSHED_W": (0, 255, "White stones detection", "Watershed"),
+    "WS_MORPH_W": (0, 10, "White stones detection", "Watershed morphing", 7),
+    "PYRAMID_W": (0, 1, "White stones detection", "Apply pyramid filter", 8),
 
     'AREA_MASK': (0,0,None),
     'TRANSFORM': (0,0,None),
-    'BOARD_EDGES': (0,0,None),
-    'BOARD_SIZE': (0,0,None)
+    'BOARD_EDGES': (0,0,None)
 }
 
 # Analysis results
