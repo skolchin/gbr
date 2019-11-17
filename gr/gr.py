@@ -229,7 +229,7 @@ def find_stones(src_img, params, res, f_bw):
         logging.info("Applying post-filter {} for color {}".format(f, f_bw))
         new_stones = post_filters[f](src_img, filtered_img, params, f_bw, stones)
         if new_stones is None:
-           logging.info("No stones found by filter")
+           logging.info("No new stones found, stopping")
         else:
            if len(new_stones.shape) == 3: new_stones = new_stones[0]
            logging.info("Filter found {} stones".format(len(new_stones)))
@@ -237,6 +237,8 @@ def find_stones(src_img, params, res, f_bw):
            conv_stones = convert_xy(new_stones, res)
            stones = _combine_stones(stones, conv_stones)
 
+    n_stones = stones.shape[0] if stones is not None else 0
+    logging.info("Stones found: {} of color {}".format(n_stones, f_bw))
     return stones
 
 # Find board edges, spacing and size
@@ -371,15 +373,18 @@ def find_board(img, params, res):
     res[GR_IMG_LINES2] = line_img
 
     # Determine board size
-    # First check both sizes are not more or less than 1 point from any of predefined sizes
-    size = None
-    for n in DEF_AVAIL_SIZES:
-        if abs(hcross-n) < 2 and abs(vcross-n) < 2:
-            size = n
-            break
+    # Check board size is probided in params
+    size = params.get('BOARD_SIZE')
 
+    # Check both sizes are not more or less than 1 point from any of predefined sizes
     if size is None:
-        # Repeat but now check only one side
+        for n in DEF_AVAIL_SIZES:
+            if abs(hcross-n) < 2 and abs(vcross-n) < 2:
+                size = n
+                break
+
+    # Repeat but now check only one side
+    if size is None:
         for n in DEF_AVAIL_SIZES:
             if abs(hcross-n) < 2 or abs(vcross-n) < 2:
                 size = n
@@ -394,7 +399,9 @@ def find_board(img, params, res):
             size = DEF_BOARD_SIZE
 
     res[GR_BOARD_SIZE] = size
-    logging.info("Detected board size: {}".format(size))
+    logging.info("Board size: {}".format(size))
+    if not size in DEF_AVAIL_SIZES:
+        logging.warning("Non-standard board size {}, check parameters".format(size))
 
     # Calculate spacing
     space_x, space_y = board_spacing(edges, size)
@@ -416,16 +423,17 @@ def get_board_from_params(params, res):
        raise Exception('Board edges parameter not found')
 
     edges = params['BOARD_EDGES']
-
     res[GR_EDGES] = edges
     logging.info("Predefined board edges: {}".format(edges))
 
     if params.get('BOARD_SIZE') is not None:
-       size = params['BOARD_SIZE']
-       logging.info("Predefined board size: {}".format(size))
+        size = params['BOARD_SIZE']
+        logging.info("Predefined board size: {}".format(size))
+        if not size in DEF_AVAIL_SIZES:
+            logging.warning("Non-standard board size {}, check parameters".format(size))
     else:
        size = DEF_BOARD_SIZE
-       logging.warning("Board size not set while board edges is, using default board size")
+       logging.warning("Board size is not set while board edges is, using default board size")
     res[GR_BOARD_SIZE] = size
 
     space_x, space_y = board_spacing(edges, size)
