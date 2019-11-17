@@ -72,8 +72,8 @@ DEF_GR_PARAMS = {
     'LUM_EQ': 0
 }
 
-# Parameter properties: min, max, group, title, order
-# Parameters with group is not None can be changed through UI
+# Parameter properties: min, max, group, title, order, tooltip
+# Parameters where group is not None will be available for changinf via UI
 GR_PARAMS_PROP = {
     "CANNY_MINVAL": (1, 255, None),
     "CANNY_MAXVAL": (1, 255, None),
@@ -87,7 +87,7 @@ GR_PARAMS_PROP = {
     "BOARD_SIZE": (9, 21, " Board recognition", "Board size", 1),
     "HL_THETA2": (1, 90, " Board recognition", "Theta", 2),
     "HL_THRESHOLD2": (1, 255, " Board recognition", "Threshold", 3),
-    "LUM_EQ": (0, 1, " Board recognition", "Apply luminosity filter", 4),
+    "LUM_EQ": (0, 1, " Board recognition", "Luminosity filter", 4),
 
     "HC_MINDIST": (1, 30, None),
     "HC_MAXRADIUS": (1, 40, None),
@@ -112,7 +112,7 @@ GR_PARAMS_PROP = {
     "STONES_MAXVAL_W": (1, 255, None),
     "WATERSHED_W": (0, 255, "White stones detection", "Watershed"),
     "WS_MORPH_W": (0, 10, "White stones detection", "Watershed morphing", 7),
-    "PYRAMID_W": (0, 1, "White stones detection", "Apply pyramid filter", 8),
+    "PYRAMID_W": (0, 1, "White stones detection", "Image pyramid filter", 8),
 
     'AREA_MASK': (0,0,None),
     'TRANSFORM': (0,0,None),
