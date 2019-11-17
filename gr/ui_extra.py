@@ -138,8 +138,9 @@ class ImgButton(tk.Label):
             self.__tooltip = createToolTip(self, tooltip)
 
         # Load button images
-        self.__images = [ImageTk.PhotoImage(Image.open(os.path.join(UI_DIR, self.__tag + '_up.png'))),
-                        ImageTk.PhotoImage(Image.open(os.path.join(UI_DIR, self.__tag + '_down.png')))]
+        ui_path = os.path.join(os.path.dirname(sys.argv[0]), UI_DIR)
+        self.__images = [ImgButton.get_ui_image(self.__tag + '_up.png'),
+                         ImgButton.get_ui_image(self.__tag + '_down.png')]
 
         # Update kwargs
         w = self.__images[0].width() + 4
@@ -186,6 +187,12 @@ class ImgButton(tk.Label):
         if ds != self.__disabled:
             self.__disabled = ds
             self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
+
+    @staticmethod
+    def get_ui_image(name):
+        ui_path = os.path.join(os.path.dirname(sys.argv[0]), UI_DIR)
+        return ImageTk.PhotoImage(Image.open(os.path.join(ui_path, name)))
+
 
 # Tooltip
 class ToolTip(object):
@@ -258,7 +265,7 @@ class StatusPanel(tk.Frame):
         self.__var.set(status)
 
         self.__label = tk.Label(self, textvariable = self.__var, anchor = tk.W)
-        self.__label.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
+        self.__label.pack(side = tk.LEFT, fill = tk.X, expand = False, anchor = tk.W)
 
         self.__binder = None
         if not self.__callback is None:
@@ -553,7 +560,11 @@ class ImagePanel(tk.Frame):
         return self.__image_shape if max(self.__scale) >= 1.0 else self.__image.shape
 
     def set_image(self, img):
-        """Changes image. img can be either OpenCv or PhotoImage"""
+        """Changes image
+
+        Parameters:
+            img             New image, either OpenCv or PhotoImage
+        """
         self.__src_image = img
         self.__set_image(img)
         self.__update_image()
