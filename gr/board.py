@@ -325,6 +325,7 @@ class GrBoard(object):
     @params.setter
     def params(self, p):
         """Recognition parameters"""
+        self._params = DEF_GR_PARAMS.copy()
         for key in p.keys():
             if key in self._params:
                 self._params[key] = p[key]
@@ -492,7 +493,8 @@ class GrBoard(object):
     def board_size(self):
         """Board size"""
         if self._res is None:
-            return DEF_BOARD_SIZE
+            p = self._params.get('BOARD_SIZE')
+            return p if p is not None else DEF_BOARD_SIZE
         else:
             return self._res[GR_BOARD_SIZE]
 
