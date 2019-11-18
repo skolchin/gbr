@@ -24,6 +24,7 @@ import logging
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import ttk
+from tkinter import messagebox
 
 # Debug ingo dialog class
 class GbrDebugDlg(tk.Toplevel):
@@ -59,6 +60,9 @@ class GbrDebugDlg(tk.Toplevel):
             buttonFrame = tk.Frame(self, bd = 1, relief = tk.RAISED)
             buttonFrame.pack(side = tk.BOTTOM, fill = tk.X)
 
+            tk.Button(buttonFrame, text = "Save images",
+                command = self.save_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+
             tk.Button(buttonFrame, text = "Close",
                 command = self.close_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
@@ -66,6 +70,10 @@ class GbrDebugDlg(tk.Toplevel):
             self.resizable(False, False)
 
             self.bind("<Escape>", self.escape_callback)
+
+        def save_click_callback(self):
+            """Save button click callback"""
+            self.save()
 
         def close_click_callback(self):
             """Close button click callback"""
@@ -118,21 +126,26 @@ class GbrDebugDlg(tk.Toplevel):
                     nrow = nrow + 1
                     ncol = 0
 
-##            # Add text information
-##            frame = tk.Frame(root)
-##            frame.grid(row = nrow, column = ncol, padx = 2, pady = 2, sticky = "nswe")
-##
-##            lbox = tk.Listbox(frame)
-##            lbox.grid(row = 0, column = 0, sticky = "nswe")
-##            lbox.config(width = int(sx / 8))
-##
-##            for key in sorted(debug_info.keys()):
-##                lbox.insert(tk.END, "{}: {}".format(key, debug_info[key]))
-##
-##            panel = tk.Label(frame, text = "TEXT_INFO")
-##            panel.grid(row = 1, column = 0, sticky = "nswe")
+        def save(self):
+            """Saves debug images to given directory"""
+            debug_img = self.parent.board.debug_images
+            if debug_img is None:
+                return
+
+            dn = filedialog.askdirectory(initialdir=os.getcwd(),
+                                            title='Please select a directory')
+            if dn == "":
+                return
+
+            n = 0
+            for key in debug_img.keys():
+                cv2.imwrite(os.path.join(dn, key.lower() + ".png"), debug_img[key])
+                n += 1
+
+            messagebox.showinfo("Debug images", "{} files saved to {}".format(n, dn))
 
         def close(self):
+            """Close itself"""
             self.destroy()
 
 
@@ -530,7 +543,7 @@ class GbrGUI2(object):
         if GrLog.numErrors() > 0:
            self.statusBar.set("Automatic board detection failed, click here for the log")
         else:
-            self.statusBar.set("Board size detected as {s}x{s}".format(
+            self.statusBar.set("{s}x{s} board detected".format(
                                     s = self.board.board_size))
             self.imageMask.scaled_mask = self.board.param_board_edges
             self.imageMask.size = self.board.board_size
