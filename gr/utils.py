@@ -166,17 +166,17 @@ def jgf_to_gres(jgf):
     res[GR_STONES_W] = sp(jgf['white'])
     return res
 
-def resize(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
+def resize(img, max_size = None, scale = None, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
     """Resizes an image so neither of its sides will be bigger that max_size saving proportions.
     See resize3 for paramaters definition.
 
     Returns:
         Resized image
     """
-    im, _, _ = resize3(img, max_size, f_upsize, f_center, pad_color)[0]
+    im = resize3(img, max_size, scale, f_upsize, f_center, pad_color)[0]
     return im
 
-def resize2(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
+def resize2(img, max_size = None, scale = None, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
     """Resizes an image so neither of its sides will be bigger that max_size saving proportions.
     See resize3 for paramaters definition.
 
@@ -184,7 +184,7 @@ def resize2(img, max_size, f_upsize = True, f_center = False, pad_color = (255, 
         Resized image
         Scale [scale_x, scale_y]. Scale < 1 means image was downsized
     """
-    im, scale, _ = resize3(img, max_size, f_upsize, f_center, pad_color)
+    im, scale, _ = resize3(img, max_size, scale, f_upsize, f_center, pad_color)
     return im, scale
 
 def resize3(img, max_size = None, scale = None, f_upsize = True, f_center = False, pad_color = (255, 255, 255)):
