@@ -66,6 +66,7 @@ class GrBoard(object):
         self._src_img_file = filename
         self._img = img
         self._src_img = img
+        self._res = None
 
         # Load params, if requested and file exists
         f_params_loaded = False
