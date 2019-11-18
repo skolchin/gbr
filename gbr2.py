@@ -11,9 +11,9 @@
 
 from gr.board import GrBoard
 from gr.grdef import *
-from gr.ui_extra import NBinder, ImgButton, ImagePanel, StatusPanel, ImageMask, ImageTransform
+from gr.ui_extra import NLabel, NBinder, ImgButton, ImagePanel, StatusPanel, ImageMask, ImageTransform
 from gr.grlog import GrLog
-from gr.utils import format_stone_pos
+from gr.utils import format_stone_pos, resize, img_to_imgtk
 
 import numpy as np
 import cv2
@@ -24,6 +24,117 @@ import logging
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import ttk
+
+# Debug ingo dialog class
+class GbrDebugDlg(tk.Toplevel):
+        def __init__(self, parent, *args, **kwargs):
+            tk.Toplevel.__init__(self, *args, **kwargs)
+
+            self.minsize(300, 400)
+            self.parent = parent
+            self.transient(parent.root)
+            self.attributes("-toolwindow", True)
+            self.title("Debug info")
+
+            x = parent.root.winfo_x() + parent.root.winfo_width() + 15
+            y = parent.root.winfo_y() + 200
+            self.geometry("%+d%+d" % (x, y))
+
+            internalFrame = tk.Frame(self)
+            internalFrame.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+
+            # Canvas to display images
+            sbr = tk.Scrollbar(internalFrame)
+            self.canvas = tk.Canvas(internalFrame, yscrollcommand=sbr.set)
+            self.canvas.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
+            sbr.pack(side = tk.RIGHT, fill = tk.Y)
+            sbr.config(command = self.canvas.yview)
+
+            self.debugFrame = tk.Frame(self.canvas)
+            self.canvas.create_window((0,0), window = self.debugFrame, anchor='nw')
+            self.add_debug_info(self.debugFrame)
+
+            self.canvas.bind('<Configure>', self.on_scroll_configure)
+
+            buttonFrame = tk.Frame(self, bd = 1, relief = tk.RAISED)
+            buttonFrame.pack(side = tk.BOTTOM, fill = tk.X)
+
+            tk.Button(buttonFrame, text = "Close",
+                command = self.close_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+
+            self.focus_set()
+            self.resizable(False, False)
+
+            self.bind("<Escape>", self.escape_callback)
+
+        def close_click_callback(self):
+            """Close button click callback"""
+            self.close()
+
+        def escape_callback(self, event):
+            """Escape key press callback"""
+            self.close()
+
+        def dbg_img_click_callback(self, event):
+            """Mouse click on debug info panel callback"""
+            w = event.widget
+            k = w.tag
+            cv2.imshow(k, self.parent.board.debug_images[k])
+
+        def on_scroll_configure(self, event):
+            """Canvas config callback"""
+            self.canvas.configure(scrollregion = self.debugFrame.bbox('all'))
+
+        def add_debug_info(self, root):
+            """Adds debug information images"""
+            shape = self.parent.board.board_shape
+            debug_img = self.parent.board.debug_images
+
+            if debug_img is None:
+                return
+
+            nrow = 0
+            ncol = 0
+            sz = min(int(shape[CV_WIDTH] / 2) - 5, 150)
+
+            # Add analysis result images
+            for key in sorted(debug_img.keys()):
+                frame = tk.Frame(root)
+                frame.grid(row = nrow, column = ncol, padx = 2, pady = 2, sticky = "nswe")
+
+                img = resize(debug_img[key], sz)
+
+                imgtk = img_to_imgtk(img)
+                panel = NLabel(frame, image = imgtk, tag = key)
+                panel.image = imgtk
+                panel.grid(row = 0, column = 0)
+                panel.bind('<Button-1>', self.dbg_img_click_callback)
+
+                panel = tk.Label(frame, text = key)
+                panel.grid(row = 1, column = 0, sticky = "nswe")
+
+                ncol = ncol + 1
+                if ncol > 1:
+                    nrow = nrow + 1
+                    ncol = 0
+
+##            # Add text information
+##            frame = tk.Frame(root)
+##            frame.grid(row = nrow, column = ncol, padx = 2, pady = 2, sticky = "nswe")
+##
+##            lbox = tk.Listbox(frame)
+##            lbox.grid(row = 0, column = 0, sticky = "nswe")
+##            lbox.config(width = int(sx / 8))
+##
+##            for key in sorted(debug_info.keys()):
+##                lbox.insert(tk.END, "{}: {}".format(key, debug_info[key]))
+##
+##            panel = tk.Label(frame, text = "TEXT_INFO")
+##            panel.grid(row = 1, column = 0, sticky = "nswe")
+
+        def close(self):
+            self.destroy()
+
 
 # Options dialog class
 class GbrOptionsDlg(tk.Toplevel):
@@ -39,6 +150,7 @@ class GbrOptionsDlg(tk.Toplevel):
             self.board_size_label = None
             self.board_size_scale = None
             self.board_size_disabled = None
+            self.debug_dlg = None
 
             x = parent.root.winfo_x() + parent.root.winfo_width() + 15
             y = parent.root.winfo_y() + 40
@@ -51,18 +163,28 @@ class GbrOptionsDlg(tk.Toplevel):
             buttonFrame = tk.Frame(self, bd = 1, relief = tk.RAISED)
             buttonFrame.pack(side = tk.BOTTOM, fill = tk.X)
 
-            self.btn_image = ImgButton.get_ui_image("detect_flat.png")
+            self.btn_image = ImgButton.get_ui_image("detect_flat2.png")
             tk.Button(buttonFrame, text = "Detect",
                 image = self.btn_image, compound="left",
-                command = self.detect_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+                command = self.detect_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+
+            self.dbg_button = tk.Button(buttonFrame, text = "Debug",
+                state = tk.DISABLED if self.parent.board.results is None else tk.NORMAL,
+                command = self.debug_click_callback)
+            self.dbg_button.pack(side = tk.LEFT, padx = 5, pady = 5)
 
             tk.Button(buttonFrame, text = "Close",
-                command = self.close_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+                command = self.close_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
             self.focus_set()
             self.resizable(False, False)
 
-        def detect_callback(self):
+            self.bind("<Escape>", self.escape_callback)
+            self.bind("<FocusIn>", self.focus_in_callback)
+            self.protocol("WM_DELETE_WINDOW", self.on_closing_callback)
+
+        def detect_click_callback(self):
+            """Detect button click callback"""
             p = dict()
             for key in self.tkVars.keys():
                 p[key] = self.tkVars[key].get()
@@ -73,11 +195,34 @@ class GbrOptionsDlg(tk.Toplevel):
             self.parent.board.params = p
             self.parent.detect_stones()
 
-        def close_callback(self):
-            self.parent.buttons['params'].state = False
-            self.destroy()
+        def debug_click_callback(self):
+            """Debug button click callback"""
+            if self.debug_dlg is not None:
+                self.debug_dlg.close()
+                self.debug_dlg = None
+
+            self.debug_dlg = GbrDebugDlg(self.parent)
+
+        def close_click_callback(self):
+            """Close button click callback"""
+            self.close()
+
+        def escape_callback(self, event):
+            """Escape key press callback"""
+            self.close()
+
+        def focus_in_callback(self, event):
+            """Window got focus"""
+            if self.dbg_button is not None:
+                self.dbg_button.configure(
+                    state = tk.DISABLED if self.parent.board.results is None else tk.NORMAL)
+
+        def on_closing_callback(self):
+            """Window been closed"""
+            self.close()
 
         def scale_cb_changed(self):
+            """Board_size combobox state changed"""
             if self.board_size_disabled is not None and \
                 self.board_size_label is not None and \
                 self.board_size_scale is not None:
@@ -86,8 +231,9 @@ class GbrOptionsDlg(tk.Toplevel):
                 self.board_size_label.config(state = state)
                 self.board_size_scale.config(state = state)
 
-        # Add Scale widgets with board recognition parameters
+
         def add_switches(self, rootFrame, params, max_in_row = 6):
+            """Add Scale widgets with board parameters"""
             n = 1
             ncol = 0
             frame = None
@@ -154,6 +300,13 @@ class GbrOptionsDlg(tk.Toplevel):
 
             return vars
 
+        def close(self, f = True):
+            """Graceful way to close the dialog"""
+            if self.debug_dlg is not None:
+                self.debug_dlg.close()
+                self.debug_dlg = None
+            if f: self.parent.buttons['params'].state = False
+            self.destroy()
 
 # GUI class
 class GbrGUI2(object):
@@ -263,6 +416,8 @@ class GbrGUI2(object):
 
     def set_grid_callback(self, event, tag, state):
         """Board grid button click"""
+        if self.board.is_gen_board:
+            return
         if state:
             self.detect_edges()
             self.imageMask.show()
@@ -272,8 +427,10 @@ class GbrGUI2(object):
 
     def set_params_callback(self, event, tag, state):
         """Detection params button click"""
+        if self.board.is_gen_board:
+            return
         if self.optionsDlg is not None:
-            self.optionsDlg.destroy()
+            self.optionsDlg.close(False)
             self.optionsDlg = None
         if state:
             self.optionsDlg = GbrOptionsDlg(self)
@@ -329,6 +486,7 @@ class GbrGUI2(object):
     # Core functions
     #
     def load_image(self, filename):
+        """Load a board image"""
 
         # Clean up
         GrLog.clear()
@@ -337,7 +495,7 @@ class GbrGUI2(object):
 
         self.imageMask.hide()
         if self.optionsDlg is not None:
-            self.optionsDlg.destroy()
+            self.optionsDlg.close()
             self.optionsDlg = None
 
         # Load image
@@ -360,6 +518,8 @@ class GbrGUI2(object):
 
 
     def detect_edges(self, f_force = False):
+        """Detect edges and size of currently loaded board image"""
+
         if not self.board.param_board_edges is None and not f_force:
            return
 
@@ -376,6 +536,8 @@ class GbrGUI2(object):
             self.imageMask.size = self.board.board_size
 
     def detect_stones(self):
+        """Detect stones on currently loaded board image"""
+
         # Process
         GrLog.clear()
         self.board.process()
