@@ -9,7 +9,7 @@
 # Licence:     MIT
 #-------------------------------------------------------------------------------
 from .grdef import *
-from .gr import process_img, detect_board, generate_board, find_coord
+from .gr import process_img, detect_board, generate_board, find_coord, find_position
 from .utils import gres_to_jgf, jgf_to_gres, resize2
 from .dataset import GrDataset
 
@@ -438,21 +438,38 @@ class GrBoard(object):
         else:
             return { 'W': self._res[GR_STONES_W], 'B': self._res[GR_STONES_B] }
 
-    def find_stone(self, x, y):
-        """Tries to find a stone at given coordinates
-            If found, returns the stone and B/W flag, otherwise returns None"""
+    def find_stone(self, c = None, p = None, f_bw = None):
+        """Finds a stone at given coordinates or position
+        Parameters:
+            c       screen coordinates as tuple(x,y) or None
+            p       stone position as tuple(a,b) or None
+            f_bw    stone type (B/W to look for specified color or None)
+        Returns;
+            stone list of stone properties
+            type  B/W stone type
+        """
+        def _find(stones):
+            if c is not None:
+                return find_coord(c[0], c[1], stones)
+            elif p is not None:
+                return find_position(p[0], p[1], stones)
+            else:
+                return None
+
         if self._res is None:
             return None, None
 
-        stone = find_coord(x, y, self.black_stones)
-        if not stone is None:
-            return stone, "B"
+        if f_bw is not None:
+            stone = _find(self.stones[f_bw])
         else:
-            stone = find_coord(x, y, self.white_stones)
-            if not stone is None:
-                return stone, "W"
+            stone = _find(self.black_stones)
+            if stone is not None:
+                f_bw = 'B'
             else:
-                return None, None
+                stone = _find(self.white_stones)
+                if not stone is None: f_bw = 'W'
+
+        return stone, f_bw
 
 
     @property
@@ -516,3 +533,4 @@ class GrBoard(object):
         """Returns True if a transformation was applied to the image.
         Use reset_image() to revert to original image"""
         return not self._img is None and np.any(self._img != self._src_img)
+

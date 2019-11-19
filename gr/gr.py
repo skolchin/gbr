@@ -26,6 +26,22 @@ def board_spacing(edges, size):
     space_y = (edges[1][1] - edges[0][1]) / float(size-1)
     return space_x, space_y
 
+# Internal function: draw a board grid
+def draw_board_grid(img, edges, board_size, space_x, space_y, color = COLOR_BLACK):
+    for i in range(board_size):
+        x1 = int(edges[GR_FROM][GR_X] + (i * space_x))
+        y1 = int(edges[GR_FROM][GR_Y])
+        x2 = x1
+        y2 = int(edges[GR_TO][GR_Y])
+        cv2.line(img, (x1,y1), (x2,y2), color, 1)
+
+    for i in range(board_size):
+        x1 = int(edges[GR_FROM][GR_X])
+        y1 = int(edges[GR_FROM][GR_Y] + (i * space_y))
+        x2 = int(edges[GR_TO][GR_X])
+        y2 = y1
+        cv2.line(img, (x1,y1), (x2,y2), color, 1)
+
 
 # Find stones on a board
 # Takes an image, recognition param dictionary, results dictionary and
@@ -416,16 +432,18 @@ def find_board(img, params, res):
     return edges, size
 
 # Define board as provided in parameters
-def get_board_from_params(params, res):
+def get_board_from_params(img, params, res):
     """Transforms board edges and size provided in params to result and calculate spacing"""
 
+    # Edges
     if params.get('BOARD_EDGES') is None:
-       raise Exception('Board edges parameter not found')
+       raise Exception('Board edges not set')
 
     edges = params['BOARD_EDGES']
     res[GR_EDGES] = edges
     logging.info("Predefined board edges: {}".format(edges))
 
+    # Size
     if params.get('BOARD_SIZE') is not None:
         size = params['BOARD_SIZE']
         logging.info("Predefined board size: {}".format(size))
@@ -436,6 +454,7 @@ def get_board_from_params(params, res):
        logging.warning("Board size is not set while board edges is, using default board size")
     res[GR_BOARD_SIZE] = size
 
+    # Spacing
     space_x, space_y = board_spacing(edges, size)
     if space_x == 0 or space_y == 0:
        logging.error("Cannot determine spacing, check params")
@@ -444,6 +463,13 @@ def get_board_from_params(params, res):
     spacing = [space_x, space_y]
     res[GR_SPACING] = spacing
     logging.info("Detected spacing: {}".format(spacing))
+
+    # Debug images
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    res[GR_IMG_GRAY] = gray
+    debug_img = img1_to_img3(gray)
+    draw_board_grid(debug_img, edges, size, space_x, space_y, color = COLOR_RED)
+    res[GR_IMG_LINES2] = debug_img
 
     return edges, size
 
@@ -494,31 +520,45 @@ def convert_xy(coord, res):
 # Find a stone for given image coordinates
 # Takes X and Y in image coordinates and a list of stones created by convert_xy
 def find_coord(x, y, stones):
-    """Returns index of a stone at given (X,Y) or None"""
+    """Returns index of a stone at given (X,Y) coordinates or None"""
     if stones is None:
         return None
 
-    for i in stones:
-        min_x = max(1, int(i[GR_X]) - int(i[GR_R]))
-        min_y = max(1, int(i[GR_Y]) - int(i[GR_R]))
-        max_x = i[GR_X] + i[GR_R]
-        max_y = i[GR_Y] + i[GR_R]
+    for s in stones:
+        min_x = max(1, int(s[GR_X]) - int(s[GR_R]))
+        min_y = max(1, int(s[GR_Y]) - int(s[GR_R]))
+        max_x = s[GR_X] + s[GR_R]
+        max_y = s[GR_Y] + s[GR_R]
         if (x >= min_x and x <= max_x and y >= min_y and y <= max_y):
-            return i
+            return s
+
+    return None
+
+# Find a stone for given board position
+# Takes A and B of stone positions and a list of stones created by convert_xy
+def find_position(a, b, stones):
+    """Returns index of a stone at given (A,B) position or None"""
+    if stones is None:
+        return None
+
+    if type(a) is str: a = ord(a.upper()) - ord('A') + 1
+    for s in stones:
+        if s[GR_A] == a and s[GR_B] == b:
+            return s
 
     return None
 
 # Internal function: apply area mask
 def apply_area_mask(img, params):
-    """Eliminate area defined by area mask. If mask is not provided, use default gap"""
-    m = None
-    if 'AREA_MASK' in params:
-       m = params['AREA_MASK']
+    """Eliminate area defined by area mask. If mask is not provided, use default gap.
+    Returns clipped area and top-left corner of the mask (offset)"""
+    m = params.get('AREA_MASK')
     if m is None or not type(m) is list:
         # Remove small area which might contain image borders
         d = MIN_EDGE_DIST
         m = [d, d, img.shape[CV_WIDTH]-d, img.shape[CV_HEIGTH]-d]
 
+    logging.info("Area mask is {}".format(m))
     return get_image_area(img, m), [m[0], m[1]]
 
 # Internal function: move edges to specified offset
@@ -570,6 +610,7 @@ def process_img(img, params):
 
     try:
         # Apply area mask
+        # Offset will be used to shift resulting coordinates
         img2, offset = apply_area_mask(img, params)
 
         # Find board edges, spacing, size
@@ -580,7 +621,7 @@ def process_img(img, params):
                logging.error('Edges could not be found, processing stopped')
                return None
         else:
-            board_edges, board_size = get_board_from_params(params, res)
+            board_edges, board_size = get_board_from_params(img2, params, res)
 
         # Find stones
         black_stones = find_stones(img2, params, res, 'B')
@@ -663,22 +704,8 @@ def generate_board(shape = DEF_IMG_SIZE, board_size = None, res = None, f_show_d
     img[:] = DEF_IMG_COLOR
     #print("Image shape: {}".format(img.shape))
 
-    # Draw the lines
-    #print("Vertical")
-    for i in range(board_size):
-        x1 = int(edges[GR_FROM][GR_X] + (i * space_x))
-        y1 = int(edges[GR_FROM][GR_Y])
-        x2 = x1
-        y2 = int(edges[GR_TO][GR_Y])
-        cv2.line(img,(x1,y1),(x2,y2),COLOR_BLACK,1)
-
-    #print("Horizontal")
-    for i in range(board_size):
-        x1 = int(edges[GR_FROM][GR_X])
-        y1 = int(edges[GR_FROM][GR_Y] + (i * space_y))
-        x2 = int(edges[GR_TO][GR_X])
-        y2 = y1
-        cv2.line(img, (x1,y1), (x2,y2), COLOR_BLACK, 1)
+    # Draw the grid
+    draw_board_grid(img, edges, board_size, space_x, space_y)
 
     # Draw the stones
     if res is not None:
