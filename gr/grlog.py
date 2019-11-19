@@ -13,62 +13,57 @@ import os
 import sys
 import logging
 
-if sys.version_info[0] < 3:
-    import Tkinter as tk
-    import ttk
-    import tkSimpleDialog as simpledialog
-    from cStringIO import StringIO
-else:
-    import tkinter as tk
-    from tkinter import ttk
-    from tkinter import simpledialog
-    from io import StringIO
+import tkinter as tk
+from io import StringIO
+from .ui_extra import GrDialog
 
-class GrLogWindow(simpledialog.Dialog):
-      def __init__(self, parent, log_list = None, log_string = None):
-          self._log = None
-          if not log_string is None:
-             self._log = log_string.splitlines()
-          elif not log_list is None:
-               self._log = log_list
-          else:
-             raise Exception("Log not provided")
+class GrLogDlg(GrDialog):
+    def __init__(self, root, *args, **kwargs):
+        self._log = None
+        GrDialog.__init__(self, root, *args, **kwargs)
 
-          simpledialog.Dialog.__init__(self, parent, "Log")
+    def get_minsize(self):
+        return (300, 300)
 
-      def body(self, master):
-        self.bodyMaster = master
+    def get_title(self):
+        return "Log"
 
-        sbr = tk.Scrollbar(master)
+    def init_params(self, args, kwargs):
+        log_list = kwargs.pop("log_list", None)
+        log_string =  kwargs.pop("log_string", None)
+
+        if not log_string is None:
+            self._log = log_string.splitlines()
+        elif not log_list is None:
+            self._log = log_list
+        else:
+            raise Exception("Log not provided")
+
+    def init_frame(self):
+        sbr = tk.Scrollbar(self.internalFrame)
         sbr.pack(side=tk.RIGHT, fill=tk.Y)
 
-        sbb = tk.Scrollbar(master, orient=tk.HORIZONTAL)
+        sbb = tk.Scrollbar(self.internalFrame, orient=tk.HORIZONTAL)
         sbb.pack(side=tk.BOTTOM, fill=tk.X)
 
         max_len = min(len(max(self._log, key = lambda f: len(f))), 60)
 
-        self.lbox = tk.Listbox(master, yscrollcommand=sbr.set, xscrollcommand=sbb.set,
+        lbox = tk.Listbox(self.internalFrame, yscrollcommand=sbr.set, xscrollcommand=sbb.set,
             width=max_len)
-        self.lbox.insert(tk.END, *self._log)
-        self.lbox.pack(fill = tk.BOTH, expand = True, padx = 5, pady = 5)
+        lbox.insert(tk.END, *self._log)
+        lbox.pack(fill = tk.BOTH, expand = True, padx = 5, pady = 5)
 
-        sbr.config(command=self.lbox.yview)
-        sbb.config(command=self.lbox.xview)
+        sbr.config(command = lbox.yview)
+        sbb.config(command = lbox.xview)
 
-        return self.lbox
+    def grab_focus(self):
+        self.focus_set()
+        self.grab_set()
 
-      def buttonbox(self):
-        box = tk.Frame(self)
-
-        w = tk.Button(box, text="Close", width=10, command=self.ok, default=tk.ACTIVE)
-        w.pack(side=tk.TOP, padx=5, pady=5)
-
-        self.bind("<Return>", self.ok)
-        self.bind("<Escape>", self.ok)
-
-        box.pack(side = tk.BOTTOM, fill = tk.Y, expand = False)
-        self.bodyMaster.pack_configure(fill = tk.BOTH, expand = True)
-
+    def init_buttons(self):
+        tk.Button(self.buttonFrame, text = "Close",
+            command = self.close_click_callback).pack(side = tk.TOP, padx = 5, pady = 5)
+        self.buttonFrame.configure(bd = 0, relief = tk.FLAT)
 
 class GrLog(object):
     """GBR logging class"""
@@ -101,7 +96,7 @@ class GrLog(object):
         """Show Log info dialog. If no log written, returns False"""
         log = self.log_stream.getvalue()
         if not log is None and len(log) > 0:
-           dlg = GrLogWindow(root, log_string = log)
+           dlg = GrLogDlg(root, log_string = log)
            return True
         else:
            return False
