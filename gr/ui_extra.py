@@ -1257,3 +1257,92 @@ class ImageTransform(object):
         # Cancel bindings
         self.__bindings.unbind_all()
 
+# Dialog window
+class GrDialog(tk.Toplevel):
+    def __init__(self, parent, *args, **kwargs):
+        self.parent = parent
+        self.init_params(args, kwargs)
+        tk.Toplevel.__init__(self, *args, **kwargs)
+
+        self.transient(self.get_root())
+        self.attributes("-toolwindow", True)
+
+        m = self.get_minsize()
+        p = self.get_position()
+        self.title(self.get_title())
+        self.minsize(m[0], m[1])
+        self.geometry("%+d%+d" % (p[0], p[1]))
+
+        self.internalFrame = tk.Frame(self)
+        self.internalFrame.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+
+        self.buttonFrame = tk.Frame(self, bd = 1, relief = tk.RAISED)
+        self.buttonFrame.pack(side = tk.BOTTOM, fill = tk.X)
+
+        self.init_frame()
+        self.init_buttons()
+
+        self.grab_focus()
+
+        self.bind("<Escape>", self.escape_callback)
+        self.bind("<FocusIn>", self.focus_in_callback)
+        self.protocol("WM_DELETE_WINDOW", self.on_closing_callback)
+
+    def get_root(self):
+        if type(self.parent) is tk.Tk:
+            return self.parent
+        elif hasattr(self.parent, "root"):
+            return self.parent.root
+        else:
+            raise Exception("Cannot find root")
+
+    def get_minsize(self):
+        return (300, 300)
+
+    def get_title(self):
+        return "Dialog"
+
+    def get_position(self):
+        ofs = self.get_offset()
+        return (self.get_root().winfo_x() + self.get_root().winfo_width() + ofs[0],
+            self.get_root().winfo_y() + ofs[1])
+
+    def get_offset(self):
+        return (15, 40)
+
+    def init_params(self, args, kwargs):
+        pass
+
+    def init_frame(self):
+        pass
+
+    def init_buttons(self):
+        tk.Button(self.buttonFrame, text = "Close",
+            command = self.close_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+
+    def update_controls(self):
+        pass
+
+    def grab_focus(self):
+        self.focus_set()
+        self.resizable(False, False)
+
+    def close_click_callback(self):
+        """Close button click callback"""
+        self.close()
+
+    def escape_callback(self, event):
+        """Escape key press callback"""
+        self.close()
+
+    def focus_in_callback(self, event):
+        """Window got focus"""
+        self.update_controls()
+
+    def on_closing_callback(self):
+        """Window been closed"""
+        self.close()
+
+    def close(self, update_button_state = True):
+        """Graceful way to close the dialog"""
+        self.destroy()
