@@ -2,6 +2,8 @@
     "AREA_MASK": null,
     "BLUR_MASK_B": 0,
     "BLUR_MASK_W": 0,
+    "BOARD_EDGES": null,
+    "BOARD_SIZE": null,
     "CANNY_APERTURE": 3,
     "CANNY_MAXVAL": 100,
     "CANNY_MINVAL": 50,

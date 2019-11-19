@@ -282,7 +282,9 @@
 (;B[rg]
 (;W[sg])
 (;W[sk]))
-(;B[sk];W[si];B[sg];W[rg])))
+(;B[sk];W[si]
+(;B[sg];W[rg])
+(;B[sf]))))
 (;B[ri]
 (;W[rh]
 (;B[rj])
