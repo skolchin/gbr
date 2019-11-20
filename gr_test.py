@@ -41,7 +41,7 @@ class GrBoardEdit(object):
         self.imgFrame = tk.Frame(self.root)
         self.imgFrame.pack(side = tk.TOP, fill=tk.BOTH, padx = PADX, pady = PADY)
 
-        # Image panel and mask
+        # Image panel
         self.imgPanel = addImagePanel(self.imgFrame,
               caption = "Image",
               btn_params = [
@@ -53,9 +53,10 @@ class GrBoardEdit(object):
               ],
               image = img,
               max_size = 700,
-              mode = "fit",
+              mode = "clip",
               min_size = 500,
-              scrollbars = False)
+              scrollbars = False,
+              frame_callback = self.frame_callback)
 
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
         self.imgPanel.buttons['reset'].disabled = True
@@ -64,16 +65,18 @@ class GrBoardEdit(object):
         self.imgMask = ImageMask(self.imgPanel,
             allow_change = True,
             show_mask = True,
-            mode = 'grid',
+            mode = 'area',
             size = 21,
             mask_callback = self.mask_callback)
         self.mask_callback(self.imgMask)
 
-        # Image transformer
+        # Image transform
         self.imgTransform = ImageTransform(self.imgPanel,
             callback = self.end_transform_callback)
         self.imgTransform.show_coord = True
 
+        # Image marker
+        self.imgMarker = ImageMarker(self.imgPanel)
 
     def set_area_callback(self, event, tag, state):
         if state:
@@ -125,6 +128,14 @@ class GrBoardEdit(object):
     def move_callback(self, event):
         print(event.x, event.y)
 
+    def frame_callback(self, event):
+        p = self.imgPanel.frame2image((event.x, event.y))
+        self.imgMarker.add_stone([p[0], p[1], 1, 1, 7])
+        if not self.imgMarker.is_shown:
+            self.imgMarker.show()
+
+##        b = NBinder()
+##        b.trigger(self.imgPanel, '<Resize>', ResizeEvent(self.imgPanel, [1.0, 1.0], [1.0, 1.0]))
 
 # Main function
 def main():

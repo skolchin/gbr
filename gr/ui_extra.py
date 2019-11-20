@@ -41,66 +41,77 @@ class NLabel(tk.Label):
 
 
 class NBinder(object):
-    """ Supplementary class to manage widget bindings"""
+    """ Supplementary class to manage widget bindings (both TkInter and custom)"""
 
     # Tkinter bind/unbind seems not working
-    # This variable will keep all bindings set before
-    __bindings = dict()
+    # This variable will keep all bindings set in all instances of NBinder
+    # TODO: add critical section handling
+    __bindings = []
 
     def __init__(self):
         self.bnd_ref = dict()
 
-    def bind(self, widget, event, callback, add = ''):
-        """Bind a callback to widget event and keep the reference"""
+    def bind(self, widget, event, callback, _type = "tk"):
+        """Bind a callback to an event (tkInter or custom)"""
 
         # Store binding in this instance
         key = str(widget.winfo_id()) + '__' + str(event)
-        bnd_id = widget.bind(event, callback, add)
-        self.bnd_ref[key] = [bnd_id, widget, event]
+        if _type == "tk":
+            # tkinter event
+            bnd_id = widget.bind(event, callback)
+        else:
+            # custom event
+            bnd_id = len(self.bnd_ref) + 1
+        self.bnd_ref[key] = [bnd_id, widget, event, callback, _type]
 
-        # Store global binding
-        ref = []
-        if key in NBinder.__bindings: ref = NBinder.__bindings[key]
-        ref.append([self, widget, event, callback])
-        NBinder.__bindings[key] = ref
+        # Store binding globally
+        NBinder.__bindings.extend([[self, widget, event, callback, _type]])
+##        bnd_list = NBinder.__bindings
+##        print(len(bnd_list))
+
+    def register(self, widget, event, callback):
+        """Bind a callback to a custom event"""
+        self.bind(widget, event, callback, "custom")
 
     def unbind(self, widget, event):
-        """Unbind all callbacks for given event from a widget"""
-
+        """Unbind all callbacks for given event"""
         key = str(widget.winfo_id()) + '__' + str(event)
         if key in self.bnd_ref:
-           # Unbind from this instance
-           bnd_id = self.bnd_ref[key][0]
-           widget.unbind(event, bnd_id)
-           del self.bnd_ref[key]
+            # Unbind from this instance
+            bnd_id = self.bnd_ref[key][0]
+            _type = self.bnd_ref[key][4]
+            if _type == "tk": widget.unbind(event, bnd_id)
+            del self.bnd_ref[key]
 
-           # Unbind/rebind globally
-           NBinder.__unbind(self, key)
+            # Unbind/rebind globally
+            NBinder.__unbind(self, event)
 
     def unbind_all(self):
-        """Unbind all callbacks"""
-
-        # Unbind all in this instance
+        """Unbind all callbacks registered by this instance"""
         for key in self.bnd_ref.keys():
-            bnd_id, widget, event = self.bnd_ref[key]
-            widget.unbind(event, bnd_id)
-            NBinder.__unbind(self, key)
+            bnd_id, widget, event, cb, _type = self.bnd_ref[key]
+            if _type == "tk": widget.unbind(event, bnd_id)
+            NBinder.__unbind(self, event)
 
         self.bnd_ref = dict()
 
+    def trigger(self, widget, event, evt_data):
+        """Triggers a custom event"""
+        bnd_list = NBinder.__bindings
+        for bnd in bnd_list:
+            if bnd[1].winfo_id() == widget.winfo_id() and bnd[2] == event:
+                bnd[3](evt_data)
+
     @staticmethod
-    def __unbind(owner, key):
-        if not key in NBinder.__bindings:
-            return
-        refs = NBinder.__bindings[key]
-        for i in range(len(refs)):
-            w = refs[i][0]
-            if w == owner:
-               # This is my binding, remove it and rebind everything remaining
-               refs.pop(i)
-               for ref2 in refs:
-                   w2, widget, event, callback = ref2
-                   widget.bind(event, callback)
+    def __unbind(owner, event):
+        for i, bnd in enumerate(NBinder.__bindings):
+            if bnd[0] == owner:
+                # This is my binding, remove it and rebind TkInter events
+                refs.pop(i)
+                for ref2 in refs:
+                    w2, widget, event, callback, _type = ref2
+                    if _type == "tk":
+                        widget.bind(event, callback)
 
 
 
@@ -232,7 +243,7 @@ class ToolTip(object):
 
 # Add a toolip
 def createToolTip(widget, text, coord = None):
-    """Creates a tooltip with given text for given widget"""
+    """Creates a tooltip with given text for given widget. Returns ToolTip instance"""
     toolTip = ToolTip(widget)
     widget.bind('<Enter>', lambda f: toolTip.showtip(text, coord))
     widget.bind('<Leave>', lambda f: toolTip.hidetip())
@@ -240,12 +251,14 @@ def createToolTip(widget, text, coord = None):
 
 # Remove a tooltip
 def removeToolTip(toolTip):
+    """Removes a tooltip"""
     toolTip.hidetip()
     toolTip.widget.unbind('<Enter>')
     toolTip.widget.unbind('<Leave>')
 
 class StatusPanel(tk.Frame):
     """Status panel class"""
+
     def __init__(self, master, *args, **kwargs):
         """Creates StatusPanel instance. A StatusPanel is a frame with additional methods.
 
@@ -335,9 +348,19 @@ class StatusPanel(tk.Frame):
 
         self.__var.set(text + " " + file)
 
+# Resize event support class
+class ResizeEvent(object):
+    """Resize event support class"""
+    def __init__(self, panel, old_scale, new_scale):
+        self.panel = panel
+        self.old_scale = old_scale
+        self.new_scale = new_scale
+
 
 # Image panel class
 class ImagePanel(tk.Frame):
+    """A base class for displaying images"""
+
     def __init__(self, master, **kwargs):
         """Creates ImagePanel instance.
 
@@ -357,7 +380,7 @@ class ImagePanel(tk.Frame):
                                 should have been aligned with pack(fill="both", expand = True). No scaling/panning is allowed.
                max_size         Maximum image size. If image is larger, it will be resized down to this size (default 0).
                min_size         Minimum image size when image is dynamically resized
-               resize_callback  A function to be called after resizing: f(panel, old_shape, new_shape).
+               resize_callback  A function to be called after resizing. Takes event of ResizeEvent type.
                scrollbars       Boolean or tuple of booleans. If True both x and y scrollbars attached to canvas.
                                 If tuple provided, it specify where scrollbars are attached (horiz, vert)
         """
@@ -380,7 +403,7 @@ class ImagePanel(tk.Frame):
         self.__mode = kwargs.pop('mode',"clip")
         self.__max_size = kwargs.pop('max_size', 0)
         self.__min_size = kwargs.pop('min_size',0)
-        self.resize_callback = kwargs.pop('resize_callback', None)
+        resize_callback = kwargs.pop('resize_callback', None)
         if self.__mode != "clip" and self.__mode != "fit":
             raise ValueError("Invalid mode ", self.__mode)
 
@@ -446,6 +469,9 @@ class ImagePanel(tk.Frame):
         if not frame_callback is None:
            self.__binder.bind(self.canvas, '<Button-1>', frame_callback)
 
+        if not resize_callback is None:
+           self.__binder.register(self, '<Resize>', resize_callback)
+
         # Resize handler
         if self.__mode == "fit":
            self.__binder.bind(self.canvas, "<Configure>", self.__on_configure)
@@ -491,9 +517,7 @@ class ImagePanel(tk.Frame):
             self.__resize(size = self.__max_size, scale = scale)
             self.__update_image()
             new_scale = self.__scale
-
-            if self.resize_callback is not None:
-                self.resize_callback(self, old_scale, new_scale)
+            self.__binder.trigger(self, "<Resize>", ResizeEvent(self, old_scale, new_scale))
 
     @property
     def offset(self):
@@ -557,7 +581,8 @@ class ImagePanel(tk.Frame):
     @property
     def scaled_shape(self):
         """Image shape as it is displayed on canvas"""
-        return self.__image_shape if max(self.__scale) >= 1.0 else self.__image.shape
+        #return self.__image_shape if max(self.__scale) >= 1.0 else self.__image.shape
+        return self.__image.shape
 
     def set_image(self, img):
         """Changes image
@@ -592,6 +617,11 @@ class ImagePanel(tk.Frame):
         """
         return (int((p[0] - self.offset[0]) / self.scale[0]),
                 int((p[1] - self.offset[1]) / self.scale[1]))
+
+    @property
+    def binder(self):
+        """An event binder"""
+        return self.__binder
 
     def __set_image(self, image):
         """Internal function to assign image"""
@@ -644,9 +674,7 @@ class ImagePanel(tk.Frame):
             self.__resize(size = m)
             self.__update_image()
             new_scale = self.__scale
-
-            if self.resize_callback is not None:
-                self.resize_callback(self, old_scale, new_scale)
+            self.__binder.trigger(self, "<Resize>", ResizeEvent(self, old_scale, new_scale))
 
 def addImagePanel(master, **kwargs):
     """Creates a panel with caption and buttons. Provided for backward compatibility.
@@ -727,8 +755,6 @@ class ImageMask(object):
         if self.__mask is None:
             self.default_mask()
 
-        self.__panel.resize_callback = self.__on_panel_resize
-
         # Public parameters
         self.shade_fill = "gray"
         self.shade_stipple = "gray50"
@@ -746,6 +772,7 @@ class ImageMask(object):
 
         # Set handlers
         self.__bindings = NBinder()
+        self.__bindings.register(self.__panel, "<Resize>", self.__on_panel_resize)
         if self.__allow_change:
             self.__bindings.bind(self.__panel.canvas, "<Motion>", self.motion_callback)
             self.__bindings.bind(self.__panel.canvas, '<B1-Motion>', self.drag_callback)
@@ -1059,23 +1086,25 @@ class ImageMask(object):
             m = self.canvas.create_line(x1, y1, x2, y2, fill = self.mask_color, width = self.mask_width)
             self.__mask_area.append(m)
 
-    def __on_panel_resize(self, panel, old_scale, new_scale):
+    def __on_panel_resize(self, e):
         """Callback for panel resize (internal function)"""
         #print("{} -> {}".format(old_scale, new_scale))
         if self.__mask is None:
             return
 
         m = self.__mask.copy()
-        m[0] = m[0] / old_scale[0] * new_scale[0]
-        m[1] = m[1] / old_scale[1] * new_scale[1]
-        m[2] = m[2] / old_scale[0] * new_scale[0]
-        m[3] = m[3] / old_scale[1] * new_scale[1]
+        m[0] = m[0] / e.old_scale[0] * e.new_scale[0]
+        m[1] = m[1] / e.old_scale[1] * e.new_scale[1]
+        m[2] = m[2] / e.old_scale[0] * e.new_scale[0]
+        m[3] = m[3] / e.old_scale[1] * e.new_scale[1]
         self.__mask = m
         if self.is_shown: self.show()
 
 
 # Image transformer
 class ImageTransform(object):
+    """4-points image transformation helper class"""
+
     def __init__(self, panel, callback = None):
         """Create ImageTransorm instance
 
@@ -1259,6 +1288,8 @@ class ImageTransform(object):
 
 # Dialog window
 class GrDialog(tk.Toplevel):
+    """A base class for dialog and supplementary windows"""
+
     def __init__(self, parent, *args, **kwargs):
         self.parent = parent
         self.init_params(args, kwargs)
@@ -1297,33 +1328,42 @@ class GrDialog(tk.Toplevel):
             raise Exception("Cannot find root")
 
     def get_minsize(self):
+        """Override to define minimum window size"""
         return (300, 300)
 
     def get_title(self):
+        """Override to define window caption"""
         return "Dialog"
 
     def get_position(self):
+        """Override to set predefined position. Alternative - to override get_offset()"""
         ofs = self.get_offset()
         return (self.get_root().winfo_x() + self.get_root().winfo_width() + ofs[0],
             self.get_root().winfo_y() + ofs[1])
 
     def get_offset(self):
+        """Override to define offset from to parent window"""
         return (15, 40)
 
     def init_params(self, args, kwargs):
+        """Override to setup internal variables or get inbound parameters"""
         pass
 
     def init_frame(self):
+        """Override to add controls to internal frame"""
         pass
 
     def init_buttons(self):
+        """Override to add buttons to button frame"""
         tk.Button(self.buttonFrame, text = "Close",
             command = self.close_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
     def update_controls(self):
+        """Override to update controls on getting focus"""
         pass
 
     def grab_focus(self):
+        """Override to change how focus is set"""
         self.focus_set()
         self.resizable(False, False)
 
@@ -1346,3 +1386,130 @@ class GrDialog(tk.Toplevel):
     def close(self, update_button_state = True):
         """Graceful way to close the dialog"""
         self.destroy()
+
+# A marker on an ImagePanel
+class ImageMarker(object):
+    """A marker on a panel"""
+
+    def __init__(self, panel, **kwargs):
+        """Create ImageMarker instance
+
+            Parameters:
+                panel       An ImagePanel object with Image displayed on
+                stones      List of stones in GR format (list of lists [x,y,a,b,r])
+                show_stones True to show stones immediatlly (True if stones provided)
+                marker      Marker type (currently only 0 or "circle" supported)
+                radius      Radius to draw circles (overrides radius in stone list)
+        """
+        self.__panel = panel
+        self.__stones = kwargs.pop('stones', [])
+        show = kwargs.pop('show_stones', len(self.__stones) > 0)
+        self.__type = kwargs.pop('marker', 0)
+        self.__radius = kwargs.pop('radius', 0)
+
+        self.__markers = []
+        if show: self.show()
+
+        self.__bindings = NBinder()
+        self.__bindings.register(self.__panel, "<Resize>", self.__on_panel_resize)
+
+        # Public properies
+        self.line_color = "red"
+        self.fill_color = "red"
+        self.line_width = 1
+        self.fill_stipple = "gray50"
+
+    @property
+    def panel(self):
+        """ImagePanel"""
+        return self.__panel
+
+    @property
+    def canvas(self):
+        """Canvas"""
+        return self.__panel.canvas
+
+    @property
+    def stones(sef):
+        return self.__stones.copy()
+
+    def add_stone(self, stone, f_show = True):
+        """Add stone"""
+        self.__stones.extend([stone])
+        if f_show: self.__draw_marker(stone)
+
+    def del_stone(self, stone):
+        """Remove a stone"""
+        for i, s in enumerate(self.__stones):
+            if s[GR_A] == stone[GR_A] and s[GR_B] == stone[GR_B]:
+                self.__stones.pop(i)
+        if self.is_shown: self.__draw_markers()
+
+    def clear(self):
+        """Remove all stones"""
+        self.hide()
+        self.__stones = []
+
+    def show(self):
+        """Show markers"""
+        self.__draw_markers()
+
+    def hide(self):
+        """Hide previously shown markers"""
+        if not self.__markers is None:
+            for m in self.__markers :
+                self.canvas.delete(m)
+            self.__markers = []
+
+    @property
+    def is_shown(self):
+        """ True if markers are currently shown"""
+        return self.__markers is not None and len(self.__markers) > 0
+
+    def __draw_marker(self, stone):
+        """Internal function. Draws a marker for a stone"""
+        p = self.panel.image2frame((stone[GR_X], stone[GR_Y]))
+        r = stone[GR_R] if self.__radius == 0 else self.__radius
+        r = int(r * self.__panel.scale[0])
+
+        def circle(x, y, r):
+            return self.canvas.create_oval(
+                x - r, y - r, x + r, y + r,
+                outline = self.line_color,
+                fill = self.fill_color,
+                width = self.line_width
+            )
+
+        def circle_poly(x,y,r):
+            nr_points = 32
+            angles = np.linspace(0, 2*np.pi, nr_points+1)[0:-1]
+            points = []
+            for angle in angles:
+                points.append(x + r * np.cos(angle))
+                points.append(y + r * np.sin(angle))
+
+            return self.canvas.create_polygon(
+                  *points,
+                  outline = self.line_color,
+                  width = self.line_width,
+                  fill = self.fill_color,
+                  stipple = self.fill_stipple)
+
+        m = circle_poly(p[0], p[1], r)
+        self.__markers.extend([m])
+
+    def __draw_markers(self):
+        """Internal function. Draws all markers"""
+        # Clean up
+        if not self.__markers is None:
+            for m in self.__markers :
+                self.canvas.delete(m)
+        self.__markers = []
+
+        # Draw
+        for stone in self.__stones:
+            self.__draw_marker(stone)
+
+    def __on_panel_resize(self, e):
+        """Callback for panel resize (internal function)"""
+        self.__draw_markers()

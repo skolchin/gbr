@@ -12,7 +12,7 @@
 from gr.board import GrBoard
 from gr.grdef import *
 from gr.ui_extra import NLabel, NBinder, ImgButton, ImagePanel, StatusPanel, \
-    ImageMask, ImageTransform, GrDialog
+    ImageMask, ImageTransform, GrDialog, ImageMarker
 from gr.grlog import GrLog
 from gr.utils import format_stone_pos, resize, img_to_imgtk
 
@@ -75,7 +75,7 @@ class GbrDebugDlg(GrDialog):
 
     def add_debug_info(self, root):
         """Adds debug information images"""
-        shape = self.parent.board.board_shape
+        shape = self.parent.board.image.shape
         debug_img = self.parent.board.debug_images
 
         if debug_img is None:
@@ -147,6 +147,9 @@ class GbrOptionsDlg(GrDialog):
             image = self.btn_image, compound="left",
             command = self.detect_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
+        tk.Button(self.buttonFrame, text = "Defaults",
+            command = self.default_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+
         self.log_button = tk.Button(self.buttonFrame, text = "Log",
             state = tk.DISABLED if GrLog.numErrors() == 0 is None else tk.NORMAL,
             command = self.log_click_callback)
@@ -184,6 +187,21 @@ class GbrOptionsDlg(GrDialog):
 
         # Detect
         self.parent.detect_stones()
+
+    def default_click_callback(self):
+        """Default button click callback"""
+        self.parent.board.params = dict()
+
+        for key in self.tkVars.keys():
+            v = self.parent.board.params[key]
+            print(key, '=', v)
+            if not v is None: self.tkVars[key].set(v)
+
+        self.board_size_disabled.set(1)
+        self.board_size_label.config(state = tk.DISABLED)
+        self.board_size_scale.config(state = tk.DISABLED)
+
+        self.parent.board.save_params()
 
     def log_click_callback(self):
         """Log button click callback"""
@@ -338,28 +356,31 @@ class GbrStonesDlg(GrDialog):
     def select_callback(self, event):
         """List box selection chang callback"""
         item = event.widget.get(event.widget.curselection()[0])
+        self.show_stone(item)
+
+    def close(self, update_button_state = True):
+        """Graceful way to close the dialog"""
+        self.parent.imageMarker.clear()
+        if update_button_state: self.parent.buttons['stones'].state = False
+        self.destroy()
+
+    def get_stones(self):
+        """Gets a list of stones and formats it for display"""
+        bs = self.parent.board.stones
+        t = [(x, 'W') for x in bs['W']]
+        t.extend([(x, 'B') for x in bs['B']])
+        ts = sorted(t, key = lambda x: np.sqrt(x[0][GR_A]**2 + x[0][GR_B]**2))
+        self.stones = ["{} {}".format("Black" if x[1] == "B" else "White", format_stone_pos(x[0])) for x in ts]
+
+    def show_stone(self, item):
+        """Highlight a stone specified by item"""
         parts = item.split(' ')
         bw = 'B' if parts[0].lower() == "black" else 'W'
         a = parts[1][0]
         b = int(parts[1][1:5])
         stone, _ = self.parent.board.find_stone(p = (a,b), f_bw = bw)
         if not stone is None:
-            print(stone)
-
-    def close(self, update_button_state = True):
-        """Graceful way to close the dialog"""
-        if update_button_state: self.parent.buttons['stones'].state = False
-        self.destroy()
-
-    def get_stones(self):
-        self.stones = []
-        bs = self.parent.board.stones
-        for bw in bs.keys():
-            title = "Black" if bw == "B" else "White"
-            for stone in bs[bw]:
-                self.stones.extend([title + " " + format_stone_pos(stone)])
-        self.stones.sort()
-
+            self.parent.show_stone(stone, bw)
 
 # GUI class
 class GbrGUI2(object):
@@ -372,6 +393,7 @@ class GbrGUI2(object):
         self.binder = NBinder()
         self.optionsDlg = None
         self.stonesDlg = None
+        self.last_stone = None
 
         self.internalFrame = tk.Frame(self.root)
         self.internalFrame.pack(fill = tk.BOTH, expand = True)
@@ -445,6 +467,9 @@ class GbrGUI2(object):
 
         # Image transformer
         self.imageTransform = ImageTransform(self.imagePanel)
+
+        # Image marker(s)
+        self.imageMarker = ImageMarker(self.imagePanel)
 
         ## Mouse move
         ##self.root.bind('<Motion>', self.mouse_move_callback)
@@ -539,8 +564,7 @@ class GbrGUI2(object):
             x, y = self.imagePanel.frame2image((event.x, event.y))
             stone, bw = self.board.find_stone(c = (x, y))
             if not stone is None:
-                bw = "Black" if bw == "B" else "White"
-                self.statusBar.set("{} {}".format(bw, format_stone_pos(stone)))
+                self.show_stone(stone, bw)
             else:
                 self.statusBar.set("")
 
@@ -624,10 +648,25 @@ class GbrGUI2(object):
                 b = len(self.board.black_stones),
                 w = len(self.board.white_stones),
                 s = self.board.board_size))
+
+            self.imageMask.scaled_mask = self.board.board_edges
+            self.imageMask.size = self.board.board_size
             self.buttons['stones'].disabled = False
 
     def save_sgf(self):
-        pass
+        if not self.board.is_gen_board:
+            fn = self.board.save_sgf()
+            self.statusBar.set_file("Board saved to ", str(fn))
+
+    def show_stone(self, stone, bw):
+        if self.last_stone is not None:
+            self.imageMarker.del_stone(self.last_stone)
+        if not stone is None:
+            self.imageMarker.add_stone(stone)
+            self.statusBar.set("{} {}".format(
+                "Black" if bw == "B" else "White",
+                format_stone_pos(stone)))
+            self.last_stone = stone
 
     #
     # Utility functions
