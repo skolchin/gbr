@@ -13,7 +13,8 @@ import sys
 from .grdef import *
 from .utils import *
 from .cv2_watershed import apply_watershed
-from .py_accumulate import accumulate
+#from .py_accumulate import accumulate  # uncomment for Python 2.7
+from itertools import accumulate
 
 import cv2
 import numpy as np
