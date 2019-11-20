@@ -500,14 +500,6 @@ class GrBoard(object):
             return r
 
     @property
-    def board_shape(self):
-        """Board image shape"""
-        if self._img is None:
-            return None
-        else:
-            return self._img.shape
-
-    @property
     def board_size(self):
         """Board size"""
         if self._res is None:
@@ -515,6 +507,14 @@ class GrBoard(object):
             return p if p is not None else DEF_BOARD_SIZE
         else:
             return self._res[GR_BOARD_SIZE]
+
+    @property
+    def board_edges(self):
+        """Board edges"""
+        if self._res is None:
+            return self._params.get('BOARD_EDGES')
+        else:
+            return self._res[GR_EDGES]
 
     def transform_image(self, transform_rect):
         """Performs a perspective transformation"""
