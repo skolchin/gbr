@@ -16,19 +16,14 @@ from gr.grlog import GrLog
 
 import numpy as np
 import cv2
-import sys
-import os
 from PIL import Image, ImageTk
 import logging
 import random
+import tkinter as tk
 
-if sys.version_info[0] < 3:
-    import Tkinter as tk
-    import tkFileDialog  as filedialog
-else:
-    import tkinter as tk
-    from tkinter import filedialog
-
+# Test dialog
+class GrTestDlg(GrDialog):
+    pass
 
 # Board edit dialog class
 class GrBoardEdit(object):
@@ -45,6 +40,7 @@ class GrBoardEdit(object):
         self.imgPanel = addImagePanel(self.imgFrame,
               caption = "Image",
               btn_params = [
+                ['params', False, self.test_callback, "Test", GrTestDlg],
                 ['plus', False, self.zoom_in_callback, "Zoom in"],
                 ['minus', False, self.zoom_out_callback, "Zoom out"],
                 ["area", True, self.set_area_callback, "Set board area"],
@@ -52,9 +48,9 @@ class GrBoardEdit(object):
                 ['edge', False, self.transform_callback, "Transform image"]
               ],
               image = img,
-              max_size = 700,
-              mode = "clip",
-              min_size = 500,
+              max_size = 500,
+              mode = "fit",
+              min_size = 300,
               scrollbars = False,
               frame_callback = self.frame_callback)
 
@@ -130,9 +126,12 @@ class GrBoardEdit(object):
 
     def frame_callback(self, event):
         p = self.imgPanel.frame2image((event.x, event.y))
-        self.imgMarker.add_stone([p[0], p[1], 1, 1, 7])
+        self.imgMarker.add_stone([p[0], p[1], 1, 1, 20])
         if not self.imgMarker.is_shown:
             self.imgMarker.show()
+
+    def test_callback(self, event, tag, state):
+        return True
 
 ##        b = NBinder()
 ##        b.trigger(self.imgPanel, '<Resize>', ResizeEvent(self.imgPanel, [1.0, 1.0], [1.0, 1.0]))

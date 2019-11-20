@@ -29,8 +29,8 @@ from tkinter import messagebox
 
 # Debug info dialog class
 class GbrDebugDlg(GrDialog):
-    def __init__(self, parent, *args, **kwargs):
-        GrDialog.__init__(self, parent, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        GrDialog.__init__(self, *args, **kwargs)
 
     def get_minsize(self):
         return (300, 400)
@@ -67,16 +67,16 @@ class GbrDebugDlg(GrDialog):
         """Mouse click on debug info panel callback"""
         w = event.widget
         k = w.tag
-        cv2.imshow(k, self.parent.board.debug_images[k])
+        cv2.imshow(k, self.root.board.debug_images[k])
 
     def on_scroll_configure(self, event):
         """Canvas config callback"""
         self.canvas.configure(scrollregion = self.debugFrame.bbox('all'))
 
-    def add_debug_info(self, root):
+    def add_debug_info(self, parent):
         """Adds debug information images"""
-        shape = self.parent.board.image.shape
-        debug_img = self.parent.board.debug_images
+        shape = self.root.board.image.shape
+        debug_img = self.root.board.debug_images
 
         if debug_img is None:
             return
@@ -87,7 +87,7 @@ class GbrDebugDlg(GrDialog):
 
         # Add analysis result images
         for key in sorted(debug_img.keys()):
-            frame = tk.Frame(root)
+            frame = tk.Frame(parent)
             frame.grid(row = nrow, column = ncol, padx = 2, pady = 2, sticky = "nswe")
 
             img = resize(debug_img[key], sz)
@@ -108,7 +108,7 @@ class GbrDebugDlg(GrDialog):
 
     def save_debug_info(self):
         """Saves debug images to given directory"""
-        debug_img = self.parent.board.debug_images
+        debug_img = self.root.board.debug_images
         if debug_img is None:
             return
 
@@ -126,8 +126,8 @@ class GbrDebugDlg(GrDialog):
 
 # Options dialog class
 class GbrOptionsDlg(GrDialog):
-    def __init__(self, parent, *args, **kwargs):
-        GrDialog.__init__(self, parent, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        GrDialog.__init__(self, *args, **kwargs)
 
     def get_title(self):
         return "Parameters"
@@ -139,7 +139,7 @@ class GbrOptionsDlg(GrDialog):
         self.debug_dlg = None
 
     def init_frame(self):
-        self.tkVars = self.add_switches(self.internalFrame, self.parent.board.params)
+        self.tkVars = self.add_switches(self.internalFrame, self.root.board.params)
 
     def init_buttons(self):
         self.btn_image = ImgButton.get_ui_image("detect_flat.png")
@@ -156,7 +156,7 @@ class GbrOptionsDlg(GrDialog):
         self.log_button.pack(side = tk.LEFT, padx = 5, pady = 5)
 
         self.dbg_button = tk.Button(self.buttonFrame, text = "Debug",
-            state = tk.DISABLED if self.parent.board.results is None else tk.NORMAL,
+            state = tk.DISABLED if self.root.board.results is None else tk.NORMAL,
             command = self.debug_click_callback)
         self.dbg_button.pack(side = tk.LEFT, padx = 5, pady = 5)
 
@@ -165,7 +165,7 @@ class GbrOptionsDlg(GrDialog):
     def update_controls(self):
         if self.dbg_button is not None:
             self.dbg_button.configure(
-                state = tk.DISABLED if self.parent.board.results is None else tk.NORMAL)
+                state = tk.DISABLED if self.root.board.results is None else tk.NORMAL)
         if self.log_button is not None:
             self.log_button.configure(
                 state = tk.DISABLED if GrLog.numErrors() == 0 is None else tk.NORMAL)
@@ -180,20 +180,20 @@ class GbrOptionsDlg(GrDialog):
         if self.board_size_disabled.get() > 0:
             del p['BOARD_SIZE']
 
-        self.parent.board.params = p
+        self.root.board.params = p
 
         # Save transform and area rect
-        self.parent.board.param_board_edges = self.parent.imageMask.scaled_mask
+        self.root.board.param_board_edges = self.root.imageMask.scaled_mask
 
         # Detect
-        self.parent.detect_stones()
+        self.root.detect_stones()
 
     def default_click_callback(self):
         """Default button click callback"""
-        self.parent.board.params = dict()
+        self.root.board.params = dict()
 
         for key in self.tkVars.keys():
-            v = self.parent.board.params[key]
+            v = self.root.board.params[key]
             print(key, '=', v)
             if not v is None: self.tkVars[key].set(v)
 
@@ -201,11 +201,11 @@ class GbrOptionsDlg(GrDialog):
         self.board_size_label.config(state = tk.DISABLED)
         self.board_size_scale.config(state = tk.DISABLED)
 
-        self.parent.board.save_params()
+        self.root.board.save_params()
 
     def log_click_callback(self):
         """Log button click callback"""
-        GrLog.show(self.parent.root)
+        GrLog.show(self.root)
 
     def debug_click_callback(self):
         """Debug button click callback"""
@@ -213,7 +213,7 @@ class GbrOptionsDlg(GrDialog):
             self.debug_dlg.close()
             self.debug_dlg = None
 
-        self.debug_dlg = GbrDebugDlg(self.parent)
+        self.debug_dlg = GbrDebugDlg(master = self)
 
     def scale_cb_changed(self):
         """Board_size combobox state changed"""
@@ -226,7 +226,7 @@ class GbrOptionsDlg(GrDialog):
             self.board_size_scale.config(state = state)
 
 
-    def add_switches(self, rootFrame, params, max_in_row = 6):
+    def add_switches(self, parent, params, max_in_row = 6):
         """Add Scale widgets with board parameters"""
         n = 1
         ncol = 0
@@ -234,7 +234,7 @@ class GbrOptionsDlg(GrDialog):
         vars = dict()
 
         # Add a tabbed notebook
-        nb = ttk.Notebook(rootFrame)
+        nb = ttk.Notebook(parent)
         nb.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
 
         # Get unique tabs
@@ -294,20 +294,19 @@ class GbrOptionsDlg(GrDialog):
 
         return vars
 
-    def close(self, update_button_state = True):
+    def close(self):
         """Graceful way to close the dialog"""
         if self.debug_dlg is not None:
             self.debug_dlg.close()
             self.debug_dlg = None
-        if update_button_state: self.parent.buttons['params'].state = False
-        self.destroy()
+        GrDialog.close(self)
 
 # Stones dialog class
 class GbrStonesDlg(GrDialog):
-    def __init__(self, parent, *args, **kwargs):
-        GrDialog.__init__(self, parent, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        GrDialog.__init__(self, *args, **kwargs)
 
-    def init_params(self, args, kwargs):
+    def init_state(self):
         self.stones = None
         self.get_stones()
 
@@ -347,26 +346,25 @@ class GbrStonesDlg(GrDialog):
 
     def detect_click_callback(self):
         """Detect button click callback"""
-        self.parent.detect_stones()
+        self.root.detect_stones()
 
     def save_click_callback(self):
         """Save button click callback"""
-        self.parent.save_sgf()
+        self.root.save_sgf()
 
     def select_callback(self, event):
         """List box selection chang callback"""
         item = event.widget.get(event.widget.curselection()[0])
         self.show_stone(item)
 
-    def close(self, update_button_state = True):
+    def close(self):
         """Graceful way to close the dialog"""
-        self.parent.imageMarker.clear()
-        if update_button_state: self.parent.buttons['stones'].state = False
-        self.destroy()
+        self.root.imageMarker.clear()
+        GrDialog.close(self)
 
     def get_stones(self):
         """Gets a list of stones and formats it for display"""
-        bs = self.parent.board.stones
+        bs = self.root.board.stones
         t = [(x, 'W') for x in bs['W']]
         t.extend([(x, 'B') for x in bs['B']])
         ts = sorted(t, key = lambda x: np.sqrt(x[0][GR_A]**2 + x[0][GR_B]**2))
@@ -378,24 +376,25 @@ class GbrStonesDlg(GrDialog):
         bw = 'B' if parts[0].lower() == "black" else 'W'
         a = parts[1][0]
         b = int(parts[1][1:5])
-        stone, _ = self.parent.board.find_stone(p = (a,b), f_bw = bw)
+        stone, _ = self.root.board.find_stone(p = (a,b), f_bw = bw)
         if not stone is None:
-            self.parent.show_stone(stone, bw)
+            self.root.show_stone(stone, bw)
 
 # GUI class
-class GbrGUI2(object):
+class GbrGUI2(tk.Tk):
 
     # Constructor
-    def __init__(self, root):
-        self.root = root
+    def __init__(self, *args, **kwargs):
+        tk.Tk.__init__(self, "Go board")
+        self.title("Go board")
+        self.minsize(300, 400)
+
         self.buttons = dict()
         self.board = GrBoard()
         self.binder = NBinder()
-        self.optionsDlg = None
-        self.stonesDlg = None
         self.last_stone = None
 
-        self.internalFrame = tk.Frame(self.root)
+        self.internalFrame = tk.Frame(self)
         self.internalFrame.pack(fill = tk.BOTH, expand = True)
 
         self.__init_menu()
@@ -428,11 +427,11 @@ class GbrGUI2(object):
 
         self.buttons['stones'] = ImgButton(toolbarPanel,
             tag = "stones", tooltip = "List of stones", disabled = True,
-            callback = self.show_stones_callback)
+            dlg_class = GbrStonesDlg)
 
         self.buttons['params'] = ImgButton(toolbarPanel,
             tag = "params", tooltip = "Detection params", disabled = True,
-            callback = self.set_params_callback)
+            dlg_class = GbrOptionsDlg)
 
         self.buttons['save'] = ImgButton(toolbarPanel,
             tag = "save", tooltip = "Save as SGF", disabled = True,
@@ -472,7 +471,7 @@ class GbrGUI2(object):
         self.imageMarker = ImageMarker(self.imagePanel)
 
         ## Mouse move
-        ##self.root.bind('<Motion>', self.mouse_move_callback)
+        ##self.bind('<Motion>', self.mouse_move_callback)
 
 
     def __init_statusbar(self):
@@ -508,33 +507,19 @@ class GbrGUI2(object):
             self.imageMask.hide()
         return True
 
-    def show_stones_callback(self, event, tag, state):
-        """Show stones button click"""
-        if self.board.is_gen_board:
-            return
-        if self.stonesDlg is not None:
-            self.stonesDlg.close(False)
-            self.stonesDlg = None
-        if state:
-            self.stonesDlg = GbrStonesDlg(self)
-        return True
-
-    def set_params_callback(self, event, tag, state):
-        """Detection params button click"""
-        if self.board.is_gen_board:
-            return
-        if self.optionsDlg is not None:
-            self.optionsDlg.close(False)
-            self.optionsDlg = None
-        if state:
-            self.optionsDlg = GbrOptionsDlg(self)
-        return True
-
     def detect_callback(self, event, tag, state):
         """Detect button click"""
         if not self.board.is_gen_board:
             self.detect_stones()
         return False
+
+    def show_stones_callback(self, event, tag, state):
+        """Show stones button click"""
+        return not self.board.is_gen_board
+
+    def set_params_callback(self, event, tag, state):
+        """Detection params button click"""
+        return not self.board.is_gen_board
 
     def save_sgf_callback(self, event, tag, state):
         """SGF save button click"""
@@ -543,12 +528,12 @@ class GbrGUI2(object):
         return False
 
     def reset_callback(self, event, tag, state):
-        """Open button click"""
+        """Reset button click"""
         return False
 
 ##    def mouse_move_callback(self, event):
-##        x,y = self.root.winfo_pointerxy()
-##        widget = self.root.winfo_containing(x, y)
+##        x,y = self.winfo_pointerxy()
+##        widget = self.winfo_containing(x, y)
 ##        if widget == self.imagePanel.canvas and not self.board.results is None:
 ##            x, y = self.imagePanel.frame2image((event.x, event.y))
 ##            stone, bw = self.board.find_stone(x, y)
@@ -570,7 +555,7 @@ class GbrGUI2(object):
 
     def status_click_callback(self, event):
         """Status bar mouse click"""
-        GrLog.show(self.root)
+        GrLog.show(self)
 
     def mask_callback(self, mask):
         """Mask resizing finished"""
@@ -585,17 +570,10 @@ class GbrGUI2(object):
 
         # Clean up
         GrLog.clear()
-        self.imageMask.hide()
+        self.imageMarker.clear()
 
-        for b in ["edge", "area", "stones", "params", "detect"]:
-            self.buttons[b].state = False
-
-        if self.optionsDlg is not None:
-            self.optionsDlg.close()
-            self.optionsDlg = None
-        if self.stonesDlg is not None:
-            self.stonesDlg.close()
-            self.stonesDlg = None
+        for b in ["edge", "area", "stones", "params"]:
+            self.buttons[b].release()
 
         # Load image
         self.board.load_image(filename, f_process = False, f_with_params = True)
@@ -635,8 +613,15 @@ class GbrGUI2(object):
 
     def detect_stones(self):
         """Detect stones on currently loaded board image"""
-        # Process
+
+        # Clean up
         GrLog.clear()
+        self.imageMarker.clear()
+
+        for b in ["edge", "area"]:
+            self.buttons[b].release()
+
+        # Process
         self.board.process()
         self.board.save_params()
 
@@ -651,7 +636,9 @@ class GbrGUI2(object):
 
             self.imageMask.scaled_mask = self.board.board_edges
             self.imageMask.size = self.board.board_size
-            self.buttons['stones'].disabled = False
+
+            for b in ["stones", "save"]:
+                self.buttons[b].disabled = False
 
     def save_sgf(self):
         if not self.board.is_gen_board:
@@ -676,15 +663,11 @@ class GbrGUI2(object):
 
 # Main function
 def main():
-    # Construct interface
-    window = tk.Tk()
-    window.title("Go board")
-    window.minsize(300, 300)
-
     log = GrLog.init()
-    gui = GbrGUI2(window)
+    window = GbrGUI2()
 
     window.mainloop()
+
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':

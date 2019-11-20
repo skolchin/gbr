@@ -51,14 +51,14 @@ class NBinder(object):
     def __init__(self):
         self.bnd_ref = dict()
 
-    def bind(self, widget, event, callback, _type = "tk"):
+    def bind(self, widget, event, callback, _type = "tk", add = ''):
         """Bind a callback to an event (tkInter or custom)"""
 
         # Store binding in this instance
         key = str(widget.winfo_id()) + '__' + str(event)
         if _type == "tk":
             # tkinter event
-            bnd_id = widget.bind(event, callback)
+            bnd_id = widget.bind(event, callback, add)
         else:
             # custom event
             bnd_id = len(self.bnd_ref) + 1
@@ -99,19 +99,21 @@ class NBinder(object):
         """Triggers a custom event"""
         bnd_list = NBinder.__bindings
         for bnd in bnd_list:
-            if bnd[1].winfo_id() == widget.winfo_id() and bnd[2] == event:
+            if bnd[1] == widget and bnd[2] == event:
                 bnd[3](evt_data)
 
     @staticmethod
     def __unbind(owner, event):
         for i, bnd in enumerate(NBinder.__bindings):
-            if bnd[0] == owner:
-                # This is my binding, remove it and rebind TkInter events
-                refs.pop(i)
-                for ref2 in refs:
-                    w2, widget, event, callback, _type = ref2
-                    if _type == "tk":
-                        widget.bind(event, callback)
+            if bnd[0] == owner and bnd[2] == event:
+                # This is my binding for given event
+                NBinder.__bindings.pop(i)
+
+                # If it is Tk event, rebind other callbacks to this event
+                if bnd[4] == "tk":
+                    for bnd2 in NBinder.__bindings:
+                        if bnd2[0] == owner and bnd2[2] == event:
+                            widget.bind(event, callback)
 
 
 
@@ -119,20 +121,23 @@ class NBinder(object):
 # ImageButton
 class ImgButton(tk.Label):
     """Button with image face"""
-    def __init__(self, master, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Creates new ImgButton.
 
         Parameters:
-            master     Tk windows/frame
-            tag        Button tag. Files names "<tag>_down.png" and "<tag>_up.png" must exist in UI_DIR.
-            state      Initial pressing state (true/false)
-            disabled   True/False
-            tooltip    A tooltip text
-            callback   Callback function. Function signature:
-                          event - Tk event
-                          tag   - button's tag
-                          state - target state (true/false)
-                       Function shall return if new state accepted, or false otherwise
+            master      Tk windows/frame
+            tag         Button tag. Files names "<tag>_down.png" and "<tag>_up.png" must exist in UI_DIR.
+            state       Initial state (true/false)
+            disabled    True/False
+            tooltip     A tooltip text
+            callback    Callback function. Function signature:
+                            event - Tk event
+                            tag   - button's tag
+                            state - target state (true/false)
+                        Function shall return True if new state accepted, or False otherwise
+            dlg_class   A dialog class. If provided, assumed that button is to be used to show/hide this dialog.
+                        Note that if a callback is provided, dialog is created after it respecting results of the call.
+                        A dialog should trigger <Close> event to allow button unpress upon clase.
         """
         self.__tag = kwargs.pop('tag', None)
         if self.__tag is None:
@@ -141,9 +146,13 @@ class ImgButton(tk.Label):
         self.__disabled = kwargs.pop('disabled', False)
         self.__callback = kwargs.pop('callback', None)
         tooltip = kwargs.pop('tooltip', None)
+        self.__dlg_class = kwargs.pop('dlg_class', None)
+
+        self.__dlg = None
+        self.__binder = NBinder()
         self.__DS_MAP = ['normal', 'disabled']
 
-        tk.Label.__init__(self, master, *args, **kwargs)
+        tk.Label.__init__(self, *args, **kwargs)
 
         if not tooltip is None:
             self.__tooltip = createToolTip(self, tooltip)
@@ -153,7 +162,7 @@ class ImgButton(tk.Label):
         self.__images = [ImgButton.get_ui_image(self.__tag + '_up.png'),
                          ImgButton.get_ui_image(self.__tag + '_down.png')]
 
-        # Update kwargs
+        # Update configuration
         w = self.__images[0].width() + 4
         h = self.__images[0].height() + 4
         self.configure(borderwidth = 1, relief = "groove", width = w, height = h)
@@ -162,14 +171,59 @@ class ImgButton(tk.Label):
         self.bind("<Button-1>", self.mouse_click)
 
     def mouse_click(self, event):
-        if self.__disabled: return
+        """Mouse click callback"""
+        if not self.__disabled: self.toggle()
 
+    def dialog_close_callback(self, event):
+        """Dialog close callback"""
+        if self.__dlg is not None:
+            self.__binder.unbind(self.__dlg, "<Close>")
+            self.__dlg = None
+        self.state = False
+
+    @property
+    def state(self):
+        """Button state"""
+        return self.__state
+
+    @state.setter
+    def state(self, new_state):
+        """Button state. Callbacks are not called when state is changed, use press/release/toggle"""
+        if new_state != self.__state:
+            self.__state = new_state
+            self.configure(image = self.__images[new_state], state = self.__DS_MAP[self.__disabled])
+
+    @property
+    def disabled(self):
+        """Button disabled state"""
+        return self.__disabled
+
+    @state.setter
+    def disabled(self, ds):
+        """Button disabled state"""
+        if ds != self.__disabled:
+            self.__disabled = ds
+            self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
+
+    def press(self):
+        """Press a button """
+        if not self.__state: self.toggle()
+
+    def release(self):
+        """Unpress a button """
+        if self.__state: self.toggle()
+
+    def toggle(self, event = None):
+        """Toggle button state. Calls a callback and handle results of the call"""
+
+        # Update state
         cur_state = self.__state
         new_state = not self.__state
         self.configure(image = self.__images[new_state], state = self.__DS_MAP[self.__disabled])
         if new_state: self._root().update()
         self.__state = new_state
 
+        # Call a callback
         if not self.__callback is None:
            if not self.__callback(event = event, tag = self.__tag, state = new_state):
               self.__state = cur_state
@@ -179,28 +233,20 @@ class ImgButton(tk.Label):
               else:
                  self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
 
-    @property
-    def state(self):
-        return self.__state
+        # Handle a dialog communication
+        if not self.__dlg_class is None:
+            if self.__dlg is not None:
+                self.__binder.unbind(self.__dlg, "<Close>")
+                self.__dlg.destroy()
+                self.__dlg = None
 
-    @state.setter
-    def state(self, new_state):
-        if new_state != self.__state:
-            self.__state = new_state
-            self.configure(image = self.__images[new_state], state = self.__DS_MAP[self.__disabled])
-
-    @property
-    def disabled(self):
-        return self.__disabled
-
-    @state.setter
-    def disabled(self, ds):
-        if ds != self.__disabled:
-            self.__disabled = ds
-            self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
+            if self.__state:
+                self.__dlg = self.__dlg_class(master = self.master)
+                self.__binder.register(self.__dlg, "<Close>", self.dialog_close_callback)
 
     @staticmethod
     def get_ui_image(name):
+        """Static method to get an image from UI directory"""
         ui_path = os.path.join(os.path.dirname(sys.argv[0]), UI_DIR)
         return ImageTk.PhotoImage(Image.open(os.path.join(ui_path, name)))
 
@@ -369,7 +415,11 @@ class ImagePanel(tk.Frame):
 
            Keyworded parameters:
                caption          Panel caption
-               btn_params       Params for ImgButtons: tag, initial state, callback function, (optional) tooltip
+               btn_params       Params for ImgButtons:
+                                    tag, initial state, callback function,
+                                    (optional) tooltip, (optional) dialog class.
+                                See ImgButton class for params description.
+                                Softly deprecated.
                btn_align        Alignment of ImgButtons (default is tk.RIGHT)
                image            OpenCv or PhotoImage. If none provided, an empty frame is created (default is None)
                frame_callback   Callback for panel mouse click (default is None)
@@ -430,10 +480,11 @@ class ImagePanel(tk.Frame):
         if not btn_params is None:
             for b in btn_params:
                 btn = ImgButton(headerPanel,
-                    tag = b[0],
-                    state = b[1],
-                    callback = b[2],
-                    tooltip = b[3] if len(b) > 3 else None)
+                    tag =       b[0],
+                    state =     b[1],
+                    callback =  b[2],
+                    tooltip =   b[3] if len(b) > 3 else None,
+                    dlg_class = b[4] if len(b) > 4 else None)
                 self.__buttons[b[0]] = btn
                 btn.pack(side = btn_align, padx = 2, pady = 2)
 
@@ -1290,11 +1341,14 @@ class ImageTransform(object):
 class GrDialog(tk.Toplevel):
     """A base class for dialog and supplementary windows"""
 
-    def __init__(self, parent, *args, **kwargs):
-        self.parent = parent
+    def __init__(self, *args, **kwargs):
+        # Initialization
         self.init_params(args, kwargs)
         tk.Toplevel.__init__(self, *args, **kwargs)
+        self.binder = NBinder()
+        self.init_state()
 
+        # Window mechanics
         self.transient(self.get_root())
         self.attributes("-toolwindow", True)
 
@@ -1304,6 +1358,12 @@ class GrDialog(tk.Toplevel):
         self.minsize(m[0], m[1])
         self.geometry("%+d%+d" % (p[0], p[1]))
 
+        # Bindings
+        self.bind("<Escape>", self.escape_callback)
+        self.bind("<FocusIn>", self.focus_in_callback)
+        self.protocol("WM_DELETE_WINDOW", self.on_closing_callback)
+
+        # Payload
         self.internalFrame = tk.Frame(self)
         self.internalFrame.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
 
@@ -1313,19 +1373,20 @@ class GrDialog(tk.Toplevel):
         self.init_frame()
         self.init_buttons()
 
+        # Focus
         self.grab_focus()
 
-        self.bind("<Escape>", self.escape_callback)
-        self.bind("<FocusIn>", self.focus_in_callback)
-        self.protocol("WM_DELETE_WINDOW", self.on_closing_callback)
 
     def get_root(self):
-        if type(self.parent) is tk.Tk:
-            return self.parent
-        elif hasattr(self.parent, "root"):
-            return self.parent.root
-        else:
-            raise Exception("Cannot find root")
+        m = self.master
+        while m is not None:
+            if isinstance(m, tk.Tk): return m
+            m = m.master
+        return None
+
+    @property
+    def root(self):
+        return self.get_root()
 
     def get_minsize(self):
         """Override to define minimum window size"""
@@ -1346,7 +1407,11 @@ class GrDialog(tk.Toplevel):
         return (15, 40)
 
     def init_params(self, args, kwargs):
-        """Override to setup internal variables or get inbound parameters"""
+        """Override to get extra parameters from arguments"""
+        pass
+
+    def init_state(self):
+        """Override to setup after widget initialization done"""
         pass
 
     def init_frame(self):
@@ -1354,7 +1419,7 @@ class GrDialog(tk.Toplevel):
         pass
 
     def init_buttons(self):
-        """Override to add buttons to button frame"""
+        """Override to add buttons to button frame. Inherited method should be called."""
         tk.Button(self.buttonFrame, text = "Close",
             command = self.close_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
@@ -1383,8 +1448,10 @@ class GrDialog(tk.Toplevel):
         """Window been closed"""
         self.close()
 
-    def close(self, update_button_state = True):
-        """Graceful way to close the dialog"""
+    def close(self):
+        """Graceful way to close the dialog.
+        Override to add custom logic, inherited method should be called"""
+        self.binder.trigger(self, "<Close>", None)
         self.destroy()
 
 # A marker on an ImagePanel
@@ -1416,8 +1483,8 @@ class ImageMarker(object):
         # Public properies
         self.line_color = "red"
         self.fill_color = "red"
-        self.line_width = 1
-        self.fill_stipple = "gray50"
+        self.line_width = 2
+        self.fill_stipple = "gray12"
 
     @property
     def panel(self):
@@ -1495,7 +1562,10 @@ class ImageMarker(object):
                   fill = self.fill_color,
                   stipple = self.fill_stipple)
 
-        m = circle_poly(p[0], p[1], r)
+        if self.fill_stipple == "":
+            m = circle(p[0], p[1], r)
+        else:
+            m = circle_poly(p[0], p[1], r)
         self.__markers.extend([m])
 
     def __draw_markers(self):
