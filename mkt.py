@@ -29,9 +29,9 @@ def transparent(src_file, dest_file, transp_color = (255, 255, 255)):
     img.save(dest_file, "PNG")
 
 def main():
-    fs = "C:/Users/kol/Documents/kol/gbr/ui/save_flat.png"
-    fd = "C:/Users/kol/Documents/kol/gbr/ui/save_flat2.png"
-    transparent(fs, fd, (192, 192, 192))
+    fs = "C:/Users/kol/Documents/kol/gbr/ui/white_small.png"
+    fd = "C:/Users/kol/Documents/kol/gbr/ui/white_small.png"
+    transparent(fs, fd, (255, 255, 255))
 
 if __name__ == '__main__':
     main()
