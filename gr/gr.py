@@ -615,6 +615,8 @@ def process_img(img, params):
         img2, offset = apply_area_mask(img, params)
 
         # Find board edges, spacing, size
+        # After applying area mask, image is shifted top-left by offset
+        # Therefore, for predefined edges, they have to be shifted too to match the image
         if params.get('BOARD_EDGES') is None:
             # Parameter not set, detecting
             board_edges, board_size = find_board(img2, params, res)
@@ -623,6 +625,7 @@ def process_img(img, params):
                return None
         else:
             board_edges, board_size = get_board_from_params(img2, params, res)
+            offset_edges(board_edges, [-1 * offset[0], -1 * offset[1]])
 
         # Find stones
         black_stones = find_stones(img2, params, res, 'B')

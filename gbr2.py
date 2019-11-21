@@ -12,7 +12,8 @@
 from gr.board import GrBoard
 from gr.grdef import *
 from gr.ui_extra import NLabel, NBinder, ImgButton, ImagePanel, StatusPanel, \
-    ImageMask, ImageTransform, GrDialog, ImageMarker
+    ImageMask, ImageTransform, GrDialog, ImageMarker, \
+    treeview_sort_columns
 from gr.grlog import GrLog
 from gr.utils import format_stone_pos, resize, img_to_imgtk
 
@@ -142,9 +143,10 @@ class GbrOptionsDlg(GrDialog):
         self.tkVars = self.add_switches(self.internalFrame, self.root.board.params)
 
     def init_buttons(self):
-        self.btn_image = ImgButton.get_ui_image("detect_flat.png")
+        self.btn_images = [ImgButton.get_ui_image("detect_flat.png"),]
+
         tk.Button(self.buttonFrame, text = "Detect",
-            image = self.btn_image, compound="left",
+            image = self.btn_images[0], compound="left",
             command = self.detect_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
         tk.Button(self.buttonFrame, text = "Defaults",
@@ -161,6 +163,8 @@ class GbrOptionsDlg(GrDialog):
         self.dbg_button.pack(side = tk.LEFT, padx = 5, pady = 5)
 
         GrDialog.init_buttons(self)
+
+        self.bind("<Return>", self.return_callback)
 
     def update_controls(self):
         if self.dbg_button is not None:
@@ -225,6 +229,8 @@ class GbrOptionsDlg(GrDialog):
             self.board_size_label.config(state = state)
             self.board_size_scale.config(state = state)
 
+    def return_callback(self, event):
+        self.detect_click_callback()
 
     def add_switches(self, parent, params, max_in_row = 6):
         """Add Scale widgets with board parameters"""
@@ -310,6 +316,9 @@ class GbrStonesDlg(GrDialog):
         self.stones = None
         self.get_stones()
 
+    def get_minsize(self):
+        return (200, 300)
+
     def get_title(self):
         return "Stones"
 
@@ -317,22 +326,33 @@ class GbrStonesDlg(GrDialog):
         sbr = tk.Scrollbar(self.internalFrame)
         sbr.pack(side=tk.RIGHT, fill=tk.Y)
 
-        lbox = tk.Listbox(self.internalFrame, yscrollcommand=sbr.set, width = 30)
-        if self.stones is not None:
-            lbox.insert(tk.END, *self.stones)
-        lbox.pack(fill = tk.BOTH, expand = True, padx = 5, pady = 5)
-        sbr.config(command = lbox.yview)
-        lbox.bind('<<ListboxSelect>>', self.select_callback)
+        self.tv = ttk.Treeview(self.internalFrame, column = ("p"),
+            height = 10, selectmode = "browse" )
+        self.tv.column("#0", width=40, minwidth=20, stretch=tk.NO)
+        self.tv.column("p", width=30, minwidth=20, stretch=tk.YES)
+        self.tv.heading("#0", text = "Color", anchor = tk.W)
+        self.tv.heading("#1", text = "Stone", anchor = tk.W)
+        treeview_sort_columns(self.tv)
+        self.tv.pack(side = tk.TOP, fill=tk.BOTH, expand = True)
+        self.tv.bind("<<TreeviewSelect>>", self.select_callback)
+
+        self.stone_images = [ImgButton.get_ui_image("black_small.png"),
+                           ImgButton.get_ui_image("white_small.png")]
+        self.update_listbox()
+
+        sbr.config(command = self.tv.yview)
+        self.tv.config(yscrollcommand = sbr.set)
 
     def init_buttons(self):
-        self.det_btn_image = ImgButton.get_ui_image("detect_flat.png")
+        self.btn_images = [ImgButton.get_ui_image("detect_flat.png"),
+                           ImgButton.get_ui_image("save_flat.png")]
+
         tk.Button(self.buttonFrame, text = "Detect",
-            image = self.det_btn_image, compound="left",
+            image = self.btn_images[0], compound="left",
             command = self.detect_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
-        self.save_btn_image = ImgButton.get_ui_image("save_flat.png")
         tk.Button(self.buttonFrame, text = "Save SGF",
-            image = self.save_btn_image, compound="left",
+            image = self.btn_images[1], compound="left",
             command = self.save_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
         GrDialog.init_buttons(self)
@@ -342,11 +362,15 @@ class GbrStonesDlg(GrDialog):
         self.focus_set()
 
     def update_controls(self):
-        pass
+        """Focus set"""
+        self.get_stones()
+        self.update_listbox()
 
     def detect_click_callback(self):
         """Detect button click callback"""
         self.root.detect_stones()
+        self.get_stones()
+        self.update_listbox()
 
     def save_click_callback(self):
         """Save button click callback"""
@@ -354,8 +378,13 @@ class GbrStonesDlg(GrDialog):
 
     def select_callback(self, event):
         """List box selection chang callback"""
-        item = event.widget.get(event.widget.curselection()[0])
-        self.show_stone(item)
+        sel = event.widget.focus()
+        if sel is not None and len(sel) > 0:
+            item = event.widget.item(sel)
+            stone, bw = self.root.board.find_stone(s = item['tags'][0], bw = item['tags'][1])
+            print('Stone found ', stone)
+            if stone is not None:
+                self.root.show_stone(stone, bw)
 
     def close(self):
         """Graceful way to close the dialog"""
@@ -368,17 +397,14 @@ class GbrStonesDlg(GrDialog):
         t = [(x, 'W') for x in bs['W']]
         t.extend([(x, 'B') for x in bs['B']])
         ts = sorted(t, key = lambda x: np.sqrt(x[0][GR_A]**2 + x[0][GR_B]**2))
-        self.stones = ["{} {}".format("Black" if x[1] == "B" else "White", format_stone_pos(x[0])) for x in ts]
+        self.stones = [(format_stone_pos(x[0]), x[1]) for x in ts]
 
-    def show_stone(self, item):
-        """Highlight a stone specified by item"""
-        parts = item.split(' ')
-        bw = 'B' if parts[0].lower() == "black" else 'W'
-        a = parts[1][0]
-        b = int(parts[1][1:5])
-        stone, _ = self.root.board.find_stone(p = (a,b), f_bw = bw)
-        if not stone is None:
-            self.root.show_stone(stone, bw)
+    def update_listbox(self):
+        self.tv.delete(*self.tv.get_children())
+        for stone in self.stones:
+            im = self.stone_images[0] if stone[1] == "B" else self.stone_images[1]
+            self.tv.insert("", "end", image = im, values = (stone[0]), tags = (stone))
+
 
 # GUI class
 class GbrGUI2(tk.Tk):
@@ -438,8 +464,8 @@ class GbrGUI2(tk.Tk):
             callback = self.save_sgf_callback)
 
         self.buttons['reset'] = ImgButton(toolbarPanel,
-            tag = "reset", tooltip = "Reset", disabled = True,
-            callback = self.reset_callback)
+            tag = "reset", tooltip = "Reset image", disabled = True,
+            callback = self.reset_image_callback)
 
         for b in self.buttons.keys():
             self.buttons[b].pack(side = tk.LEFT, padx = 2, pady = 2)
@@ -527,7 +553,7 @@ class GbrGUI2(tk.Tk):
             self.save_sgf()
         return False
 
-    def reset_callback(self, event, tag, state):
+    def reset_image_callback(self, event, tag, state):
         """Reset button click"""
         return False
 
