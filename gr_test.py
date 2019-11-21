@@ -72,7 +72,7 @@ class GrBoardEdit(object):
         self.imgTransform.show_coord = True
 
         # Image marker
-        self.imgMarker = ImageMarker(self.imgPanel)
+        self.imgMarker = ImageMarker(self.imgPanel, flash = 3)
 
     def set_area_callback(self, event, tag, state):
         if state:

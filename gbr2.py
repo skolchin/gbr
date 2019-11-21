@@ -323,6 +323,7 @@ class GbrStonesDlg(GrDialog):
         return "Stones"
 
     def init_frame(self):
+
         sbr = tk.Scrollbar(self.internalFrame)
         sbr.pack(side=tk.RIGHT, fill=tk.Y)
 
@@ -494,7 +495,7 @@ class GbrGUI2(tk.Tk):
         self.imageTransform = ImageTransform(self.imagePanel)
 
         # Image marker(s)
-        self.imageMarker = ImageMarker(self.imagePanel)
+        self.imageMarker = ImageMarker(self.imagePanel, flash = 2)
 
         ## Mouse move
         ##self.bind('<Motion>', self.mouse_move_callback)

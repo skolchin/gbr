@@ -1467,12 +1467,14 @@ class ImageMarker(object):
                 show_stones True to show stones immediatlly (True if stones provided)
                 marker      Marker type (currently only 0 or "circle" supported)
                 radius      Radius to draw circles (overrides radius in stone list)
+                flash       Number of times to flash selection when a new stone is added
         """
         self.__panel = panel
         self.__stones = kwargs.pop('stones', [])
         show = kwargs.pop('show_stones', len(self.__stones) > 0)
         self.__type = kwargs.pop('marker', 0)
         self.__radius = kwargs.pop('radius', 0)
+        self.__flash = kwargs.pop('flash', 0)
 
         self.__markers = []
         if show: self.show()
@@ -1482,9 +1484,9 @@ class ImageMarker(object):
 
         # Public properies
         self.line_color = "red"
-        self.fill_color = "red"
+        self.fill_color = ""
         self.line_width = 2
-        self.fill_stipple = "gray12"
+        self.fill_stipple = ""  #"gray12"
 
     @property
     def panel(self):
@@ -1503,7 +1505,17 @@ class ImageMarker(object):
     def add_stone(self, stone, f_show = True):
         """Add stone"""
         self.__stones.extend([stone])
-        if f_show: self.__draw_marker(stone)
+        if f_show:
+            if self.__flash == 0:
+                self.__draw_marker(stone)
+            else:
+                self.__flash_marker(stone, self.__flash, True)
+
+    def add_stones(self, stones, f_show = True):
+        """Add stone from list"""
+        self.__stones.extend(stones)
+        if f_show:
+            self.__draw_markers()
 
     def del_stone(self, stone):
         """Remove a stone"""
@@ -1516,6 +1528,22 @@ class ImageMarker(object):
         """Remove all stones"""
         self.hide()
         self.__stones = []
+
+    @property
+    def raduis(self):
+        return self.__radius
+
+    @radius.setter
+    def raduis(self, r):
+        self.__radius = r
+
+    @property
+    def flash(self):
+        return self.__flash
+
+    @flash.setter
+    def flash(self, f):
+        self.__flash = f
 
     def show(self):
         """Show markers"""
@@ -1583,3 +1611,15 @@ class ImageMarker(object):
     def __on_panel_resize(self, e):
         """Callback for panel resize (internal function)"""
         self.__draw_markers()
+
+    def __flash_marker(self, stone, cnt, on_off):
+        if on_off:
+            # Marker is ON
+            self.__draw_marker(stone)
+            if cnt > 0:
+                self.canvas.after(100, lambda: self.__flash_marker(stone,cnt,False))
+        else:
+            # Marker is OFF
+            m = self.__markers.pop(-1)
+            self.canvas.delete(m)
+            self.canvas.after(100, lambda: self.__flash_marker(stone,cnt-1,True))
