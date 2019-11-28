@@ -145,24 +145,34 @@ class GbrOptionsDlg(GrDialog):
     def init_buttons(self):
         self.btn_images = [ImgButton.get_ui_image("detect_flat.png"),]
 
-        tk.Button(self.buttonFrame, text = "Detect",
+        f_top = tk.Frame(self.buttonFrame)
+        f_bottom = tk.Frame(self.buttonFrame)
+        f_top.pack(side = tk.TOP, fill = tk.BOTH)
+        f_bottom.pack(side = tk.BOTTOM, fill = tk.BOTH)
+
+        self.detectVar = tk.IntVar(0)
+        tk.Checkbutton(f_top, text = "Auto-detect", variable = self.detectVar,
+            command = self.auto_detect_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+
+        tk.Button(f_bottom, text = "Detect",
             image = self.btn_images[0], compound="left",
             command = self.detect_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
-        tk.Button(self.buttonFrame, text = "Defaults",
+        tk.Button(f_bottom, text = "Defaults",
             command = self.default_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
-        self.log_button = tk.Button(self.buttonFrame, text = "Log",
+        self.log_button = tk.Button(f_bottom, text = "Log",
             state = tk.DISABLED if GrLog.numErrors() == 0 is None else tk.NORMAL,
             command = self.log_click_callback)
         self.log_button.pack(side = tk.LEFT, padx = 5, pady = 5)
 
-        self.dbg_button = tk.Button(self.buttonFrame, text = "Debug",
+        self.dbg_button = tk.Button(f_bottom, text = "Debug",
             state = tk.DISABLED if self.root.board.results is None else tk.NORMAL,
             command = self.debug_click_callback)
         self.dbg_button.pack(side = tk.LEFT, padx = 5, pady = 5)
 
-        GrDialog.init_buttons(self)
+        tk.Button(f_bottom, text = "Close",
+            command = self.close_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
         self.bind("<Return>", self.return_callback)
 
@@ -174,23 +184,16 @@ class GbrOptionsDlg(GrDialog):
             self.log_button.configure(
                 state = tk.DISABLED if GrLog.numErrors() == 0 is None else tk.NORMAL)
 
+    def auto_detect_callback(self):
+        """Auto-detect checkbox click callback"""
+        if self.detectVar.get() == 0:
+            self.root.hide_stones()
+        else:
+            self.detect_stones(True)
+
     def detect_click_callback(self):
         """Detect button click callback"""
-        # Save changed params
-        p = dict()
-        for key in self.tkVars.keys():
-            p[key] = self.tkVars[key].get()
-
-        if self.board_size_disabled.get() > 0:
-            del p['BOARD_SIZE']
-
-        self.root.board.params = p
-
-        # Save transform and area rect
-        self.root.board.param_board_edges = self.root.imageMask.scaled_mask
-
-        # Detect
-        self.root.detect_stones()
+        self.detect_stones(self.detectVar.get() != 0)
 
     def default_click_callback(self):
         """Default button click callback"""
@@ -198,7 +201,6 @@ class GbrOptionsDlg(GrDialog):
 
         for key in self.tkVars.keys():
             v = self.root.board.params[key]
-            print(key, '=', v)
             if not v is None: self.tkVars[key].set(v)
 
         self.board_size_disabled.set(1)
@@ -219,7 +221,7 @@ class GbrOptionsDlg(GrDialog):
 
         self.debug_dlg = GbrDebugDlg(master = self)
 
-    def scale_cb_changed(self):
+    def size_enabled_changed(self):
         """Board_size combobox state changed"""
         if self.board_size_disabled is not None and \
             self.board_size_label is not None and \
@@ -228,6 +230,11 @@ class GbrOptionsDlg(GrDialog):
             state = tk.DISABLED if self.board_size_disabled.get() > 0 else tk.NORMAL
             self.board_size_label.config(state = state)
             self.board_size_scale.config(state = state)
+
+    def scale_changed_callback(self, event):
+        """Any scale value changed callback"""
+        if self.detectVar.get() > 0:
+            self.detect_stones(True)
 
     def return_callback(self, event):
         self.detect_click_callback()
@@ -257,7 +264,9 @@ class GbrOptionsDlg(GrDialog):
 
             # Iterate through the params processing only ones belonging to current tab
             keys = [key for key in params.keys() if key in GR_PARAMS_PROP and GR_PARAMS_PROP[key][2] == tab]
-            for key in sorted(keys, key = lambda k: GR_PARAMS_PROP[k][4] if len(GR_PARAMS_PROP[k]) > 4 else 0):
+            keys = sorted(keys, key = lambda k: GR_PARAMS_PROP[k][4] if len(GR_PARAMS_PROP[k]) > 4 else 0)
+
+            for key in keys:
                 if (n == max_in_row or frame is None):
                     frame = tk.Frame(nbFrame, width = 400)
                     frame.grid(row = 0, column = ncol, padx = 3, pady = 3)
@@ -274,7 +283,8 @@ class GbrOptionsDlg(GrDialog):
                 scale = tk.Scale(frame, from_ = GR_PARAMS_PROP[key][0],
                                         to = GR_PARAMS_PROP[key][1],
                                         orient = tk.HORIZONTAL,
-                                        variable = v)
+                                        variable = v,
+                                        command = self.scale_changed_callback)
                 scale.grid(row = n, column = 1, padx = 2, pady = 0)
                 vars[key] = v
                 n = n + 1
@@ -293,7 +303,7 @@ class GbrOptionsDlg(GrDialog):
                     cb = tk.Checkbutton(frame,
                                         text = "Automatically detect board size",
                                         variable = self.board_size_disabled,
-                                        command = self.scale_cb_changed)
+                                        command = self.size_enabled_changed)
                     #if state == tk.NORMAL: cb.select()
                     cb.grid(row = n, columnspan = 2, padx = 2, pady = 0)
                     n = n + 1
@@ -306,6 +316,23 @@ class GbrOptionsDlg(GrDialog):
             self.debug_dlg.close()
             self.debug_dlg = None
         GrDialog.close(self)
+
+    def detect_stones(self, highlight):
+        """Detect stones with parameters currenly set"""
+        # Save changed params
+        p = dict()
+        for key in self.tkVars.keys():
+            p[key] = self.tkVars[key].get()
+
+        if self.board_size_disabled.get() > 0:
+            del p['BOARD_SIZE']
+
+        p['BOARD_EDGES'] = self.root.board.param_board_edges
+        self.root.board.params = p
+
+        # Detect
+        self.root.detect_stones(highlight)
+
 
 # Stones dialog class
 class GbrStonesDlg(GrDialog):
@@ -638,9 +665,8 @@ class GbrGUI2(tk.Tk):
             self.imageMask.scaled_mask = self.board.param_board_edges
             self.imageMask.size = self.board.board_size
 
-    def detect_stones(self):
+    def detect_stones(self, highlight = False):
         """Detect stones on currently loaded board image"""
-
         # Clean up
         GrLog.clear()
         self.imageMarker.clear()
@@ -667,14 +693,17 @@ class GbrGUI2(tk.Tk):
             for b in ["stones", "save"]:
                 self.buttons[b].disabled = False
 
+            if highlight:
+                self.show_all_stones()
+
     def save_sgf(self):
         if not self.board.is_gen_board:
             fn = self.board.save_sgf()
             self.statusBar.set_file("Board saved to ", str(fn))
 
     def show_stone(self, stone, bw):
-        if self.last_stone is not None:
-            self.imageMarker.del_stone(self.last_stone)
+        """Highlight one stone"""
+        self.imageMarker.clear()
         if not stone is None:
             self.imageMarker.add_stone(stone)
             self.statusBar.set("{} {}".format(
@@ -682,10 +711,20 @@ class GbrGUI2(tk.Tk):
                 format_stone_pos(stone)))
             self.last_stone = stone
 
+    def show_all_stones(self):
+        """Highlight all stones"""
+        self.imageMarker.clear()
+        stones = [list(x) for x in self.board.black_stones]
+        stones.extend([list(x) for x in self.board.white_stones])
+        self.imageMarker.add_stones(stones)
+        self.imageMarker.show()
+
+    def hide_stones(self):
+        self.imageMarker.clear()
+
     #
     # Utility functions
     #
-
 
 
 # Main function

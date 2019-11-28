@@ -860,8 +860,8 @@ class ImageMask(object):
         m = self.__mask.copy()
         m[0] = int(m[0] / self.__panel.scale[0])
         m[1] = int(m[1] / self.__panel.scale[1])
-        m[2] = int(m[2] / self.__panel.scale[0])
-        m[3] = int(m[3] / self.__panel.scale[1])
+        m[2] = int((m[2]+1) / self.__panel.scale[0])
+        m[3] = int((m[3]+1) / self.__panel.scale[1])
         return m
 
     @scaled_mask.setter
@@ -1485,7 +1485,7 @@ class ImageMarker(object):
         # Public properies
         self.line_color = "red"
         self.fill_color = ""
-        self.line_width = 2
+        self.line_width = 1
         self.fill_stipple = ""  #"gray12"
 
     @property
@@ -1513,7 +1513,7 @@ class ImageMarker(object):
 
     def add_stones(self, stones, f_show = True):
         """Add stone from list"""
-        self.__stones.extend(stones)
+        self.__stones.extend(list(stones))
         if f_show:
             self.__draw_markers()
 
@@ -1528,22 +1528,6 @@ class ImageMarker(object):
         """Remove all stones"""
         self.hide()
         self.__stones = []
-
-    @property
-    def raduis(self):
-        return self.__radius
-
-    @radius.setter
-    def raduis(self, r):
-        self.__radius = r
-
-    @property
-    def flash(self):
-        return self.__flash
-
-    @flash.setter
-    def flash(self, f):
-        self.__flash = f
 
     def show(self):
         """Show markers"""
