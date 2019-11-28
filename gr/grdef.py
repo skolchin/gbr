@@ -110,9 +110,9 @@ GR_PARAMS_PROP = {
     "STONES_DILATE_W": (0, 10, "White stones detection", "Dilation", 5),
     "STONES_ERODE_W": (0, 10, "White stones detection", "Erosion", 6),
     "STONES_MAXVAL_W": (1, 255, None),
-    "WATERSHED_W": (0, 255, "White stones detection", "Watershed"),
-    "WS_MORPH_W": (0, 10, "White stones detection", "Watershed morphing", 7),
-    "PYRAMID_W": (0, 1, "White stones detection", "Image pyramid filter", 8),
+    "WATERSHED_W": (0, 255, "White stones detection", "Watershed", 7),
+    "WS_MORPH_W": (0, 10, "White stones detection", "Watershed morphing", 8),
+    "PYRAMID_W": (0, 1, "White stones detection", "Image pyramid filter", 9),
 
     'AREA_MASK': (0,0,None),
     'TRANSFORM': (0,0,None),
