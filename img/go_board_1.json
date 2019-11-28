@@ -4,12 +4,12 @@
     "BLUR_MASK_W": 0,
     "BOARD_EDGES": [
         [
-            8,
-            9
+            10,
+            10
         ],
         [
-            471,
-            473
+            475,
+            475
         ]
     ],
     "BOARD_SIZE": 21,
@@ -41,8 +41,8 @@
     "STONES_THRESHOLD_B": 85,
     "STONES_THRESHOLD_W": 150,
     "TRANSFORM": null,
-    "WATERSHED_B": 56,
-    "WATERSHED_W": 150,
+    "WATERSHED_B": 80,
+    "WATERSHED_W": 210,
     "WS_MORPH_B": 0,
     "WS_MORPH_W": 0
 }
