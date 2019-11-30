@@ -841,9 +841,7 @@ class ImageMask(object):
 
     @property
     def mask(self):
-        """Mask as it is displayed on canvas.
-           Note that internally mask can be a double due to rounding, but this
-           property always return integer"""
+        """Mask as it is displayed on canvas"""
         return np.array(self.__mask).astype('int').tolist() if self.__mask is not None else None
 
     @mask.setter
@@ -860,8 +858,8 @@ class ImageMask(object):
         m = self.__mask.copy()
         m[0] = int(m[0] / self.__panel.scale[0])
         m[1] = int(m[1] / self.__panel.scale[1])
-        m[2] = int((m[2]+1) / self.__panel.scale[0])
-        m[3] = int((m[3]+1) / self.__panel.scale[1])
+        m[2] = int(m[2] / self.__panel.scale[0])
+        m[3] = int(m[3] / self.__panel.scale[1])
         return m
 
     @scaled_mask.setter
@@ -871,11 +869,12 @@ class ImageMask(object):
            self.__mask = None
         else:
            # GrBoard() uses [[x1,y1],[x2,y2]] format, flattening required
+           # mask is stored as double to prevent loss due to roudning
            m = np.array(mask).flatten().tolist()
-           m[0] = int(m[0] * self.__panel.scale[0])
-           m[1] = int(m[1] * self.__panel.scale[1])
-           m[2] = int(m[2] * self.__panel.scale[0])
-           m[3] = int(m[3] * self.__panel.scale[1])
+           m[0] = m[0] * self.__panel.scale[0]
+           m[1] = m[1] * self.__panel.scale[1]
+           m[2] = m[2] * self.__panel.scale[0]
+           m[3] = m[3] * self.__panel.scale[1]
            self.__mask = m
 
     @property
@@ -1483,10 +1482,10 @@ class ImageMarker(object):
         self.__bindings.register(self.__panel, "<Resize>", self.__on_panel_resize)
 
         # Public properies
-        self.line_color = "red"
-        self.fill_color = ""
-        self.line_width = 1
-        self.fill_stipple = ""  #"gray12"
+        self.line_color = { "_": "red", "B": "deep sky blue", "W": "purple2" }
+        self.fill_color = { "_": "", "B": "deep sky blue", "W": "purple2" }
+        self.line_width = { "_": 2, "B": 1, "W": 1 }
+        self.fill_stipple = { "_": "", "B": "gray50", "W": "gray50" }
 
     @property
     def panel(self):
@@ -1502,25 +1501,25 @@ class ImageMarker(object):
     def stones(sef):
         return self.__stones.copy()
 
-    def add_stone(self, stone, f_show = True):
+    def add_stone(self, stone, bw = None, f_show = True):
         """Add stone"""
-        self.__stones.extend([stone])
+        self.__stones.extend([(stone, bw)])
         if f_show:
             if self.__flash == 0:
-                self.__draw_marker(stone)
+                self.__draw_marker(stone, bw)
             else:
-                self.__flash_marker(stone, self.__flash, True)
+                self.__flash_marker(stone, bw, self.__flash, True)
 
-    def add_stones(self, stones, f_show = True):
+    def add_stones(self, stones, bw = None, f_show = True):
         """Add stone from list"""
-        self.__stones.extend(list(stones))
+        self.__stones.extend([(x, bw) for x in stones])
         if f_show:
             self.__draw_markers()
 
     def del_stone(self, stone):
         """Remove a stone"""
         for i, s in enumerate(self.__stones):
-            if s[GR_A] == stone[GR_A] and s[GR_B] == stone[GR_B]:
+            if s[0][GR_A] == stone[GR_A] and s[0][GR_B] == stone[GR_B]:
                 self.__stones.pop(i)
         if self.is_shown: self.__draw_markers()
 
@@ -1545,7 +1544,7 @@ class ImageMarker(object):
         """ True if markers are currently shown"""
         return self.__markers is not None and len(self.__markers) > 0
 
-    def __draw_marker(self, stone):
+    def __draw_marker(self, stone, bw):
         """Internal function. Draws a marker for a stone"""
         p = self.panel.image2frame((stone[GR_X], stone[GR_Y]))
         r = stone[GR_R] if self.__radius == 0 else self.__radius
@@ -1554,9 +1553,9 @@ class ImageMarker(object):
         def circle(x, y, r):
             return self.canvas.create_oval(
                 x - r, y - r, x + r, y + r,
-                outline = self.line_color,
-                fill = self.fill_color,
-                width = self.line_width
+                outline = self.line_color[bw],
+                fill = self.fill_color[bw],
+                width = self.line_width[bw]
             )
 
         def circle_poly(x,y,r):
@@ -1569,12 +1568,13 @@ class ImageMarker(object):
 
             return self.canvas.create_polygon(
                   *points,
-                  outline = self.line_color,
-                  width = self.line_width,
-                  fill = self.fill_color,
-                  stipple = self.fill_stipple)
+                  outline = self.line_color[bw],
+                  width = self.line_width[bw],
+                  fill = self.fill_color[bw],
+                  stipple = self.fill_stipple[bw])
 
-        if self.fill_stipple == "":
+        if bw is None: bw = '_'
+        if self.fill_stipple[bw] == "":
             m = circle(p[0], p[1], r)
         else:
             m = circle_poly(p[0], p[1], r)
@@ -1590,20 +1590,20 @@ class ImageMarker(object):
 
         # Draw
         for stone in self.__stones:
-            self.__draw_marker(stone)
+            self.__draw_marker(stone[0], stone[1])
 
     def __on_panel_resize(self, e):
         """Callback for panel resize (internal function)"""
         self.__draw_markers()
 
-    def __flash_marker(self, stone, cnt, on_off):
+    def __flash_marker(self, stone, bw, cnt, on_off):
         if on_off:
             # Marker is ON
-            self.__draw_marker(stone)
+            self.__draw_marker(stone, bw)
             if cnt > 0:
-                self.canvas.after(100, lambda: self.__flash_marker(stone,cnt,False))
+                self.canvas.after(100, lambda: self.__flash_marker(stone,bw,cnt,False))
         else:
             # Marker is OFF
             m = self.__markers.pop(-1)
             self.canvas.delete(m)
-            self.canvas.after(100, lambda: self.__flash_marker(stone,cnt-1,True))
+            self.canvas.after(100, lambda: self.__flash_marker(stone,bw,cnt-1,True))

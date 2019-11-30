@@ -151,7 +151,7 @@ class GbrOptionsDlg(GrDialog):
         f_bottom.pack(side = tk.BOTTOM, fill = tk.BOTH)
 
         self.detectVar = tk.IntVar(0)
-        tk.Checkbutton(f_top, text = "Auto-detect", variable = self.detectVar,
+        tk.Checkbutton(f_top, text = "Detect on parameter changes", variable = self.detectVar,
             command = self.auto_detect_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
         tk.Button(f_bottom, text = "Detect",
@@ -190,10 +190,12 @@ class GbrOptionsDlg(GrDialog):
             self.root.hide_stones()
         else:
             self.detect_stones(True)
+            self.update_controls()
 
     def detect_click_callback(self):
         """Detect button click callback"""
         self.detect_stones(self.detectVar.get() != 0)
+        self.update_controls()
 
     def default_click_callback(self):
         """Default button click callback"""
@@ -208,6 +210,7 @@ class GbrOptionsDlg(GrDialog):
         self.board_size_scale.config(state = tk.DISABLED)
 
         self.root.board.save_params()
+        self.update_controls()
 
     def log_click_callback(self):
         """Log button click callback"""
@@ -315,6 +318,8 @@ class GbrOptionsDlg(GrDialog):
         if self.debug_dlg is not None:
             self.debug_dlg.close()
             self.debug_dlg = None
+        if self.detectVar.get() > 0:
+            self.root.imageMarker.clear()
         GrDialog.close(self)
 
     def detect_stones(self, highlight):
@@ -350,7 +355,6 @@ class GbrStonesDlg(GrDialog):
         return "Stones"
 
     def init_frame(self):
-
         sbr = tk.Scrollbar(self.internalFrame)
         sbr.pack(side=tk.RIGHT, fill=tk.Y)
 
@@ -402,7 +406,7 @@ class GbrStonesDlg(GrDialog):
 
     def save_click_callback(self):
         """Save button click callback"""
-        self.root.save_sgf()
+        self.root.save_sgf_callback(None, "save", True)
 
     def select_callback(self, event):
         """List box selection chang callback"""
@@ -410,7 +414,6 @@ class GbrStonesDlg(GrDialog):
         if sel is not None and len(sel) > 0:
             item = event.widget.item(sel)
             stone, bw = self.root.board.find_stone(s = item['tags'][0], bw = item['tags'][1])
-            print('Stone found ', stone)
             if stone is not None:
                 self.root.show_stone(stone, bw)
 
@@ -519,7 +522,8 @@ class GbrGUI2(tk.Tk):
             mask_callback = self.mask_callback)
 
         # Image transformer
-        self.imageTransform = ImageTransform(self.imagePanel)
+        self.imageTransform = ImageTransform(self.imagePanel,
+            callback = self.end_transform_callback)
 
         # Image marker(s)
         self.imageMarker = ImageMarker(self.imagePanel, flash = 2)
@@ -548,13 +552,28 @@ class GbrGUI2(tk.Tk):
 
     def transform_callback(self, event, tag, state):
         """Transform button click"""
-        return False
+        if not state and self.imageTransform.started:
+           self.imageTransform.cancel()
+        else:
+            self.buttons['area'].state = False
+            self.imageMask.hide()
+            self.imageMarker.clear()
+            self.imageTransform.start()
+        return True
+
+    def end_transform_callback(self, t, state):
+        """Image transformation complete/cancelled"""
+        self.buttons['edge'].state = False
+        self.buttons['reset'].disabled = not state
+        if state:
+            self.board.image = self.imagePanel.image
 
     def set_grid_callback(self, event, tag, state):
         """Board grid button click"""
-        if self.board.is_gen_board:
-            return
+        if self.board.is_gen_board: return
         if state:
+            self.imageTransform.cancel()
+            self.imageMarker.clear()
             self.detect_edges()
             self.imageMask.show()
         else:
@@ -577,12 +596,28 @@ class GbrGUI2(tk.Tk):
 
     def save_sgf_callback(self, event, tag, state):
         """SGF save button click"""
-        if not self.board.is_gen_board:
+        if self.board.results is None:
+            return
+
+        fn = filedialog.asksaveasfilename(title = "Select file",
+           filetypes = (("SGF files","*.sgf"),("All files","*.*")))
+        if fn != "":
             self.save_sgf()
+
         return False
 
     def reset_image_callback(self, event, tag, state):
         """Reset button click"""
+        self.imageMask.hide()
+        self.imageTransform.reset()
+        self.board.reset_image()
+
+        self.imagePanel.set_image(self.board.image)
+        self.imageMask.scaled_mask = self.board.param_board_edges
+        self.imageMask.size = self.board.param_board_size \
+            if self.board.param_board_size is not None else DEF_BOARD_SIZE
+
+        self.buttons['reset'].disabled = True
         return False
 
 ##    def mouse_move_callback(self, event):
@@ -635,6 +670,8 @@ class GbrGUI2(tk.Tk):
         # Display loaded image and mask
         self.imagePanel.set_image(self.board.image)
         self.imageMask.scaled_mask = self.board.param_board_edges
+        self.imageMask.size = self.board.param_board_size \
+            if self.board.param_board_size is not None else DEF_BOARD_SIZE
 
         # Reset button states
         self.buttons['reset'].disabled = not self.board.can_reset_image
@@ -650,8 +687,11 @@ class GbrGUI2(tk.Tk):
 
     def detect_edges(self, f_force = False):
         """Detect edges and size of currently loaded board image"""
-        if not self.board.param_board_edges is None and not f_force:
-           return
+        if self.board.param_board_edges is not None and \
+            self.board.param_board_size is not None and \
+            not f_force:
+                # Edges/size already detected
+                return
 
         # Process
         GrLog.clear()
@@ -705,7 +745,7 @@ class GbrGUI2(tk.Tk):
         """Highlight one stone"""
         self.imageMarker.clear()
         if not stone is None:
-            self.imageMarker.add_stone(stone)
+            self.imageMarker.add_stone(stone, bw)
             self.statusBar.set("{} {}".format(
                 "Black" if bw == "B" else "White",
                 format_stone_pos(stone)))
@@ -714,9 +754,8 @@ class GbrGUI2(tk.Tk):
     def show_all_stones(self):
         """Highlight all stones"""
         self.imageMarker.clear()
-        stones = [list(x) for x in self.board.black_stones]
-        stones.extend([list(x) for x in self.board.white_stones])
-        self.imageMarker.add_stones(stones)
+        self.imageMarker.add_stones(self.board.black_stones, "B")
+        self.imageMarker.add_stones(self.board.white_stones, "W")
         self.imageMarker.show()
 
     def hide_stones(self):

@@ -21,6 +21,8 @@ import json
 import logging
 from sgfmill import sgf
 
+BOARD_PARAM_EXT = '.gpar'  # extension for board parameters file
+
 class GrBoard(object):
     """ Go board """
     def __init__(self, image_file = None, board_shape = None):
@@ -71,7 +73,7 @@ class GrBoard(object):
         # Load params, if requested and file exists
         f_params_loaded = False
         if f_with_params:
-            params_file = Path(filename).with_suffix('.json')
+            params_file = Path(filename).with_suffix(BOARD_PARAM_EXT)
             if params_file.is_file():
                 self.load_params(str(params_file))
                 f_params_loaded = True
@@ -151,7 +153,7 @@ class GrBoard(object):
     def save_params(self, filename = None):
         """Saves recognition parameters to specified file (JSON)"""
         if filename is None:
-            filename = str(Path(self._img_file).with_suffix('.json'))
+            filename = str(Path(self._img_file).with_suffix(BOARD_PARAM_EXT))
         with open(filename, "w") as f:
             json.dump(self._params, f, indent=4, sort_keys=True, ensure_ascii=False)
         return filename
@@ -533,6 +535,8 @@ class GrBoard(object):
         """Revert image to original after a transformation"""
         self._img = self._src_img
         self._params['TRANSFORM'] = None
+        self._params['BOARD_EDGES'] = None
+        self._params['BOARD_SIZE'] = None
 
     @property
     def can_reset_image(self):
