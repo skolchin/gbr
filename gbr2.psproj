@@ -31,18 +31,14 @@ FileName=$[Project-Path]gr\grlog.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node5]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gr\scipy_watershed.py
-
-[Project\ChildNodes\Node0\ChildNodes\Node6]
-ClassName=TProjectFileNode
 FileName=$[Project-Path]gr\ui_extra.py
 
-[Project\ChildNodes\Node0\ChildNodes\Node7]
+[Project\ChildNodes\Node0\ChildNodes\Node6]
 ClassName=TProjectFileNode
 FileName=$[Project-Path]gr\utils.py
 
 [Project\ChildNodes\Node0\ChildNodes]
-Count=8
+Count=7
 
 [Project\ChildNodes\Node1]
 ClassName=TProjectRunConfiguationsNode

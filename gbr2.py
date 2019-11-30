@@ -333,6 +333,7 @@ class GbrOptionsDlg(GrDialog):
             del p['BOARD_SIZE']
 
         p['BOARD_EDGES'] = self.root.board.param_board_edges
+        p['TRANSFORM'] = self.root.board.param_transform_rect
         self.root.board.params = p
 
         # Detect
@@ -567,6 +568,7 @@ class GbrGUI2(tk.Tk):
         self.buttons['reset'].disabled = not state
         if state:
             self.board.image = self.imagePanel.image
+            self.board.param_transform_rect = t.transform_rect
 
     def set_grid_callback(self, event, tag, state):
         """Board grid button click"""

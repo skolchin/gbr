@@ -116,8 +116,6 @@ class NBinder(object):
                             widget.bind(event, callback)
 
 
-
-
 # ImageButton
 class ImgButton(tk.Label):
     """Button with image face"""
@@ -130,10 +128,10 @@ class ImgButton(tk.Label):
             state       Initial state (true/false)
             disabled    True/False
             tooltip     A tooltip text
-            callback    Callback function. Function signature:
-                            event - Tk event
-                            tag   - button's tag
-                            state - target state (true/false)
+            callback    Callback function. Signature:
+                            event   Tk event
+                            tag     Button tag
+                            state   New state
                         Function shall return True if new state accepted, or False otherwise
             dlg_class   A dialog class. If provided, assumed that button is to be used to show/hide this dialog.
                         Note that if a callback is provided, dialog is created after it respecting results of the call.
@@ -215,7 +213,6 @@ class ImgButton(tk.Label):
 
     def toggle(self, event = None):
         """Toggle button state. Calls a callback and handle results of the call"""
-
         # Update state
         cur_state = self.__state
         new_state = not self.__state

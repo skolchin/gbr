@@ -344,8 +344,11 @@ class GrBoard(object):
     @param_area_mask.setter
     def param_area_mask(self, mask):
         # ImageMask uses flattened list, conversion required
-        m = np.array(mask).reshape((2,2)).tolist()
-        self._params['AREA_MASK'] = m
+        if mask is None:
+            self._params['AREA_MASK'] = None
+        else:
+            m = np.array(mask).reshape((2,2)).tolist()
+            self._params['AREA_MASK'] = m
 
     @property
     def param_board_edges(self):
@@ -360,9 +363,12 @@ class GrBoard(object):
 
     @param_board_edges.setter
     def param_board_edges(self, edges):
-        # ImageMask uses flattened list, conversion required
-        m = np.array(edges).reshape((2,2)).tolist()
-        self._params['BOARD_EDGES'] = m
+        # ImageMask/Tranform use flattened list, conversion required
+        if edges is None:
+            self._params['BOARD_EDGES'] = None
+        else:
+            m = np.array(edges).reshape((2,2)).tolist()
+            self._params['BOARD_EDGES'] = m
 
     @property
     def param_board_size(self):
