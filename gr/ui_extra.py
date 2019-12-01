@@ -33,11 +33,24 @@ UI_DIR = 'ui'    # directory containing ImgButton images
 PADX = 5
 PADY = 5
 
+# A label with additional tag
 class NLabel(tk.Label):
     """Label with additional tag"""
     def __init__(self, master, tag=None, *args, **kwargs):
         tk.Label.__init__(self, master, *args, **kwargs)
         self.master, self.tag = master, tag
+
+# A button which can load UI image and keep a reference to image provided
+class NButton(tk.Button):
+    """Button with image"""
+    def __init__(self, master, *args, **kwargs):
+        self.__uimage = kwargs.pop("uimage", None)
+        self.__image = kwargs.get("image")
+        if self.__uimage not is None and self.__image is None:
+            self.__image = ImgButton.get_ui_image(self.__uimage)
+            kwargs[image] = self.__image
+            if 'compound' not in kwargs: kwargs['compound'] = 'left'
+        tk.Button.__init__(self, master, *args, **kwargs)
 
 
 class NBinder(object):
@@ -66,8 +79,6 @@ class NBinder(object):
 
         # Store binding globally
         NBinder.__bindings.extend([[self, widget, event, callback, _type]])
-##        bnd_list = NBinder.__bindings
-##        print(len(bnd_list))
 
     def register(self, widget, event, callback):
         """Bind a callback to a custom event"""

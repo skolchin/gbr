@@ -31,6 +31,7 @@ from tkinter import messagebox
 # Debug info dialog class
 class GbrDebugDlg(GrDialog):
     def __init__(self, *args, **kwargs):
+        self.panels = dict()
         GrDialog.__init__(self, *args, **kwargs)
 
     def get_minsize(self):
@@ -59,6 +60,12 @@ class GbrDebugDlg(GrDialog):
         tk.Button(self.buttonFrame, text = "Save images",
             command = self.save_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
         GrDialog.init_buttons(self)
+
+    def close(self):
+        """Graceful way to close the dialog"""
+        if hasattr(self.master, "debug_dlg"):
+            self.master.debug_dlg = None
+        GrDialog.close(self)
 
     def save_click_callback(self):
         """Save button click callback"""
@@ -98,6 +105,7 @@ class GbrDebugDlg(GrDialog):
             panel.image = imgtk
             panel.grid(row = 0, column = 0)
             panel.bind('<Button-1>', self.dbg_img_click_callback)
+            self.panels[key] = panel
 
             panel = tk.Label(frame, text = key)
             panel.grid(row = 1, column = 0, sticky = "nswe")
@@ -124,6 +132,23 @@ class GbrDebugDlg(GrDialog):
             n += 1
 
         messagebox.showinfo("Debug images", "{} files saved to {}".format(n, dn))
+
+    def update_debug_info(self):
+        """Update debug information images"""
+        shape = self.root.board.image.shape
+        debug_img = self.root.board.debug_images
+        sz = min(int(shape[CV_WIDTH] / 2) - 5, 150)
+
+        if debug_img is None:
+            return
+
+        for key in debug_img.keys():
+            if self.panels.get(key) is not None:
+                img = resize(debug_img[key], sz)
+                imgtk = img_to_imgtk(img)
+                self.panels[key].configure(image = imgtk)
+                self.panels[key].image = imgtk
+
 
 # Options dialog class
 class GbrOptionsDlg(GrDialog):
@@ -324,21 +349,24 @@ class GbrOptionsDlg(GrDialog):
 
     def detect_stones(self, highlight):
         """Detect stones with parameters currenly set"""
-        # Save changed params
+        # Get params
         p = dict()
         for key in self.tkVars.keys():
             p[key] = self.tkVars[key].get()
 
-        if self.board_size_disabled.get() > 0:
-            del p['BOARD_SIZE']
-
         p['BOARD_EDGES'] = self.root.board.param_board_edges
         p['TRANSFORM'] = self.root.board.param_transform_rect
-        self.root.board.params = p
+        if self.board_size_disabled.get() > 0:
+            del p['BOARD_SIZE']
+            del p['BOARD_EDGES']
 
         # Detect
+        self.root.board.params = p
         self.root.detect_stones(highlight)
 
+        # Update debug info, if the dialog is open
+        if self.debug_dlg is not None:
+            self.debug_dlg.update_debug_info()
 
 # Stones dialog class
 class GbrStonesDlg(GrDialog):
@@ -377,15 +405,8 @@ class GbrStonesDlg(GrDialog):
         self.tv.config(yscrollcommand = sbr.set)
 
     def init_buttons(self):
-        self.btn_images = [ImgButton.get_ui_image("detect_flat.png"),
-                           ImgButton.get_ui_image("save_flat.png")]
-
-        tk.Button(self.buttonFrame, text = "Detect",
-            image = self.btn_images[0], compound="left",
-            command = self.detect_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
-
-        tk.Button(self.buttonFrame, text = "Save SGF",
-            image = self.btn_images[1], compound="left",
+        tk.NButton(self.buttonFrame, text = "Save SGF",
+            uimage = "detect_flat.png", compound="left",
             command = self.save_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
         GrDialog.init_buttons(self)
@@ -396,12 +417,6 @@ class GbrStonesDlg(GrDialog):
 
     def update_controls(self):
         """Focus set"""
-        self.get_stones()
-        self.update_listbox()
-
-    def detect_click_callback(self):
-        """Detect button click callback"""
-        self.root.detect_stones()
         self.get_stones()
         self.update_listbox()
 
@@ -568,7 +583,7 @@ class GbrGUI2(tk.Tk):
         self.buttons['reset'].disabled = not state
         if state:
             self.board.image = self.imagePanel.image
-            self.board.param_transform_rect = t.transform_rect
+            self.board.param_transform_rect = t.scaled_rect
 
     def set_grid_callback(self, event, tag, state):
         """Board grid button click"""
