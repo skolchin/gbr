@@ -46,10 +46,12 @@ class NButton(tk.Button):
     def __init__(self, master, *args, **kwargs):
         self.__uimage = kwargs.pop("uimage", None)
         self.__image = kwargs.get("image")
-        if self.__uimage not is None and self.__image is None:
+        if self.__uimage is not None and self.__image is None:
             self.__image = ImgButton.get_ui_image(self.__uimage)
-            kwargs[image] = self.__image
-            if 'compound' not in kwargs: kwargs['compound'] = 'left'
+            kwargs["image"] = self.__image
+            if 'compound' not in kwargs:
+                kwargs['compound'] = 'left'
+
         tk.Button.__init__(self, master, *args, **kwargs)
 
 

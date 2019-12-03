@@ -11,11 +11,11 @@
 
 from gr.board import GrBoard
 from gr.grdef import *
-from gr.ui_extra import NLabel, NBinder, ImgButton, ImagePanel, StatusPanel, \
-    ImageMask, ImageTransform, GrDialog, ImageMarker, \
+from gr.ui_extra import NLabel, NButton, NBinder, ImgButton, ImagePanel,  \
+    StatusPanel, ImageMask, ImageTransform, GrDialog, ImageMarker, \
     treeview_sort_columns
 from gr.grlog import GrLog
-from gr.utils import format_stone_pos, resize, img_to_imgtk
+from gr.utils import format_stone_pos, resize
 
 import numpy as np
 import cv2
@@ -168,8 +168,6 @@ class GbrOptionsDlg(GrDialog):
         self.tkVars = self.add_switches(self.internalFrame, self.root.board.params)
 
     def init_buttons(self):
-        self.btn_images = [ImgButton.get_ui_image("detect_flat.png"),]
-
         f_top = tk.Frame(self.buttonFrame)
         f_bottom = tk.Frame(self.buttonFrame)
         f_top.pack(side = tk.TOP, fill = tk.BOTH)
@@ -179,8 +177,8 @@ class GbrOptionsDlg(GrDialog):
         tk.Checkbutton(f_top, text = "Detect on parameter changes", variable = self.detectVar,
             command = self.auto_detect_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
-        tk.Button(f_bottom, text = "Detect",
-            image = self.btn_images[0], compound="left",
+        NButton(f_bottom,
+            text = "Detect", uimage = "detect_flat.png",
             command = self.detect_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
         tk.Button(f_bottom, text = "Defaults",
@@ -405,7 +403,7 @@ class GbrStonesDlg(GrDialog):
         self.tv.config(yscrollcommand = sbr.set)
 
     def init_buttons(self):
-        tk.NButton(self.buttonFrame, text = "Save SGF",
+        NButton(self.buttonFrame, text = "Save SGF",
             uimage = "detect_flat.png", compound="left",
             command = self.save_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
@@ -562,7 +560,7 @@ class GbrGUI2(tk.Tk):
         """Open button click"""
         fn = filedialog.askopenfilename(title = "Select file",
            filetypes = (("PNG files","*.png"),("JPEG files","*.jpg"),("All files","*.*")))
-        if fn != "":
+        if fn is not None:
             self.load_image(fn)
         return False
 
@@ -616,9 +614,11 @@ class GbrGUI2(tk.Tk):
         if self.board.results is None:
             return
 
-        fn = filedialog.asksaveasfilename(title = "Select file",
-           filetypes = (("SGF files","*.sgf"),("All files","*.*")))
-        if fn != "":
+        fn = filedialog.asksaveasfilename(title = "Save SGF file",
+            initialfile = os.path.splitext(self.board.image_file)[0] + '.sgf',
+            defaultextension = '.sgf',
+            filetypes = (("SGF files","*.sgf"),("All files","*.*")))
+        if fn is not None:
             self.save_sgf()
 
         return False
