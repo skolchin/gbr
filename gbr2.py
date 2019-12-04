@@ -403,11 +403,22 @@ class GbrStonesDlg(GrDialog):
         self.tv.config(yscrollcommand = sbr.set)
 
     def init_buttons(self):
-        NButton(self.buttonFrame, text = "Save SGF",
+        f_top = tk.Frame(self.buttonFrame)
+        f_bottom = tk.Frame(self.buttonFrame)
+        f_top.pack(side = tk.TOP, fill = tk.BOTH)
+        f_bottom.pack(side = tk.BOTTOM, fill = tk.BOTH)
+
+        self.allVar = tk.IntVar(0)
+        tk.Checkbutton(f_top, text = "Select all", variable = self.allVar,
+            command = self.select_all_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+
+        NButton(f_bottom, text = "Save SGF",
             uimage = "detect_flat.png", compound="left",
             command = self.save_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
-        GrDialog.init_buttons(self)
+        tk.Button(f_bottom, text = "Close",
+            command = self.close_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+
         self.buttonFrame.configure(bd = 0, relief = tk.FLAT)
 
     def grab_focus(self):
@@ -425,11 +436,17 @@ class GbrStonesDlg(GrDialog):
     def select_callback(self, event):
         """List box selection chang callback"""
         sel = event.widget.focus()
-        if sel is not None and len(sel) > 0:
+        if sel is not None and len(sel) > 0 and self.allVar.get() == 0:
             item = event.widget.item(sel)
             stone, bw = self.root.board.find_stone(s = item['tags'][0], bw = item['tags'][1])
             if stone is not None:
                 self.root.show_stone(stone, bw)
+
+    def select_all_callback(self):
+        if self.allVar.get() > 0:
+            self.root.show_all_stones()
+        else:
+            self.root.hide_stones()
 
     def close(self):
         """Graceful way to close the dialog"""
@@ -622,7 +639,7 @@ class GbrGUI2(tk.Tk):
             defaultextension = '.sgf',
             filetypes = (("SGF files","*.sgf"),("All files","*.*")))
         if fn != "":
-            self.save_sgf()
+            self.save_sgf(fn)
 
         return False
 
@@ -756,9 +773,9 @@ class GbrGUI2(tk.Tk):
             if highlight:
                 self.show_all_stones()
 
-    def save_sgf(self):
+    def save_sgf(self, fn):
         if not self.board.is_gen_board:
-            fn = self.board.save_sgf()
+            self.board.save_sgf(fn)
             self.statusBar.set_file("Board saved to ", str(fn))
 
     def show_stone(self, stone, bw):
