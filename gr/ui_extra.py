@@ -56,7 +56,11 @@ class NButton(tk.Button):
 
 
 class NBinder(object):
-    """ Supplementary class to manage widget bindings (both TkInter and custom)"""
+    """ Supplementary class to manage widget bindings (both TkInter and custom).
+    Tkinter management of event binding doesn't properly manage registration/deregistraion
+    of multiple event consumers. This class allows to handle such situations, and,
+    in addition, to register custom events.
+    """
 
     # Tkinter bind/unbind seems not working
     # This variable will keep all bindings set in all instances of NBinder
@@ -67,8 +71,18 @@ class NBinder(object):
         self.bnd_ref = dict()
 
     def bind(self, widget, event, callback, _type = "tk", add = ''):
-        """Bind a callback to an event (tkInter or custom)"""
+        """Bind a callback to an event (tkInter or custom)
 
+        Parameters:
+            widget  A Tkinter widget
+            event   A string specifying an event
+                    Tkinter events listed in documentaion
+                    Custom events could be found in object's decription below
+            callback    A callback function which is to be called when event is raised.
+                        It should accept one parameter (event data). Returns are ignored.
+            _type   "tk" for Tkinter event, anything else for custom
+            add     Additional parameter for Tkinter bindings
+        """
         # Store binding in this instance
         key = str(widget.winfo_id()) + '__' + str(event)
         if _type == "tk":
@@ -81,13 +95,17 @@ class NBinder(object):
 
         # Store binding globally
         NBinder.__bindings.extend([[self, widget, event, callback, _type]])
+        return bnd_id
 
     def register(self, widget, event, callback):
-        """Bind a callback to a custom event"""
+        """Bind a callback to a custom event. See bind() for parameters"""
         self.bind(widget, event, callback, "custom")
 
     def unbind(self, widget, event):
-        """Unbind all callbacks for given event"""
+        """Unbind from widget's event.
+        If several event consumers were bound to Tkinter widget using different
+        NBinder instances, they are rebound to the event.
+        """
         key = str(widget.winfo_id()) + '__' + str(event)
         if key in self.bnd_ref:
             # Unbind from this instance
@@ -100,7 +118,7 @@ class NBinder(object):
             NBinder.__unbind(self, event)
 
     def unbind_all(self):
-        """Unbind all callbacks registered by this instance"""
+        """Unbind all registerations made by this instance"""
         for key in self.bnd_ref.keys():
             bnd_id, widget, event, cb, _type = self.bnd_ref[key]
             if _type == "tk": widget.unbind(event, bnd_id)
@@ -109,7 +127,13 @@ class NBinder(object):
         self.bnd_ref = dict()
 
     def trigger(self, widget, event, evt_data):
-        """Triggers a custom event"""
+        """Triggers a custom event by calling all registered callbacks
+
+        Parameters:
+            widget      A Tkinter widget
+            event       An event string
+            evt_data    Any event data (usually of Event class)
+        """
         bnd_list = NBinder.__bindings
         for bnd in bnd_list:
             if bnd[1] == widget and bnd[2] == event:
@@ -129,9 +153,24 @@ class NBinder(object):
                             widget.bind(event, callback)
 
 
+# ImageButton event support class
+class ImgButtonEvent(object):
+    """Image button event class"""
+    def __init__(self, event, tag, state):
+        self.event, self.tag, self.state = event, tag, state
+        self.cancel = False
+
+
 # ImageButton
 class ImgButton(tk.Label):
-    """Button with image face"""
+    """Button with image face.
+    This class represents a button with image and (currently) no text.
+    The button can be toggled between states (normal/pressed).
+    Upon clicking, a '<Click>' custom event is raised with ImageButtonEvent instance passed in.
+    A callback bound to the event should set event .cancel attribute to prevent
+    button from become pressed.
+    """
+
     def __init__(self, *args, **kwargs):
         """Creates new ImgButton.
 
@@ -141,32 +180,35 @@ class ImgButton(tk.Label):
             state       Initial state (true/false)
             disabled    True/False
             tooltip     A tooltip text
-            callback    Callback function. Signature:
-                            event   Tk event
-                            tag     Button tag
-                            state   New state
-                        Function shall return True if new state accepted, or False otherwise
+            command     A callback function. See NBinder.bind()
             dlg_class   A dialog class. If provided, assumed that button is to be used to show/hide this dialog.
                         Note that if a callback is provided, dialog is created after it respecting results of the call.
                         A dialog should trigger <Close> event to allow button unpress upon clase.
         """
-        self.__tag = kwargs.pop('tag', None)
-        if self.__tag is None:
-            raise Exception('tag not provided')
-        self.__state = kwargs.pop('state', False)
-        self.__disabled = kwargs.pop('disabled', False)
-        self.__callback = kwargs.pop('callback', None)
-        tooltip = kwargs.pop('tooltip', None)
-        self.__dlg_class = kwargs.pop('dlg_class', None)
-
+        # Init
         self.__dlg = None
         self.__binder = NBinder()
         self.__DS_MAP = ['normal', 'disabled']
 
+        # Parameters
+        self.__tag = kwargs.pop('tag', None)
+        if self.__tag is None:
+            raise Exception('tag not provided')
+        if 'callback' in kwargs:
+            raise Exception("Using of 'callback' is deprecated, use 'command' or bind to <Click> event instead")
+        self.__state = kwargs.pop('state', False)
+        self.__disabled = kwargs.pop('disabled', False)
+        tooltip = kwargs.pop('tooltip', None)
+        self.__dlg_class = kwargs.pop('dlg_class', None)
+        cmd = kwargs.pop('command', None)
+
+        # Parent init
         tk.Label.__init__(self, *args, **kwargs)
 
         if not tooltip is None:
             self.__tooltip = createToolTip(self, tooltip)
+        if cmd is not None:
+            self.__binder.register(self, '<Click>', cmd)
 
         # Load button images
         ui_path = os.path.join(os.path.dirname(sys.argv[0]), UI_DIR)
@@ -179,18 +221,12 @@ class ImgButton(tk.Label):
         self.configure(borderwidth = 1, relief = "groove", width = w, height = h)
         self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
 
-        self.bind("<Button-1>", self.mouse_click)
+        self.bind("<Button-1>", self.__mouse_click)
 
-    def mouse_click(self, event):
-        """Mouse click callback"""
-        if not self.__disabled: self.toggle()
-
-    def dialog_close_callback(self, event):
-        """Dialog close callback"""
-        if self.__dlg is not None:
-            self.__binder.unbind(self.__dlg, "<Close>")
-            self.__dlg = None
-        self.state = False
+    @property
+    def tag(self):
+        """Button tag"""
+        return self.__tag
 
     @property
     def state(self):
@@ -233,15 +269,17 @@ class ImgButton(tk.Label):
         if new_state: self._root().update()
         self.__state = new_state
 
-        # Call a callback
-        if not self.__callback is None:
-           if not self.__callback(event = event, tag = self.__tag, state = new_state):
-              self.__state = cur_state
-              if new_state:
-                 # Unpress after small delay
-                 self.after(300, lambda: self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled]))
-              else:
-                 self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
+        # Handle event
+        e = ImgButtonEvent(event, self.__tag, new_state)
+        self.__binder.trigger(self, '<Click>', e)
+        if e.cancel:
+            # Cancelling a state change
+            self.__state = cur_state
+            if new_state:
+                # Unpress after small delay
+                self.after(300, lambda: self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled]))
+            else:
+                self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
 
         # Handle a dialog communication
         if not self.__dlg_class is None:
@@ -252,7 +290,19 @@ class ImgButton(tk.Label):
 
             if self.__state:
                 self.__dlg = self.__dlg_class(master = self.master)
-                self.__binder.register(self.__dlg, "<Close>", self.dialog_close_callback)
+                self.__binder.register(self.__dlg, "<Close>", self.__dialog_close_callback)
+
+    def __mouse_click(self, event):
+        """Mouse click callback"""
+        if not self.__disabled: self.toggle()
+
+    def __dialog_close_callback(self, event):
+        """Dialog close callback"""
+        if self.__dlg is not None:
+            self.__binder.unbind(self.__dlg, "<Close>")
+            self.__dlg = None
+        self.state = False
+
 
     @staticmethod
     def get_ui_image(name):
@@ -425,12 +475,6 @@ class ImagePanel(tk.Frame):
 
            Keyworded parameters:
                caption          Panel caption
-               btn_params       Params for ImgButtons:
-                                    tag, initial state, callback function,
-                                    (optional) tooltip, (optional) dialog class.
-                                See ImgButton class for params description.
-                                Softly deprecated.
-               btn_align        Alignment of ImgButtons (default is tk.RIGHT)
                image            OpenCv or PhotoImage. If none provided, an empty frame is created (default is None)
                frame_callback   Callback for panel mouse click (default is None)
                mode             Either 'clip' (default) or 'fit'.
@@ -454,9 +498,7 @@ class ImagePanel(tk.Frame):
 
         # Panel parameters
         img = kwargs.pop('image', None)
-        self.__caption = kwargs.pop('caption', '')
-        btn_params = kwargs.pop('btn_params', None)
-        btn_align = kwargs.pop('btn_align', tk.RIGHT)
+        self.__caption = kwargs.pop('caption', None)
         frame_callback = kwargs.pop('frame_callback', None)
         f_sb = kwargs.pop('scrollbars', (False, False))
         if not type(f_sb) is tuple: f_sb = (f_sb, f_sb)
@@ -466,6 +508,8 @@ class ImagePanel(tk.Frame):
         resize_callback = kwargs.pop('resize_callback', None)
         if self.__mode != "clip" and self.__mode != "fit":
             raise ValueError("Invalid mode ", self.__mode)
+        if 'btn_params' in kwargs or 'btn_align' in kwargs:
+            raise Exception("Using of 'btn_params' and 'btn_align' is deprecated, use add_button()")
 
         # Init
         tk.Frame.__init__(self, master, None, **kwargs)
@@ -473,33 +517,21 @@ class ImagePanel(tk.Frame):
         self.__set_image(img)
 
         # Panel to hold everything
-        internalPanel = tk.Frame(self)
-        internalPanel.pack(fill = tk.BOTH, expand = True)
+        self.internalPanel = tk.Frame(self)
+        self.internalPanel.pack(fill = tk.BOTH, expand = True)
 
         # Header panel and label
-        if self.__caption != "" or not btn_params is None:
-            headerPanel = tk.Frame(internalPanel)
-            headerPanel.pack(side = tk.TOP, fill = tk.X, expand = True)
+        self.headerPanel = None
+        if self.__caption is not None:
+            self.headerPanel = tk.Frame(self.internalPanel)
+            self.headerPanel.pack(side = tk.TOP, fill = tk.X, expand = True)
 
-        if self.__caption != "":
-            self.__header = tk.Label(headerPanel, text = self.__caption)
+        if self.__caption is not None and self.__caption != '':
+            self.__header = tk.Label(self.headerPanel, text = self.__caption)
             self.__header.pack(side = tk.LEFT, fill = tk.X, expand = True)
 
-        # Buttons
-        self.__buttons = dict()
-        if not btn_params is None:
-            for b in btn_params:
-                btn = ImgButton(headerPanel,
-                    tag =       b[0],
-                    state =     b[1],
-                    callback =  b[2],
-                    tooltip =   b[3] if len(b) > 3 else None,
-                    dlg_class = b[4] if len(b) > 4 else None)
-                self.__buttons[b[0]] = btn
-                btn.pack(side = btn_align, padx = 2, pady = 2)
-
         # Canvas
-        canvasPanel = tk.Frame(internalPanel)
+        canvasPanel = tk.Frame(self.internalPanel)
         canvasPanel.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
 
         sz = self.max_canvas_size
@@ -515,7 +547,7 @@ class ImagePanel(tk.Frame):
 
         # Scrollbars
         if f_sb[0]:
-            sbb = tk.Scrollbar(internalPanel, orient=tk.HORIZONTAL)
+            sbb = tk.Scrollbar(self.internalPanel, orient=tk.HORIZONTAL)
             sbb.pack(side=tk.BOTTOM, fill=tk.X, expand = True)
             sbb.config(command=self.canvas.xview)
             self.canvas.config(xscrollcommand=sbb.set)
@@ -617,11 +649,6 @@ class ImagePanel(tk.Frame):
     def caption(self, text):
         self.__caption = text
         self.__header.configure(text = text)
-
-    @property
-    def buttons(self):
-        """Image buttons shown on panel"""
-        return self.__buttons
 
     @property
     def max_canvas_size(self):
@@ -1240,7 +1267,6 @@ class ImageTransform(object):
         """Initiates a transform operation"""
         if self.__transform_state:
            self.cancel()
-           return False
 
         # Clean up
         self.__clean_up()
@@ -1616,3 +1642,90 @@ class ImageMarker(object):
             m = self.__markers.pop(-1)
             self.canvas.delete(m)
             self.canvas.after(100, lambda: self.__flash_marker(stone,bw,cnt-1,True))
+
+# Button group types
+BG_INDEPENDENT = "independent"
+BG_DEPENDENT = "dependent"
+
+# Button group
+class ImgButtonGroup(object):
+    """Button group management class"""
+
+    def __init__(self, master, **kwargs):
+        """Create an instance.
+
+        Parameters:
+            master  A frame or ImagePanel containing ImgButtons
+
+        """
+        self.__master = master
+        self.__binder = NBinder()
+        self.__groups = dict()
+        self.__gtypes = dict()
+
+    @property
+    def buttons(self):
+        """List of all image buttons displayed on master panel"""
+        return self.get_buttons()
+
+    @property
+    def groups(self):
+        return self.__groups
+
+    @property
+    def gtypes(self):
+        return self.__gtypes
+
+    @property
+    def dependent_groups(self):
+        return self.get_groups(BG_DEPENDENT)
+
+    def get_buttons(self, group = None):
+        """List of image buttons displayed on master panel and optionally belonging to a group"""
+        if group is not None and not group in self.groups:
+            raise ValueError("Group '" + group + "' is not defined")
+
+        frame = self.__master.headerPanel if (isinstance(self.__master, ImagePanel)) else self.__master
+        return [c for c in frame.winfo_children() \
+            if isinstance(c, ImgButton) and (group is None or c.tag in self.groups[group])]
+
+    def get_groups(self, gtype = None):
+        """Returns a list of groups optionally with specified type"""
+        return [g for g in self.__groups if (gtype is None or self.__gtypes[g] == gtype)]
+
+    def add_group(self, group, tags, gtype = BG_INDEPENDENT):
+        """Creates new button group"""
+        if group in self.__groups:
+            raise ValueError("Group '" + group + "' already defined")
+
+        # Check group dependencies
+        if gtype == BG_DEPENDENT:
+            for g in self.dependent_groups:
+                for t in self.__groups[g]:
+                    if t in tags:
+                        raise ValueError("Tag '" + t + "' was already included into dependent group '" + g + "'")
+
+        # Register for ImgButton click event
+        frame = self.__master.headerPanel if (isinstance(self.__master, ImagePanel)) else self.__master
+        for c in frame.winfo_children():
+            if isinstance(c, ImgButton) and c.tag in tags:
+                self.__binder.register(c, "<Click>", self.__click_callback)
+
+        # Store info
+        self.__groups[group] = tags
+        self.__gtypes[group] = gtype
+
+    def __click_callback(self, event):
+        """Button click callback event"""
+        if not event.state:
+            # Unpressing, nothing to do
+            return
+
+        # Find dependent groups a clicked button belongs to
+        grp = [g for g in self.dependent_groups if event.tag in self.__groups[g]]
+
+        # Only one button in dependent group can be down at once
+        for g in grp:
+            for b in self.get_buttons(g):
+                if b.tag != event.tag:
+                    b.state = False

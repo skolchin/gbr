@@ -39,23 +39,33 @@ class GrBoardEdit(object):
         # Image panel
         self.imgPanel = addImagePanel(self.imgFrame,
               caption = "Image",
-              btn_params = [
-                ['params', False, self.test_callback, "Test", GrTestDlg],
-                ['plus', False, self.zoom_in_callback, "Zoom in"],
-                ['minus', False, self.zoom_out_callback, "Zoom out"],
-                ["area", True, self.set_area_callback, "Set board area"],
-                ["reset", False, self.transf_reset_callback, "Reset after transformation"],
-                ['edge', False, self.transform_callback, "Transform image"]
-              ],
               image = img,
               max_size = 500,
-              mode = "fit",
+              mode = "clip",
               min_size = 300,
               scrollbars = False,
               frame_callback = self.frame_callback)
-
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
-        self.imgPanel.buttons['reset'].disabled = True
+
+        ImgButton(self.imgPanel.headerPanel, tag = "reset",
+            tooltip = "Reset after transformation", command = self.transf_reset_callback).pack(side = tk.RIGHT)
+        ImgButton(self.imgPanel.headerPanel, tag = "minus",
+            tooltip = "Zoom out", command = self.zoom_out_callback).pack(side = tk.RIGHT)
+        ImgButton(self.imgPanel.headerPanel, tag = "plus",
+            tooltip = "Zoom in", command = self.zoom_in_callback).pack(side = tk.RIGHT)
+        ImgButton(self.imgPanel.headerPanel, tag = "area",
+            tooltip = "Set board area", command = self.set_area_callback).pack(side = tk.RIGHT)
+        ImgButton(self.imgPanel.headerPanel, tag = "edge",
+            tooltip = "Transform image", command = self.transform_callback).pack(side = tk.RIGHT)
+
+##              btn_params = [
+##                ['params', False, self.test_callback, "Test", GrTestDlg],
+##                ['plus', False, self.zoom_in_callback, "Zoom in"],
+##                ['minus', False, self.zoom_out_callback, "Zoom out"],
+##                ["area", True, self.set_area_callback, "Set board area"],
+##                ["reset", False, self.transf_reset_callback, "Reset after transformation"],
+##                ['edge', False, self.transform_callback, "Transform image"]
+##              ],
 
         # Image mask
         self.imgMask = ImageMask(self.imgPanel,
@@ -74,52 +84,57 @@ class GrBoardEdit(object):
         # Image marker
         self.imgMarker = ImageMarker(self.imgPanel, flash = 3)
 
-    def set_area_callback(self, event, tag, state):
-        if state:
+        # Button group
+        self.bg = ImgButtonGroup(self.imgPanel)
+        self.bg.add_group("g1", ["area", "edge"], BG_DEPENDENT)
+        self.bg.add_group("g2", ["plus", "area"], BG_INDEPENDENT)
+
+    def set_area_callback(self, event):
+        if event.state:
+            self.imgTransform.cancel()
             self.imgMask.random_mask()
             self.mask_callback(self.imgMask)
             self.imgMask.show()
         else:
             self.imgMask.hide()
-        return True
 
     def mask_callback(self, mask):
         self.imgPanel.caption = "{} {}".format(mask.mode, mask.scaled_mask)
 
-    def transform_callback(self, event, tag, state):
-        if not state and self.imgTransform.started:
+    def transform_callback(self, event):
+        if not event.state and self.imgTransform.started:
            self.imgTransform.cancel()
         else:
             self.imgMask.hide()
             self.imgTransform.start()
-        return True
 
     def end_transform_callback(self, t, state):
         if not state:
-           self.imgPanel.buttons['edge'].state = False
+           #self.imgPanel.buttons['edge'].state = False
+           pass
         else:
-           self.imgPanel.buttons['edge'].state = False
-           self.imgPanel.buttons['reset'].disabled = not state
+           #self.imgPanel.buttons['edge'].state = False
+           #self.imgPanel.buttons['reset'].disabled = not state
            self.imgPanel.caption = "Transf rect {}".format(t.scaled_rect)
 
-    def transf_reset_callback(self, event, tag, state):
-        self.imgPanel.buttons['edge'].state = False
+    def transf_reset_callback(self, event):
+        #self.imgPanel.buttons['edge'].state = False
         self.imgMask.hide()
         self.imgTransform.reset()
-        self.imgPanel.buttons['reset'].disabled = True
+        #self.imgPanel.buttons['reset'].disabled = True
         return False
 
-    def zoom_in_callback(self, event, tag, state):
+    def zoom_in_callback(self, event):
         if self.imgPanel.scale[0] > 1.7: return
         self.imgPanel.scale = [x * 1.10 for x in self.imgPanel.scale]
         self.imgPanel.caption = "scale {:.2f}".format(self.imgPanel.scale[0])
-        return False
+        event.cancel = True
 
-    def zoom_out_callback(self, event, tag, state):
+    def zoom_out_callback(self, event):
         if self.imgPanel.scale[0] < 0.3: return
         self.imgPanel.scale = [x * 0.90 for x in self.imgPanel.scale]
         self.imgPanel.caption = "scale {:.2f}".format(self.imgPanel.scale[0])
-        return False
+        event.cancel = True
 
     def move_callback(self, event):
         print(event.x, event.y)
