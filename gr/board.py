@@ -380,7 +380,7 @@ class GrBoard(object):
 
     @param_board_size.setter
     def param_board_size(self, size):
-        self._params['BOARD_SIZE'] = int(size)
+        self._params['BOARD_SIZE'] = int(size) if size is not None else None
 
     @property
     def param_transform_rect(self):

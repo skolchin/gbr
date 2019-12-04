@@ -57,9 +57,27 @@ More images are available at [img](../master/img) directory. All of them are eit
 
 ## Requirements
 
-Python 2.7/3.5, numpy, opencv2
+Python 3.5, numpy, opencv2, imutils
 
 For DLN: Caffe, py-faster-rcnn ([original](https://github.com/rbgirshick/py-faster-rcnn) or any other fork)
+
+## Installation and running
+
+1. Clone a repository to local disk by running:
+
+```console
+git clone https://github.com/skolchin/gbr.git
+```
+
+This will downlowd all code and database of images (img/ folder) along with parameters I have set.
+
+2. Install ```numpy```, ```opencv2```, ```imutils``` packages.
+
+Please note that ```imutils``` package is not included into Anakonda database, so it has to be installed by pip only.
+
+3. Run ```python gbr2.py```.
+
+
 
 ## TODO
 

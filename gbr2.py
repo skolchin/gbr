@@ -15,7 +15,7 @@ from gr.ui_extra import NLabel, NButton, NBinder, ImgButton, ImagePanel,  \
     StatusPanel, ImageMask, ImageTransform, GrDialog, ImageMarker, \
     treeview_sort_columns
 from gr.grlog import GrLog
-from gr.utils import format_stone_pos, resize
+from gr.utils import format_stone_pos, resize, img_to_imgtk
 
 import numpy as np
 import cv2
@@ -490,7 +490,7 @@ class GbrGUI2(tk.Tk):
 
         self.buttons['area'] = ImgButton(toolbarPanel,
             tag = "area", tooltip = "Define board", disabled = True,
-            callback = self.set_grid_callback)
+            callback = self.set_area_callback)
 
         self.buttons['detect'] = ImgButton(toolbarPanel,
             tag = "detect", tooltip = "Detect stones", disabled = True,
@@ -560,7 +560,7 @@ class GbrGUI2(tk.Tk):
         """Open button click"""
         fn = filedialog.askopenfilename(title = "Select file",
            filetypes = (("PNG files","*.png"),("JPEG files","*.jpg"),("All files","*.*")))
-        if fn is not None:
+        if fn != "":
             self.load_image(fn)
         return False
 
@@ -582,8 +582,11 @@ class GbrGUI2(tk.Tk):
         if state:
             self.board.image = self.imagePanel.image
             self.board.param_transform_rect = t.scaled_rect
+            self.board.param_board_edges = None
+            self.board.param_board_size = None
+            self.imageMask.default_mask()
 
-    def set_grid_callback(self, event, tag, state):
+    def set_area_callback(self, event, tag, state):
         """Board grid button click"""
         if self.board.is_gen_board: return
         if state:
@@ -618,7 +621,7 @@ class GbrGUI2(tk.Tk):
             initialfile = os.path.splitext(self.board.image_file)[0] + '.sgf',
             defaultextension = '.sgf',
             filetypes = (("SGF files","*.sgf"),("All files","*.*")))
-        if fn is not None:
+        if fn != "":
             self.save_sgf()
 
         return False
@@ -733,7 +736,6 @@ class GbrGUI2(tk.Tk):
 
         # Process
         self.board.process()
-        self.board.save_params()
 
         # Update status
         if GrLog.numErrors() > 0:
@@ -746,6 +748,7 @@ class GbrGUI2(tk.Tk):
 
             self.imageMask.scaled_mask = self.board.board_edges
             self.imageMask.size = self.board.board_size
+            self.board.save_params()
 
             for b in ["stones", "save"]:
                 self.buttons[b].disabled = False
@@ -761,12 +764,14 @@ class GbrGUI2(tk.Tk):
     def show_stone(self, stone, bw):
         """Highlight one stone"""
         self.imageMarker.clear()
-        if not stone is None:
-            self.imageMarker.add_stone(stone, bw)
-            self.statusBar.set("{} {}".format(
-                "Black" if bw == "B" else "White",
-                format_stone_pos(stone)))
-            self.last_stone = stone
+        if stone is None:
+            return
+
+        self.imageMarker.add_stone(stone, bw)
+        self.statusBar.set("{} {}".format(
+            "Black" if bw == "B" else "White",
+            format_stone_pos(stone)))
+        self.last_stone = stone
 
     def show_all_stones(self):
         """Highlight all stones"""

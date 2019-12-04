@@ -1,6 +1,20 @@
 
 ## Changelog
 
+04/12/2019
+
+New user-friendly UI created (gbr2.py). Primary features:
+
+* Only one (source) image is displayed
+* Separate dialog for recognition parameters, with ability to view how parameter changes affects recognition results
+* Automatic parameters update
+* Ability to set board edges (area mask), transform skewed and distorted images
+* New Stones dialog displaying list of detected stones
+* Logging and debug images displaying
+* SGF file saving
+
+Old one (gbr.py) put on hold and will no longer be maintained.
+
 13/11/2019
 
 * Added saving to SGF

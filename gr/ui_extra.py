@@ -334,7 +334,7 @@ class StatusPanel(tk.Frame):
         self.__var.set(status)
 
         self.__label = tk.Label(self, textvariable = self.__var, anchor = tk.W)
-        self.__label.pack(side = tk.LEFT, fill = tk.X, expand = False, anchor = tk.W)
+        self.__label.pack(side = tk.LEFT, fill = tk.X, expand = True, anchor = tk.W)
 
         self.__binder = None
         if not self.__callback is None:
@@ -738,7 +738,7 @@ class ImagePanel(tk.Frame):
             self.__binder.trigger(self, "<Resize>", ResizeEvent(self, old_scale, new_scale))
 
 def addImagePanel(master, **kwargs):
-    """Creates a panel with caption and buttons. Provided for backward compatibility.
+    """Creates a panel with caption and buttons. Softly deprecated, provided for backward compatibility.
     See ImagePanel.init for arguments.
 
     Returns:
@@ -1224,7 +1224,6 @@ class ImageTransform(object):
                t2.append([
                     int(i[0] / self.__transform_scale[0]) - self.__transform_offset[0],
                     int(i[1] / self.__transform_scale[1]) - self.__transform_offset[1] ])
-           print('{} -> {}'.format(t, t2))
            return t2
 
     @property
