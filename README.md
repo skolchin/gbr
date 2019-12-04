@@ -57,8 +57,7 @@ More images are available at [img](../master/img) directory. All of them are eit
 
 ## Requirements
 
-Python 3.5
-Packages:
+Python 3.5 or later. Packages:
 
 * [numpy](https://numpy.org/)
 * [opencv2](https://opencv.org/)
