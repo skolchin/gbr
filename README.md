@@ -35,9 +35,9 @@ Currently, the following filters are implemented:
   * Luminosity equalization using [CLAHE](http://books.google.com.au/books?hl=en&lr=&id=CCqzMm_-WucC&oi=fnd&pg=PR11&dq=Contrast%20Limited%20Adaptive%20Histogram%20Equalization%20Graphics%20Gems%20IV&ots=mtft15JJbl&sig=acQg6XLt7jzqR0MjO6sYUa0Sjtc#v=onepage&q=Contrast%20Limited%20Adaptive%20Histogram%20Equalization%20Graphics%20Gems%20IV&f=false)
   * Watershed (post-filter).
 
-Filter and board detection parameters can be changed through the interface and saved to property file (.JSON). The property file is loaded automatically when an image is loaded for processing.
+Filter and board detection parameters can be changed through the interface and automatically saved to a property file (.GPAR). The property file is loaded automatically when an image is loaded for processing.
 
-Recognised board can be saved to an SGF file. It creates standard SGF file, although, definetelly, it cannot reproduce actual game flow and saves stones one by one.
+Recognised boards can be saved to an SGF file. The program creates standard SGF file, but, definetelly, it cannot reproduce an actual game flow and just saves stones one by one.
 
 Examples of source images (left) and results of their processing (right):
 
