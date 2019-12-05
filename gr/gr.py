@@ -440,7 +440,7 @@ def get_board_from_params(img, params, res):
     if params.get('BOARD_EDGES') is None:
        raise Exception('Board edges not set')
 
-    edges = params['BOARD_EDGES']
+    edges = params['BOARD_EDGES'].copy()
     res[GR_EDGES] = edges
     logging.info("Predefined board edges: {}".format(edges))
 
@@ -454,6 +454,12 @@ def get_board_from_params(img, params, res):
        size = DEF_BOARD_SIZE
        logging.warning("Board size is not set while board edges is, using default board size")
     res[GR_BOARD_SIZE] = size
+
+    # Board edges are related to full image only, while if an area mask is defined,
+    # image passed in has already been clipped, so edges have to be offset-ed
+    area = params.get('AREA_MASK')
+    if area is not None:
+        edges = offset_edges(edges, [-1 * area[0][0], -1 * area[0][1]])
 
     # Spacing
     space_x, space_y = board_spacing(edges, size)
@@ -557,9 +563,12 @@ def apply_area_mask(img, params):
     if m is None or not type(m) is list:
         # Remove small area which might contain image borders
         d = MIN_EDGE_DIST
-        m = [d, d, img.shape[CV_WIDTH]-d, img.shape[CV_HEIGTH]-d]
+        m = [[d, d], [img.shape[CV_WIDTH]-d, img.shape[CV_HEIGTH]-d]]
 
+    # Mask is a in nested list, flatten it
+    m = np.array(m).flatten().tolist()
     logging.info("Area mask is {}".format(m))
+
     return get_image_area(img, m), [m[0], m[1]]
 
 # Internal function: move edges to specified offset
@@ -615,8 +624,6 @@ def process_img(img, params):
         img2, offset = apply_area_mask(img, params)
 
         # Find board edges, spacing, size
-        # After applying area mask, image is shifted top-left by offset
-        # Therefore, for predefined edges, they have to be shifted too to match the image
         if params.get('BOARD_EDGES') is None:
             # Parameter not set, detecting
             board_edges, board_size = find_board(img2, params, res)
@@ -625,7 +632,6 @@ def process_img(img, params):
                return None
         else:
             board_edges, board_size = get_board_from_params(img2, params, res)
-            offset_edges(board_edges, [-1 * offset[0], -1 * offset[1]])
 
         # Find stones
         black_stones = find_stones(img2, params, res, 'B')
