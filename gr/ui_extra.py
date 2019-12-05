@@ -245,7 +245,7 @@ class ImgButton(tk.Label):
         """Button disabled state"""
         return self.__disabled
 
-    @state.setter
+    @disabled.setter
     def disabled(self, ds):
         """Button disabled state"""
         if ds != self.__disabled:
@@ -277,7 +277,7 @@ class ImgButton(tk.Label):
             self.__state = cur_state
             if new_state:
                 # Unpress after small delay
-                self.after(300, lambda: self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled]))
+                self.after(100, lambda: self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled]))
             else:
                 self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
 
@@ -862,9 +862,9 @@ class ImageMask(object):
         self.__bindings = NBinder()
         self.__bindings.register(self.__panel, "<Resize>", self.__on_panel_resize)
         if self.__allow_change:
-            self.__bindings.bind(self.__panel.canvas, "<Motion>", self.motion_callback)
-            self.__bindings.bind(self.__panel.canvas, '<B1-Motion>', self.drag_callback)
-            self.__bindings.bind(self.__panel.canvas, '<B1-ButtonRelease>', self.end_drag_callback)
+            self.__bindings.bind(self.__panel.canvas, "<Motion>", self.motion_callback, add = "+")
+            self.__bindings.bind(self.__panel.canvas, '<B1-Motion>', self.drag_callback, add = "+")
+            self.__bindings.bind(self.__panel.canvas, '<B1-ButtonRelease>', self.end_drag_callback, add = "+")
 
     @property
     def panel(self):
@@ -1047,8 +1047,8 @@ class ImageMask(object):
 
     def default_mask(self):
         """Generates default mask"""
-        dx = 0
-        dy = 0
+        dx = 1
+        dy = 1
         self.__mask = [
                 dx,
                 dy,
@@ -1649,49 +1649,92 @@ BG_DEPENDENT = "dependent"
 
 # Button group
 class ImgButtonGroup(object):
-    """Button group management class"""
+    """Button group management class.
+    This class allows to define a button group can include several ImgButton tags
+    and manage them as a whole (for example, disabling or unpressing them at once).
+    Button groups can be dependent (where only one button could be down at one time)
+    or independent, which are handled by the caller.
+    """
+
+    # Enclosed group class
+    class __Group(object):
+        def __init__(self, parent, group, gtype, tags):
+            self.parent, self.group, self.gtype, self.tags = parent, group, gtype, tags
+
+        @property
+        def buttons(self):
+            return {b.tag: b for b in self.parent.get_buttons(self.group)}
+
+        def __getitem__(self, key):
+            return self.buttons[key]
+
+        @property
+        def state(self):
+            return False
+
+        @state.setter
+        def state(self, s):
+            self.parent.set_state(self.group, s)
+
+        @property
+        def disabled(self):
+            return False
+
+        @disabled.setter
+        def disabled(self, d):
+            self.parent.set_disabled(self.group, d)
+
+        def release(self):
+            self.parent.release(self.group)
 
     def __init__(self, master, **kwargs):
         """Create an instance.
 
         Parameters:
             master  A frame or ImagePanel containing ImgButtons
-
         """
         self.__master = master
         self.__binder = NBinder()
         self.__groups = dict()
-        self.__gtypes = dict()
 
     @property
-    def buttons(self):
-        """List of all image buttons displayed on master panel"""
+    def buttons_list(self):
+        """All image buttons displayed on master panel"""
         return self.get_buttons()
 
     @property
-    def groups(self):
-        return self.__groups
+    def buttons(self):
+        """Image button dictionary with tag as a key and button as value"""
+        return {b.tag: b for b in self.get_buttons()}
 
     @property
-    def gtypes(self):
-        return self.__gtypes
+    def groups(self):
+        """Groups list"""
+        return self.__groups
+
+    def __getitem__(self, key):
+        """Iterator for groups"""
+        return self.__groups[key]
 
     @property
     def dependent_groups(self):
+        """List of groups of type BG_DEPENDENT"""
         return self.get_groups(BG_DEPENDENT)
 
-    def get_buttons(self, group = None):
-        """List of image buttons displayed on master panel and optionally belonging to a group"""
+    def get_buttons(self, group = None, exclude = None):
+        """List of image buttons displayed on master panel and, optionally, belonging to a group"""
         if group is not None and not group in self.groups:
             raise ValueError("Group '" + group + "' is not defined")
 
         frame = self.__master.headerPanel if (isinstance(self.__master, ImagePanel)) else self.__master
         return [c for c in frame.winfo_children() \
-            if isinstance(c, ImgButton) and (group is None or c.tag in self.groups[group])]
+            if isinstance(c, ImgButton) and
+                (group is None or c.tag in self.__groups[group].tags) and \
+                (exclude is None or not c.tag in exclude) ]
 
     def get_groups(self, gtype = None):
-        """Returns a list of groups optionally with specified type"""
-        return [g for g in self.__groups if (gtype is None or self.__gtypes[g] == gtype)]
+        """Returns a list of groups, optionally, with specified type"""
+        return [g for g in self.__groups if (gtype is None or self.__groups[g].gtype == gtype)]
 
     def add_group(self, group, tags, gtype = BG_INDEPENDENT):
         """Creates new button group"""
@@ -1712,8 +1755,22 @@ class ImgButtonGroup(object):
                 self.__binder.register(c, "<Click>", self.__click_callback)
 
         # Store info
-        self.__groups[group] = tags
-        self.__gtypes[group] = gtype
+        self.__groups[group] = ImgButtonGroup.__Group(self, group, gtype, tags)
+
+    def set_state(self, group, state, exclude = None):
+        """Changes state of all buttons in a group"""
+        g = self.get_buttons(group, exclude)
+        for b in g: b.state = state
+
+    def set_disabled(self, group, disabled, exclude = None):
+        """Changes mode of all buttons in a group"""
+        g = self.get_buttons(group, exclude)
+        for b in g: b.disabled = disabled
+
+    def release(self, group, exclude = None):
+        """Releases all buttons in a group"""
+        g = self.get_buttons(group, exclude)
+        for b in g: b.release()
 
     def __click_callback(self, event):
         """Button click callback event"""
@@ -1722,10 +1779,9 @@ class ImgButtonGroup(object):
             return
 
         # Find dependent groups a clicked button belongs to
-        grp = [g for g in self.dependent_groups if event.tag in self.__groups[g]]
+        grp = [g for g in self.dependent_groups if event.tag in self.__groups[g].tags]
 
         # Only one button in dependent group can be down at once
         for g in grp:
             for b in self.get_buttons(g):
-                if b.tag != event.tag:
-                    b.state = False
+                if b.tag != event.tag: b.release()
