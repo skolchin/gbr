@@ -53,6 +53,12 @@ class GrLogDlg(GrDialog):
         lbox.insert(tk.END, *self._log)
         lbox.pack(fill = tk.BOTH, expand = True, padx = 5, pady = 5)
 
+        for i, item in enumerate(self._log):
+            if item.startswith("WARNING"):
+                lbox.itemconfig(i, {'fg': 'green'})
+            elif item.startswith("ERROR"):
+                lbox.itemconfig(i, {'fg': 'red'})
+
         sbr.config(command = lbox.yview)
         sbb.config(command = lbox.xview)
 
