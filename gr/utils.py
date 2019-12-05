@@ -107,14 +107,16 @@ def img1_to_img3(img):
     return img3
 
 def format_stone_pos(stone, axis = None):
-    if axis is None:
-         return ss.ascii_uppercase[stone[GR_A]-1] + str(stone[GR_B])
+    if stone[GR_A] > 30 or stone[GR_B] > 30:
+        return 'XX'
+    elif axis is None:
+        return ss.ascii_uppercase[stone[GR_A]-1] + str(stone[GR_B])
     elif axis == GR_A:
-         return ss.ascii_uppercase[stone[GR_A]-1]
+        return ss.ascii_uppercase[stone[GR_A]-1]
     elif axis == GR_B:
-         return str(stone[axis])
+        return str(stone[axis])
     else:
-         return int(round(stone[axis],0))
+        return int(round(stone[axis],0))
 
 def gres_to_jgf(res):
     """Converts board recognition results to JGF dictionary"""
