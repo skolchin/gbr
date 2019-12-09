@@ -183,7 +183,7 @@ class GbrOptionsDlg(GrDialog):
             command = self.default_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
         self.log_button = tk.Button(f_bottom, text = "Log",
-            state = tk.DISABLED if GrLog.numErrors() == 0 is None else tk.NORMAL,
+            state = tk.DISABLED if self.root.log.errors == 0 is None else tk.NORMAL,
             command = self.log_click_callback)
         self.log_button.pack(side = tk.LEFT, padx = 5, pady = 5)
 
@@ -203,7 +203,7 @@ class GbrOptionsDlg(GrDialog):
                 state = tk.DISABLED if self.root.board.results is None else tk.NORMAL)
         if self.log_button is not None:
             self.log_button.configure(
-                state = tk.DISABLED if GrLog.numErrors() == 0 is None else tk.NORMAL)
+                state = tk.DISABLED if self.root.log.errors == 0 is None else tk.NORMAL)
 
     def auto_detect_callback(self):
         """Auto-detect checkbox click callback"""
@@ -220,12 +220,8 @@ class GbrOptionsDlg(GrDialog):
 
     def default_click_callback(self):
         """Default button click callback"""
-        self.root.board.params = dict()
 
-        for key in self.tkVars.keys():
-            v = self.root.board.params[key]
-            if not v is None: self.tkVars[key].set(v)
-
+        self.root.board.params.reset()
         self.board_size_disabled.set(1)
         self.board_size_label.config(state = tk.DISABLED)
         self.board_size_scale.config(state = tk.DISABLED)
@@ -274,11 +270,8 @@ class GbrOptionsDlg(GrDialog):
         nb = ttk.Notebook(parent)
         nb.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
 
-        # Get unique tabs
-        tabs = set([e[2] for e in GR_PARAMS_PROP.values() if e[2]])
-
         # Add switches to notebook tabs
-        for tab in sorted(tabs):
+        for tab in self.root.board.params.groups:
             # Add a tab frame
             nbFrame = tk.Frame(nb, width = 400)
             nb.add(nbFrame, text = tab)
@@ -287,10 +280,7 @@ class GbrOptionsDlg(GrDialog):
             ncol = 0
 
             # Iterate through the params processing only ones belonging to current tab
-            keys = [key for key in params.keys() if key in GR_PARAMS_PROP and GR_PARAMS_PROP[key][2] == tab]
-            keys = sorted(keys, key = lambda k: GR_PARAMS_PROP[k][4] if len(GR_PARAMS_PROP[k]) > 4 else 0)
-
-            for key in keys:
+            for param in self.root.board.params.group_params(tab):
                 if (n == max_in_row or frame is None):
                     frame = tk.Frame(nbFrame, width = 400)
                     frame.grid(row = 0, column = ncol, padx = 3, pady = 3)
@@ -298,27 +288,26 @@ class GbrOptionsDlg(GrDialog):
                     ncol = ncol + 1
 
                 # Add a scale from properties
-                caption = GR_PARAMS_PROP[key][3] if len(GR_PARAMS_PROP[key]) > 3 else key
-                label = tk.Label(frame, text = caption)
+                label = tk.Label(frame, text = param.title)
                 label.grid(row = n, column = 0, padx = 2, pady = 0, sticky = "s", ipady=4)
 
                 v = tk.IntVar()
-                v.set(params[key])
-                scale = tk.Scale(frame, from_ = GR_PARAMS_PROP[key][0],
-                                        to = GR_PARAMS_PROP[key][1],
+                v.set(param.v)
+                scale = tk.Scale(frame, from_ = param.min_v,
+                                        to = param.max_v,
                                         orient = tk.HORIZONTAL,
                                         variable = v,
                                         command = self.scale_changed_callback)
                 scale.grid(row = n, column = 1, padx = 2, pady = 0)
-                vars[key] = v
+                vars[param.key] = v
                 n = n + 1
 
                 # For board_size, add additional checkbox
-                if key == 'BOARD_SIZE':
+                if param.key == 'BOARD_SIZE':
                     self.board_size_label = label
                     self.board_size_scale = scale
 
-                    state = tk.DISABLED if params[key] is None else tk.NORMAL
+                    state = tk.DISABLED if param.v is None else tk.NORMAL
                     label.config(state = state)
                     scale.config(state = state)
 
@@ -328,7 +317,6 @@ class GbrOptionsDlg(GrDialog):
                                         text = "Automatically detect board size",
                                         variable = self.board_size_disabled,
                                         command = self.size_enabled_changed)
-                    #if state == tk.NORMAL: cb.select()
                     cb.grid(row = n, columnspan = 2, padx = 2, pady = 0)
                     n = n + 1
 
@@ -349,17 +337,13 @@ class GbrOptionsDlg(GrDialog):
         p = dict()
         for key in self.tkVars.keys():
             p[key] = self.tkVars[key].get()
-
-        p['BOARD_EDGES'] = self.root.board.param_board_edges
-        p['TRANSFORM'] = self.root.board.param_transform_rect
-        p['AREA_MASK'] = self.root.board.param_area_mask
+        self.root.board.params = p
 
         if self.board_size_disabled.get() > 0:
-            del p['BOARD_SIZE']
-            del p['BOARD_EDGES']
+            self.root.board.param_board_size = None
+            self.root.board.param_board_edges = None
 
         # Detect
-        self.root.board.params = p
         self.root.detect_stones(highlight)
 
         # Update debug info, if the dialog is open

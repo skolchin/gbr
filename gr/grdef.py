@@ -31,93 +31,131 @@ GR_R = 4                          # index of stone radius dimension
 GR_FROM = 0                       # index of line start in lines array
 GR_TO = 1                         # index of line end in lines array
 
-# Default parameter values
-DEF_GR_PARAMS = {
-    "CANNY_MINVAL": 50,
-    "CANNY_MAXVAL": 100,
-    "CANNY_APERTURE": 3,
-    "HL_RHO": 1,
-    "HL_THETA": 90,
-    "HL_THRESHOLD": 0,
-    "HL_MINLEN": 0,
-    "HL_RHO2": 1,
-    "HL_THETA2": 90,
-    "HL_THRESHOLD2": 60,
-    "HC_MINDIST": 1,
-    "HC_MAXRADIUS": 20,
-    "HC_SENSITIVITY_B": 10,
-    "HC_MASK_B": 3,
-    "HC_SENSITIVITY_W": 10,
-    "HC_MASK_W": 3,
-    "BLUR_MASK_B": 0,
-    "BLUR_MASK_W": 0,
-    "STONES_THRESHOLD_B": 85,
-    "STONES_THRESHOLD_W": 150,
-    "STONES_MAXVAL_B": 255,
-    "STONES_MAXVAL_W": 255,
-    "STONES_DILATE_B": 1,
-    "STONES_DILATE_W": 0,
-    "STONES_ERODE_B": 1,
-    "STONES_ERODE_W": 0,
-    "WATERSHED_B": 90,
-    "WS_MORPH_B": 0,
-    "WATERSHED_W": 150,
-    "WS_MORPH_W": 0,
-    "PYRAMID_B": 0,
-    "PYRAMID_W": 0,
-    'AREA_MASK': None,
-    'TRANSFORM': None,
-    'BOARD_EDGES': None,
-    'BOARD_SIZE': None,
-    'LUM_EQ': 0
+
+# Parameter default values ans description
+# def, min, max, group, title, order, hidden (optional)
+GR_PARAMS = {
+    "CANNY_MINVAL": (50, 1, 255, None, None, None, None),       # Canny min value - cannot be changed
+    "CANNY_MAXVAL": (100, 1, 255, None, None, None, None),      # Canny max value - cannot be changed
+    "CANNY_APERTURE": (3, 3, 7, None, None, None, None),        # Canny aperture - cannot be changed
+    "HL_RHO": (1, 1, 5, None, None, None, None),                # HoughLines rho - cannot be changed
+    "HL_THETA": (90, 1, 90, None, None, None, None),            # HoughLines theta - cannot be changed
+    "HL_THRESHOLD": (0, 0, 255, None, None, None, None),        # HoughLines threshold - cannot be changed
+    "HL_MINLEN": (0, 0, 30, None, None, None, None),            # HoughLines min len - cannot be changed
+    "HL_RHO2": (1, 1, 5, None, None, None, None),               # HoughLinesP threshold - cannot be changed
+    "HC_MINDIST": (1, 1, 5, None, None, None, None),            # HoughCircles min distance - not used
+    "HC_MAXRADIUS": (20, 1, 40, None, None, None, None),        # HoughCircles max radius - not used
+
+    # Board params group
+    'BOARD_SIZE': (19, 9, 21, " Board recognition", "Board size", 1),       # Board size
+    "HL_THETA2": (90, 1, 90, " Board recognition", "Angle", 2),             # HoughLinesP theta
+    "HL_THRESHOLD2": (60, 1, 255, " Board recognition", "Threshold", 3),    # HoughLinesP threshold
+    'LUM_EQ': (0, 0, 1, " Board recognition", "Luminosity filter", 4),      # CLAHE filter on/off
+
+    # Black stones detection
+    "STONES_THRESHOLD_B": (85, 1, 255, "Black stones detection", "Threshold", 1),   # Threshold
+    "HC_SENSITIVITY_B": (10, 1, 40, "Black stones detection", "Sensitivity", 2),    # Sensistivity
+    "HC_MASK_B": (3, 1, 10, "Black stones detection", "Mask granularity", 3),       # Mask
+    "BLUR_MASK_B": (0, 0, 10, "Black stones detection", "Blurring", 4),             # Blurring
+    "STONES_DILATE_B": (1, 0, 10, "Black stones detection", "Dilation", 5),         # Dilation
+    "STONES_ERODE_B": (1, 0, 10, "Black stones detection", "Erosion", 6),           # Erosion
+    "WATERSHED_B": (90, 0, 255, "Black stones detection", "Watershed", 7),          # Watershed
+    "WS_MORPH_B": (0, 0, 10, "Black stones detection", "Watershed morphing", 8),    # WS morphing
+    "PYRAMID_B": (0, 0, 1, "Black stones detection", "Pyramid filter", 9),          # Image pyramid filter on/off
+    "STONES_MAXVAL_B": (255, 0, 255, None, None, None, None),                       # MaxVal - cannot be changed
+
+    # White stones detection
+    "STONES_THRESHOLD_W": (150, 1, 255, "White stones detection", "Threshold", 1),  # Threshold
+    "HC_SENSITIVITY_W": (10, 1, 40, "White stones detection", "Sensitivity", 2),    # Sensistivity
+    "HC_MASK_W": (3, 1, 10, "White stones detection", "Mask granularity", 3),       # Mask
+    "BLUR_MASK_W": (0, 0, 10, "White stones detection", "Blurring", 4),             # Blurring
+    "STONES_DILATE_W": (1, 0, 10, "White stones detection", "Dilation", 5),         # Dilation
+    "STONES_ERODE_W": (1, 0, 10, "White stones detection", "Erosion", 6),           # Erosion
+    "WATERSHED_W": (150, 0, 255, "White stones detection", "Watershed", 7),         # Watershed
+    "WS_MORPH_W": (0, 0, 10, "White stones detection", "Watershed morphing", 8),    # WS morphing
+    "PYRAMID_W": (0, 0, 1, "White stones detection", "Pyramid filter", 9),          # Image pyramid filter on/off
+    "STONES_MAXVAL_W": (255, 0, 255, None, None, None, None),                       # MaxVal - cannot be changed
+
+    # Hidden params
+    'AREA_MASK': (None, None, None, None, None, None, None, True),
+    'TRANSFORM': (None, None, None, None, None, None, None, True),
+    'BOARD_EDGES': (None, None, None, None, None, None, None, True)
 }
 
-# Parameter properties: min, max, group, title, order, tooltip
-# Parameters where group is not None will be available for changinf via UI
-GR_PARAMS_PROP = {
-    "CANNY_MINVAL": (1, 255, None),
-    "CANNY_MAXVAL": (1, 255, None),
-    "CANNY_APERTURE": (3, 7, None),
 
-#    "HL_RHO": (1, 5, "Board recognition"),
-    "HL_THETA": (1, 90, None),
-    "HL_THRESHOLD": (0, 255, None),
-    "HL_MINLEN": (0, 255, None),
-#    "HL_RHO2": (1, 5, "Board recognition"),
-    "BOARD_SIZE": (9, 21, " Board recognition", "Board size", 1),
-    "HL_THETA2": (1, 90, " Board recognition", "Theta", 2),
-    "HL_THRESHOLD2": (1, 255, " Board recognition", "Threshold", 3),
-    "LUM_EQ": (0, 1, " Board recognition", "Luminosity filter", 4),
+# GrParam class
+class GrParam(object):
+    def __init__(self, *args):
+        if len(args) < 7:
+            raise ValueError("Not enought parameters for '" + args[0] + "'")
 
-    "HC_MINDIST": (1, 30, None),
-    "HC_MAXRADIUS": (1, 40, None),
+        self.key = args[0]
+        self.v = args[1]
+        self.min_v = args[2]
+        self.max_v = args[3]
+        self.group = args[4]
+        self.title = args[5]
+        self.order = args[6]
 
-    "STONES_THRESHOLD_B": (1, 255, "Black stones detection", "Threshold", 1),
-    "HC_SENSITIVITY_B": (1, 40, "Black stones detection", "Sensitivity", 2),
-    "HC_MASK_B": (1, 10, "Black stones detection", "Mask granularity", 3),
-    "BLUR_MASK_B": (0, 10, "Black stones detection", "Blurring", 4),
-    "STONES_DILATE_B": (0, 10, "Black stones detection", "Dilation", 5),
-    "STONES_ERODE_B": (0, 10, "Black stones detection", "Erosion", 6),
-    "STONES_MAXVAL_B": (1, 255, None, ""),
-    "WATERSHED_B": (0, 255, "Black stones detection", "Watershed", 7),
-    "WS_MORPH_B": (0, 10, "Black stones detection", "Watershed morphing", 8),
-    "PYRAMID_B": (0, 1, "Black stones detection", "Apply pyramid filter", 9),
+        self.hidden = False
+        if len(args) > 7: self.hidden = args[7]
 
-    "STONES_THRESHOLD_W": (1, 255, "White stones detection", "Threshold", 1),
-    "HC_SENSITIVITY_W": (1, 40, "White stones detection", "Sensitivity", 2),
-    "HC_MASK_W": (1, 10, "White stones detection", "Mask granularity", 3),
-    "BLUR_MASK_W": (0, 10, "White stones detection", "Blurring", 4),
-    "STONES_DILATE_W": (0, 10, "White stones detection", "Dilation", 5),
-    "STONES_ERODE_W": (0, 10, "White stones detection", "Erosion", 6),
-    "STONES_MAXVAL_W": (1, 255, None),
-    "WATERSHED_W": (0, 255, "White stones detection", "Watershed", 7),
-    "WS_MORPH_W": (0, 10, "White stones detection", "Watershed morphing", 8),
-    "PYRAMID_W": (0, 1, "White stones detection", "Image pyramid filter", 9),
+        self.def_v = self.v
 
-    'AREA_MASK': (0,0,None),
-    'TRANSFORM': (0,0,None),
-    'BOARD_EDGES': (0,0,None)
-}
+    def tolist(self):
+        return [self.v, self.min_v, self.max_v, self.group, self.title, self.order]
+
+# Collection of params
+class GrParams(object):
+    def __init__(self, descr = GR_PARAMS):
+        self.__params = dict()
+        for k in descr:
+            self.__params[k] = GrParam(k, *descr[k])
+
+    @property
+    def params(self):
+        return self.__params
+
+    @property
+    def keys(self):
+        return self.__params.keys()
+
+    @property
+    def groups(self):
+        return sorted(set([self.__params[k].group for k in self.__params if self.__params[k].group is not None]))
+
+    def group_params(self, group):
+        p = [self.__params[k] for k in self.__params \
+            if self.__params[k].group == group and self.__params[k].title is not None]
+        return sorted(p, key = lambda k: k.order)
+
+    def get(self, key):
+        return self.__params[key].v if key in self.__params else None
+
+    def __getitem__(self, key):
+        return self.__params[key].v
+
+    def __setitem__(self, key, value):
+        if not key in self.__params: raise KeyError("Key '" + key + "' not found")
+        self.__params[key].v = value
+
+    def __contains__(self, item):
+        return item in self.__params
+
+    def __str__(self):
+        return str(self.todict())
+
+    def todict(self):
+        return {k: self.__params[k].v for k in self.__params}
+
+    def reset(self):
+        for p in self.__params:
+            self.__params[p].v  = self.__params[p].def_v
+
+    def assign(self, p, copy_hidden = False):
+        for k in self.__params:
+            if (not self.__params[k].hidden or copy_hidden) and k in p:
+                self.__params[k].v = p[k]
 
 # Analysis results
 GR_STONES_B = "BS"                  # black stones

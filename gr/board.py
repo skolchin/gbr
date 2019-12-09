@@ -33,7 +33,7 @@ class GrBoard(object):
             board_shape      Generated board shape, if no image file is provided
 
         """
-        self._params = DEF_GR_PARAMS.copy()
+        self._params = GrParams()
         self._res = None
         self._img = None
         self._img_file = None
@@ -122,52 +122,14 @@ class GrBoard(object):
     def load_params(self, filename):
         """Loads recognition parameters from specified file (JSON)"""
         p = json.load(open(str(filename)))
-        r = dict()
-        for key in self._params.keys():
-            if key in p:
-                self._params[key] = p[key]
-                r[key] = p[key]
-            elif key in DEF_GR_PARAMS:
-                self._params[key] = DEF_GR_PARAMS[key]
-                r[key] = DEF_GR_PARAMS[key]
-        return r
-
-    def load_board_info(self, filename, f_use_gen_img = True, path_override = None):
-        """Loads board information from specified file (JGF)"""
-        jgf = json.load(open(str(filename)))
-        self._res = jgf_to_gres(jgf)
-
-        if not f_use_gen_img:
-            # Load existing image
-            fn = jgf['image_file']
-            if not path_override is None:
-               fn = str(Path(path_override).joinpath(Path(fn).name))
-            self.load_image(fn, f_process = False)
-        else:
-            # Use generated image
-            self._img_file = jgf['image_file']
-            max_e = jgf['edges']['1']
-            shape = (max_e[0] + 14,max_e[1] + 14)
-            self.generate(shape)
+        self._params.assign(p, copy_hidden = True)
 
     def save_params(self, filename = None):
         """Saves recognition parameters to specified file (JSON)"""
         if filename is None:
             filename = str(Path(self._img_file).with_suffix(BOARD_PARAM_EXT))
         with open(filename, "w") as f:
-            json.dump(self._params, f, indent=4, sort_keys=True, ensure_ascii=False)
-        return filename
-
-    def save_board_info(self, filename = None):
-        """Saves board information to specified file (JGF)"""
-        if filename is None:
-            filename = str(Path(self._img_file).with_suffix('.jgf'))
-
-        jgf = gres_to_jgf(self._res)
-        jgf['image_file'] = self._img_file
-
-        with open(filename, "w") as f:
-            json.dump(jgf, f, indent=4, sort_keys=True, ensure_ascii=False)
+            json.dump(self._params.todict(), f, indent=4, sort_keys=True, ensure_ascii=False)
         return filename
 
     def save_sgf(self, filename = None):
@@ -196,53 +158,6 @@ class GrBoard(object):
             f.close()
 
         return filename
-
-    def load_annotation(self, filename, ds_format = None, f_process = True):
-        """Loads annotation from specified file and dataset
-
-        Parameters:
-            filename        Name of annotation file
-            ds_format       Either a dataset format string or a dataset object
-            f_process       True if loaded image has to be processed
-        """
-
-        # Load annotation data
-        ds = GrDataset.getDataset(ds_format)
-        fn, src, _, _ = ds.load_annotation(filename)
-
-        # Load image
-        if not src is None and src != '': fn = src
-        self.load_image(fn, f_process = f_process)
-
-    def save_annotation(self, filename = None, ds_format = None, anno_only = True, stage = "test"):
-        """Saves annotation to specified file and dataset
-
-        Parameters:
-            filename        Name of annotation file
-            ds_format       Either a dataset format string or a dataset object
-            anno_only       True to save only annotation file, False to store image to dataset
-            stage           If anno_only is False, name of stage where to save the image
-
-        Returns
-            file            Name of file annotation was saved to
-        """
-
-        # Check parameters
-        if self._img is None:
-            return None
-
-        # Prepare data
-        extra_param = dict()
-        extra_param['image_file'] = self._img_file
-        extra_param['source_file'] = self._src_img_file
-
-        # Get a dataset and save
-        ds = GrDataset.getDataset(ds_format)
-        file, _ = ds.save_annotation(board = self, extra_param = extra_param, \
-                                        file_name = filename, anno_only = anno_only, \
-                                        stage = stage)
-
-        return file
 
     def detect_edges(self):
         """Runs edges and size detection and stores result in params overriding
@@ -328,10 +243,7 @@ class GrBoard(object):
     @params.setter
     def params(self, p):
         """Recognition parameters"""
-        self._params = DEF_GR_PARAMS.copy()
-        for key in p.keys():
-            if key in self._params:
-                self._params[key] = p[key]
+        self._params.assign(p)
 
     @property
     def param_area_mask(self):
