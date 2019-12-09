@@ -12,7 +12,7 @@
 from gr.board import GrBoard
 from gr.grdef import *
 from gr.ui_extra import *
-from gr.grlog import GrLog
+from gr.grlog import GrLogger
 from gr.utils import format_stone_pos, resize, img_to_imgtk
 
 import numpy as np
@@ -477,6 +477,7 @@ class GbrGUI2(tk.Tk):
         self.title("Go board")
         self.minsize(300, 400)
 
+        self.log = GrLogger(self)
         self.board = GrBoard()
         self.binder = NBinder()
         self.last_stone = None
@@ -694,7 +695,7 @@ class GbrGUI2(tk.Tk):
 
     def status_click_callback(self, event):
         """Status bar mouse click"""
-        GrLog.show(self)
+        self.log.show()
 
     def area_mask_callback(self, mask):
         """Grid mask resizing finished"""
@@ -711,7 +712,7 @@ class GbrGUI2(tk.Tk):
         """Load a board image"""
 
         # Clean up
-        GrLog.clear()
+        self.log.clear()
         self.imageMarker.clear()
         self.bg["has_file"].release()
         self.bg["has_file"].disabled = True
@@ -728,7 +729,7 @@ class GbrGUI2(tk.Tk):
             if self.board.param_board_size is not None else DEF_BOARD_SIZE
 
         # Update status
-        if GrLog.numErrors() > 0:
+        if self.log.errors > 0:
             self.statusBar.set("Errors during file loading, click here for the log")
         else:
             self.statusBar.set_file("File loaded", self.board.image_file)
@@ -744,10 +745,10 @@ class GbrGUI2(tk.Tk):
                 return
 
         # Process
-        GrLog.clear()
+        self.log.clear()
         self.board.detect_edges()
 
-        if GrLog.numErrors() > 0:
+        if self.log.errors > 0:
            self.statusBar.set("Automatic board detection failed, click here for the log")
         else:
             self.statusBar.set("{s}x{s} board detected".format(
@@ -758,14 +759,14 @@ class GbrGUI2(tk.Tk):
     def detect_stones(self, highlight = False):
         """Detect stones on currently loaded board image"""
         # Clean up
-        GrLog.clear()
+        self.log.clear()
         self.bg['edges'].release()
 
         # Process
         self.board.process()
 
         # Update status
-        if GrLog.numErrors() > 0:
+        if self.log.errors > 0:
             self.statusBar.set("Errors during processing, click here for the log")
         else:
             self.statusBar.set("{b} black, {w} white stones on {s}x{s} board detected, click here for the log".format(
@@ -814,7 +815,6 @@ class GbrGUI2(tk.Tk):
 
 # Main function
 def main():
-    log = GrLog.init()
     window = GbrGUI2()
 
     window.mainloop()
