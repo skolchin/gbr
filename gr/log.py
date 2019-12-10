@@ -121,3 +121,6 @@ class GrLogger(object):
         self.__log_filter.errors = 0
 
 
+    def __str__(self):
+        return self.__log_stream.getvalue()
+
