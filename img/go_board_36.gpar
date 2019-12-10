@@ -1,15 +1,15 @@
 {
     "AREA_MASK": null,
-    "BLUR_MASK_B": 1,
+    "BLUR_MASK_B": 0,
     "BLUR_MASK_W": 0,
     "BOARD_EDGES": [
         [
-            18,
-            18
+            65,
+            70
         ],
         [
-            433,
-            432
+            571,
+            579
         ]
     ],
     "BOARD_SIZE": 19,
@@ -33,16 +33,16 @@
     "PYRAMID_B": 0,
     "PYRAMID_W": 0,
     "STONES_DILATE_B": 1,
-    "STONES_DILATE_W": 0,
+    "STONES_DILATE_W": 1,
     "STONES_ERODE_B": 1,
     "STONES_ERODE_W": 1,
     "STONES_MAXVAL_B": 255,
     "STONES_MAXVAL_W": 255,
-    "STONES_THRESHOLD_B": 65,
+    "STONES_THRESHOLD_B": 85,
     "STONES_THRESHOLD_W": 150,
     "TRANSFORM": null,
-    "WATERSHED_B": 66,
+    "WATERSHED_B": 90,
     "WATERSHED_W": 150,
-    "WS_MORPH_B": 3,
-    "WS_MORPH_W": 1
+    "WS_MORPH_B": 0,
+    "WS_MORPH_W": 0
 }
