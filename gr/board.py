@@ -10,8 +10,8 @@
 #-------------------------------------------------------------------------------
 from .grdef import *
 from .gr import process_img, detect_board, generate_board, find_coord, find_position
-from .utils import gres_to_jgf, jgf_to_gres, resize2
-from .dataset import GrDataset
+from .utils import resize2
+from .params import GrParams
 
 from pathlib import Path
 import cv2
@@ -122,7 +122,7 @@ class GrBoard(object):
     def load_params(self, filename):
         """Loads recognition parameters from specified file (JSON)"""
         p = json.load(open(str(filename)))
-        self._params.assign(p, copy_hidden = True)
+        self._params.assign(p, copy_all = True)
 
     def save_params(self, filename = None):
         """Saves recognition parameters to specified file (JSON)"""
