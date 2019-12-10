@@ -8,6 +8,7 @@
 # Copyright:   (c) kol 2019
 # Licence:     MIT
 #-------------------------------------------------------------------------------
+import numpy as np
 
 # Constants
 COLOR_WHITE = (255, 255, 255)     # white
@@ -35,51 +36,52 @@ GR_TO = 1                         # index of line end in lines array
 # Parameter default values ans description
 # def, min, max, group, title, order, no_copy (optional)
 GR_PARAMS = {
-    "CANNY_MINVAL": (50, 1, 255, None, None, None, None),       # Canny min value - cannot be changed
-    "CANNY_MAXVAL": (100, 1, 255, None, None, None, None),      # Canny max value - cannot be changed
-    "CANNY_APERTURE": (3, 3, 7, None, None, None, None),        # Canny aperture - cannot be changed
-    "HL_RHO": (1, 1, 5, None, None, None, None),                # HoughLines rho - cannot be changed
-    "HL_THETA": (90, 1, 90, None, None, None, None),            # HoughLines theta - cannot be changed
-    "HL_THRESHOLD": (0, 0, 255, None, None, None, None),        # HoughLines threshold - cannot be changed
-    "HL_MINLEN": (0, 0, 30, None, None, None, None),            # HoughLines min len - cannot be changed
-    "HL_RHO2": (1, 1, 5, None, None, None, None),               # HoughLinesP threshold - cannot be changed
-    "HC_MINDIST": (1, 1, 5, None, None, None, None),            # HoughCircles min distance - not used
-    "HC_MAXRADIUS": (20, 1, 40, None, None, None, None),        # HoughCircles max radius - not used
+    # Old params
+    "CANNY_MINVAL": (50, 1, 255, None, None, None, True),       # Canny min value - cannot be changed
+    "CANNY_MAXVAL": (100, 1, 255, None, None, None, True),      # Canny max value - cannot be changed
+    "CANNY_APERTURE": (3, 3, 7, None, None, None, True),        # Canny aperture - cannot be changed
+    "HL_RHO": (1, 1, 5, None, None, None, True),                # HoughLines rho - cannot be changed
+    "HL_THETA": (90, 1, 90, None, None, None, True),            # HoughLines theta - cannot be changed
+    "HL_THRESHOLD": (0, 0, 255, None, None, None, True),        # HoughLines threshold - cannot be changed
+    "HL_MINLEN": (0, 0, 30, None, None, None, True),            # HoughLines min len - cannot be changed
+    "HL_RHO2": (1, 1, 5, None, None, None, True),               # HoughLinesP threshold - cannot be changed
+    "HC_MINDIST": (1, 1, 5, None, None, None, True),            # HoughCircles min distance - not used
+    "HC_MAXRADIUS": (20, 1, 40, None, None, None, True),        # HoughCircles max radius - not used
 
     # Board params group
-    'BOARD_SIZE': (19, 9, 21, " Board recognition", "Board size", 1),       # Board size
-    "HL_THETA2": (90, 1, 90, " Board recognition", "Angle", 2),             # HoughLinesP theta
-    "HL_THRESHOLD2": (60, 1, 255, " Board recognition", "Threshold", 3),    # HoughLinesP threshold
-    'LUM_EQ': (0, 0, 1, " Board recognition", "Luminosity filter", 4),      # CLAHE filter on/off
+    'BOARD_SIZE': (19, 9, 21, " Board recognition", "Board size", 1, True),         # Board size
+    "HL_THETA2": (6, 1, 90, " Board recognition", "Angle", 2),                      # HoughLinesP theta
+    "HL_THRESHOLD2": (40, 1, 255, " Board recognition", "Threshold", 3),            # HoughLinesP threshold
+    'LUM_EQ': (0, 0, 1, " Board recognition", "Luminosity filter", 4),              # CLAHE filter on/off
 
     # Black stones detection
-    "STONES_THRESHOLD_B": (85, 1, 255, "Black stones detection", "Threshold", 1),   # Threshold
-    "HC_SENSITIVITY_B": (10, 1, 40, "Black stones detection", "Sensitivity", 2),    # Sensistivity
+    "STONES_THRESHOLD_B": (84, 1, 255, "Black stones detection", "Threshold", 1),   # Threshold
+    "HC_SENSITIVITY_B": (10, 1, 20, "Black stones detection", "Sensitivity", 2),    # Sensistivity
     "HC_MASK_B": (3, 1, 10, "Black stones detection", "Mask granularity", 3),       # Mask
     "BLUR_MASK_B": (0, 0, 10, "Black stones detection", "Blurring", 4),             # Blurring
     "STONES_DILATE_B": (1, 0, 10, "Black stones detection", "Dilation", 5),         # Dilation
     "STONES_ERODE_B": (1, 0, 10, "Black stones detection", "Erosion", 6),           # Erosion
-    "WATERSHED_B": (90, 0, 255, "Black stones detection", "Watershed", 7),          # Watershed
+    "WATERSHED_B": (85, 0, 255, "Black stones detection", "Watershed", 7),          # Watershed
     "WS_MORPH_B": (0, 0, 10, "Black stones detection", "Watershed morphing", 8),    # WS morphing
-    "PYRAMID_B": (0, 0, 1, "Black stones detection", "Pyramid filter", 9),          # Image pyramid filter on/off
-    "STONES_MAXVAL_B": (255, 0, 255, None, None, None, None),                       # MaxVal - cannot be changed
+    "PYRAMID_B": (0, 0, 1, None, "Pyramid filter", 9, True),                        # Image pyramid filter on/off
+    "STONES_MAXVAL_B": (255, 0, 255, None, None, None, True),                       # MaxVal - cannot be changed
 
     # White stones detection
-    "STONES_THRESHOLD_W": (150, 1, 255, "White stones detection", "Threshold", 1),  # Threshold
-    "HC_SENSITIVITY_W": (10, 1, 40, "White stones detection", "Sensitivity", 2),    # Sensistivity
+    "STONES_THRESHOLD_W": (173, 1, 255, "White stones detection", "Threshold", 1),  # Threshold
+    "HC_SENSITIVITY_W": (10, 1, 20, "White stones detection", "Sensitivity", 2),    # Sensistivity
     "HC_MASK_W": (3, 1, 10, "White stones detection", "Mask granularity", 3),       # Mask
     "BLUR_MASK_W": (0, 0, 10, "White stones detection", "Blurring", 4),             # Blurring
     "STONES_DILATE_W": (1, 0, 10, "White stones detection", "Dilation", 5),         # Dilation
-    "STONES_ERODE_W": (1, 0, 10, "White stones detection", "Erosion", 6),           # Erosion
-    "WATERSHED_W": (150, 0, 255, "White stones detection", "Watershed", 7),         # Watershed
+    "STONES_ERODE_W": (0, 0, 10, "White stones detection", "Erosion", 6),           # Erosion
+    "WATERSHED_W": (131, 0, 255, "White stones detection", "Watershed", 7),         # Watershed
     "WS_MORPH_W": (0, 0, 10, "White stones detection", "Watershed morphing", 8),    # WS morphing
-    "PYRAMID_W": (0, 0, 1, "White stones detection", "Pyramid filter", 9),          # Image pyramid filter on/off
-    "STONES_MAXVAL_W": (255, 0, 255, None, None, None, None),                       # MaxVal - cannot be changed
+    "PYRAMID_W": (0, 0, 1, None, "Pyramid filter", 9, True),                        # Image pyramid filter on/off
+    "STONES_MAXVAL_W": (255, 0, 255, None, None, None, True),                       # MaxVal - cannot be changed
 
     # no_copy params
-    'AREA_MASK': (None, None, None, None, None, None, None, True),
-    'TRANSFORM': (None, None, None, None, None, None, None, True),
-    'BOARD_EDGES': (None, None, None, None, None, None, None, True)
+    'AREA_MASK': (None, None, None, None, None, None, True),
+    'TRANSFORM': (None, None, None, None, None, None, True),
+    'BOARD_EDGES': (None, None, None, None, None, None, True)
 }
 
 
@@ -149,7 +151,10 @@ class GrParams(object):
         self.__params[key] = param
 
     def todict(self):
-        return {k: self.__params[k].v for k in self.__params}
+        d = {k: self.__params[k].v for k in self.__params}
+        for k in d:
+            if type(d[k]) is np.int32: d[k] = int(d[k])
+        return d
 
     def reset(self):
         for p in self.__params:

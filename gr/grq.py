@@ -19,6 +19,8 @@ import numpy as np
 from itertools import combinations
 import logging
 
+from skopt.space.space import Real, Integer
+
 # Recognition quality metrics
 #
 # Board recognition
@@ -61,19 +63,19 @@ class BoardSizeMetric(ParseQualityMetric):
     def check(self, board):
         if board.board_size in DEF_AVAIL_SIZES:
             # Standard size, ok
-            return 1
+            return 0
         elif board.board_size == 21 or board.board_size == 17:
             # Well, it's not standard but acceptable
-            return 0.8
+            return 0.2
         else:
             # Something else - consider this to be a problem
-            return 0
+            return 1
 
 class AnyStoneMetric(ParseQualityMetric):
     """Have any stone check"""
     def check(self, board):
         def f(stones):
-            return 0 if stones is None or len(stones) == 0 else 1
+            return 1 if stones is None or len(stones) == 0 else 0
 
         return (f(board.black_stones) + f(board.white_stones)) / 2
 
@@ -81,7 +83,8 @@ class TooManyStonesMetric(ParseQualityMetric):
     """Too many stones detected check"""
     def check(self, board):
         def f(stones):
-            return 0 if stones is None or len(stones) > 100 else 1
+            return 1 if stones is None or len(stones) > 100 else 0
+
         return (f(board.black_stones) + f(board.white_stones)) / 2
 
 class ProperPositionMetric(ParseQualityMetric):
@@ -91,7 +94,9 @@ class ProperPositionMetric(ParseQualityMetric):
             # Collect all stones and check all are inside board's space
             s = [x[GR_A] for x in stones]
             s.extend([x[GR_B] for x in stones])
-            return 0 if len(s) == 0 or max(s) > board.board_size or min(s) <= 0 else 1
+
+            return 1 if len(s) == 0 or max(s) > board.board_size or min(s) <= 0 else 0
+
         return f(board.black_stones) and f(board.white_stones)
 
 class NoDuplicatesMetric(ParseQualityMetric):
@@ -101,7 +106,7 @@ class NoDuplicatesMetric(ParseQualityMetric):
         stones = [ [x[GR_A], x[GR_B]] for x in board.black_stones]
         stones.extend ([ [x[GR_A], x[GR_B]] for x in board.white_stones])
         if len(stones) == 0:
-            return 0
+            return 1
 
         # Sort on 1st dimension and calculate duplicates count
         u, c = np.unique(stones, return_counts=True, axis = 0)
@@ -112,7 +117,7 @@ class NoDuplicatesMetric(ParseQualityMetric):
                 if c[i] > 1:
                     logging.debug("Stone {} duplicated {} times".format(x, c[i]))
 
-        return 1 - (min(n,10) / float(min(len(stones),10)))
+        return min(n,10) / float(min(len(stones),10))
 
 class NormalRadiusMetric(ParseQualityMetric):
     """Radius is about the same"""
@@ -121,7 +126,7 @@ class NormalRadiusMetric(ParseQualityMetric):
         r = [ x[GR_R] for x in board.black_stones]
         r.extend ([ x[GR_R] for x in board.white_stones])
         if len(r) == 0:
-            return 0
+            return 1
 
         # Check for outliers
         u_q = np.percentile(r, 75)
@@ -135,7 +140,7 @@ class NormalRadiusMetric(ParseQualityMetric):
         sd = np.std(rr) if len(rr) > 0 else 0
         logging.debug("Stone radius standard deviation: {}".format(sd))
 
-        return ((1 - min(len(out_r) / 10, 1)) + (1 - min(sd / 3, 1))) / 2
+        return (min(len(out_r) / 10, 1) + min(sd / 3, 1)) / 2
 
 class NoOverlapsMetric(ParseQualityMetric):
     """Stones are not overlapping"""
@@ -193,17 +198,17 @@ class NoOverlapsMetric(ParseQualityMetric):
             if self.master.debug:
                 show_stones("Overlapped stones: {}".format(len(dups)),
                     board.image.shape, dups, random_colors(len(dups)))
-            return 1-(min(len(dups), 10) / 10)
+            return min(len(dups), 10) / 10
         else:
             logging.debug("No overlapped stones found")
-            return 1
+            return 0
 
 # Quality checker class
 class BoardQualityChecker(object):
     """Quality checker master class"""
 
-    def __init__(self, debug = False):
-        self.log = GrLogger(level = logging.DEBUG if debug else logging.INFO)
+    def __init__(self, board = None, debug = False):
+        self.log = GrLogger(level = logging.DEBUG if debug else logging.CRITICAL)
         self.metrics = [
             (BoardSizeMetric, 0.5),
             (AnyStoneMetric, 0.3),
@@ -214,36 +219,52 @@ class BoardQualityChecker(object):
             (NoOverlapsMetric, 1)
         ]
         self.debug = debug
+        self.board = board
 
-    def quality(self, board):
+    def quality(self, board = None):
         """Board quality check function"""
 
-        # Check params
-        if isinstance(board, GrBoard):
-            b = board
-        else:
-            # Assume this is a file name
-            b = GrBoard()
-            b.load_image(str(board), f_process = False)
+        # Load board
+        if board is not None:
+            if isinstance(board, GrBoard):
+                # New board instance given
+                self.board = board
+            else:
+                # Assume this is a file name
+                self.board = GrBoard()
+                self.board.load_image(str(board), f_process = False)
+        if self.board is None:
+            raise ValueError("Board is not assigned")
+        if self.board.is_gen_board:
+            raise ValueError("Board not loaded")
 
         # Add extra parameter signaling of quality check been run
-        b.params.add('QUALITY_CHECK', GrParam('QUALITY_CHECK', 1, 0, 1, None, None, None, True))
+        self.board.params.add('QUALITY_CHECK', GrParam('QUALITY_CHECK', 1, 0, 1, None, None, None, True))
 
         # Process board
         self.log.clear()
         r = {}
-        b.process()
+        self.board.process()
         if self.log.errors > 0:
             # Any errors during processing means quality is lowest possible
-            return 0
+            return 1, {"Errors: ", self.log.errors}
 
         # Check every metric
         for mc in self.metrics:
             m = mc[0](self)
             logging.info("Running metric {}".format(m.name))
-            r[m.name]  = (m.check(b), mc[1])
+            r[m.name]  = (m.check(self.board), mc[1])
 
         # Summarize
         q = [x[0] * x[1] for x in r.values()]
         return sum(q) / len(q), r
 
+
+    def opt_space(self, group):
+        """Generates optimization space for board params"""
+        space = []
+        g = self.board.params.group_params(group)
+        for p in g:
+            if not p.no_copy:
+                space.extend([Integer(p.min_v, p.max_v, name = p.key)])
+        return space
