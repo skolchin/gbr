@@ -16,6 +16,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageTk
 import string as ss
+from random import randint
 
 def show(title, img):
     """Show an image and wait for key press"""
@@ -35,11 +36,18 @@ def make_stones_img(shape, points, color = COLOR_BLACK, img = None):
     if img is None:
        img = np.full(shape, COLOR_WHITE[0], dtype=np.uint8)
 
-    for i in points:
-        x1 = i[GR_X]
-        y1 = i[GR_Y]
-        r = i[GR_R]
-        cv2.circle(img, (x1,y1), r, color, -1)
+    n = 0
+    for p in points:
+        x1 = p[0]
+        y1 = p[1]
+        r = p[2]
+        if not type(color) is list:
+            c = color
+        else:
+            if n >= len(color): n = 0
+            c = color[n]
+            n += 1
+        cv2.circle(img, (x1,y1), r, c, -1)
 
     return img
 
@@ -47,11 +55,11 @@ def make_stones_img(shape, points, color = COLOR_BLACK, img = None):
 # The function takes image shape and array of stone coordinates (X,Y,R)
 # The function creates a new image with the same shape and draw the stones there
 # If f_show = TRUE, image is been shown
-def show_stones(title, shape, points, img = None):
+def show_stones(title, shape, points, color = None, img = None):
     if points is None:
        return
 
-    img = make_stones_img(shape, points, img)
+    img = make_stones_img(shape, points, color, img)
     show(title, img)
 
 # Make image displaying given lines
@@ -90,7 +98,7 @@ def img_to_imgtk(img):
     return imgtk
 
 def unique_rows(a):
-    """Elmininates duplicates in an array"""
+    """Elmininates duplicates in 1D-rray"""
     a = np.ascontiguousarray(a)
     unique_a = np.unique(a.view([('', a.dtype)]*a.shape[1]))
     return unique_a.view(a.dtype).reshape((unique_a.shape[0], a.shape[1]))
@@ -312,4 +320,13 @@ def is_on_w(a,b,c,delta=1):
             if is_on(a, b, (x, y)): return True
     return False
 
+
+def random_colors(n):
+    ret = []
+    for i in range(n):
+        r = randint(0,255)
+        g = randint(0,255)
+        b = randint(0,255)
+        ret.extend([(r,g,b)])
+    return ret
 
