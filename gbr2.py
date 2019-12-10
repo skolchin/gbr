@@ -10,9 +10,10 @@
 #-------------------------------------------------------------------------------
 
 from gr.board import GrBoard
+from gr.params import GrParams
 from gr.grdef import *
 from gr.ui_extra import *
-from gr.grlog import GrLogger
+from gr.log import GrLogger
 from gr.utils import format_stone_pos, resize, img_to_imgtk
 
 import numpy as np
@@ -231,7 +232,7 @@ class GbrOptionsDlg(GrDialog):
 
     def log_click_callback(self):
         """Log button click callback"""
-        GrLog.show(self.root)
+        self.root.log.show(self.root)
 
     def debug_click_callback(self):
         """Debug button click callback"""
@@ -700,6 +701,7 @@ class GbrGUI2(tk.Tk):
         self.imageMarker.clear()
         self.bg["has_file"].release()
         self.bg["has_file"].disabled = True
+        self.bg["detected"].release()
         self.bg["detected"].disabled = True
 
         # Load image
