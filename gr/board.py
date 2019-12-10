@@ -128,7 +128,7 @@ class GrBoard(object):
         """Saves recognition parameters to specified file (JSON)"""
         if filename is None:
             filename = str(Path(self._img_file).with_suffix(BOARD_PARAM_EXT))
-        with open(filename, "w") as f:
+        with open(filename, "w+") as f:
             json.dump(self._params.todict(), f, indent=4, sort_keys=True, ensure_ascii=False)
         return filename
 

@@ -27,18 +27,22 @@ FileName=$[Project-Path]gr\grdef.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node4]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gr\grlog.py
+FileName=$[Project-Path]gr\log.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node5]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gr\ui_extra.py
+FileName=$[Project-Path]gr\params.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node6]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]gr\ui_extra.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node7]
 ClassName=TProjectFileNode
 FileName=$[Project-Path]gr\utils.py
 
 [Project\ChildNodes\Node0\ChildNodes]
-Count=7
+Count=8
 
 [Project\ChildNodes\Node1]
 ClassName=TProjectRunConfiguationsNode

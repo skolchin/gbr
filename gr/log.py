@@ -93,6 +93,7 @@ class GrLogger(object):
         self.__log_dlg = None
         logging.basicConfig (stream=self.__log_stream, format='%(levelname)s: %(message)s', level=level)
         logging.getLogger().addFilter(self.__log_filter)
+        logging.getLogger().propagate = False
 
     @property
     def log(self):
