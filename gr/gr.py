@@ -501,8 +501,8 @@ def convert_xy(coord, res):
     # Radius is stored in dictiotary to retrieve later. This is kinda dumb way but I cannot find other one
     rd = dict()
     for i in range(len(coord)):
-        x = coord[i,0] - edges[0][0]
-        y = coord[i,1] - edges[0][1]
+        x = coord[i,0] - edges[0][0] if coord[i,0] >= edges[0][0] else 0
+        y = coord[i,1] - edges[0][1] if coord[i,1] >= edges[0][1] else 0
 
         stones[i,0] = int(round(x / space_x, 0)) + 1
         stones[i,1] = int(round(y / space_y, 0)) + 1
@@ -519,7 +519,7 @@ def convert_xy(coord, res):
         stones[i,GR_X] = old_coord[0]
         stones[i,GR_Y] = old_coord[1]
         stones[i,GR_A] = stones_u[i, 0]
-        stones[i,GR_B] = size - stones_u[i, 1] + 1
+        stones[i,GR_B] = size - stones_u[i, 1] + 1 if stones_u[i, 1] <= size else 0
         stones[i,GR_R] = old_coord[2]
 
     return stones
@@ -638,7 +638,8 @@ def process_img(img, params):
         white_stones = find_stones(img2, params, res, 'W')
 
         # Elminate duplicates
-        black_stones, white_stones = eliminate_duplicates(black_stones, white_stones)
+        if not 'QUALITY_CHECK' in params:
+            black_stones, white_stones = eliminate_duplicates(black_stones, white_stones)
 
         # Apply offset
         offset_edges(board_edges, offset)
