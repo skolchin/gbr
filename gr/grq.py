@@ -82,7 +82,7 @@ class NumberOfStonesMetric(ParseQualityMetric):
     def check(self, board):
         cb = len(board.black_stones) if board.black_stones is not None else 0
         cw = len(board.white_stones) if board.white_stones is not None else 0
-        logging.debug("Number of stones: {} black, {} white".format(cb, cw))
+        self.master.log.debug("Number of stones: {} black, {} white".format(cb, cw))
         if cb == 0 or cw == 0 or cb > 100 or cw > 100:
             return 1.0
         else:
@@ -114,11 +114,11 @@ class NoDuplicatesMetric(ParseQualityMetric):
         # Sort on 1st dimension and calculate duplicates count
         u, c = np.unique(stones, return_counts=True, axis = 0)
         n = sum(c[c > 1]) - len(c[c > 1])
-        logging.debug("Number of duplicates {}".format(n))
+        self.master.log.debug("Number of duplicates {}".format(n))
         if self.master.debug:
             for i, x in enumerate(u):
                 if c[i] > 1:
-                    logging.debug("Stone {} duplicated {} times".format(x, c[i]))
+                    self.master.log.debug("Stone {} duplicated {} times".format(x, c[i]))
 
         return min(n,10.0) / float(min(len(stones),10))
 
@@ -136,14 +136,14 @@ class NormalRadiusMetric(ParseQualityMetric):
         l_q = np.percentile(r, 25)
         IQR = (u_q - l_q) * 1.5
         out_r = [x for x in r if (x < l_q - IQR or x > u_q + IQR)]
-        logging.debug("Outliers in stone radius found: {}".format(out_r))
+        self.master.log.debug("Outliers in stone radius list: {}".format(out_r))
         if len(out_r) > 0:
             return 1.0
 
         # Calculate SD on array with outliers removed
         rr = [x for x in r if (x >= l_q - IQR and x <= u_q + IQR)]
         sd = np.std(rr) if len(rr) > 0 else 0
-        logging.debug("Stone radius standard deviation: {}".format(sd))
+        self.master.log.debug("Stone radius standard deviation: {}".format(sd))
 
         return min(sd / 3.0, 1.0)
 
@@ -196,18 +196,18 @@ class NoOverlapsMetric(ParseQualityMetric):
             a = intersection_area(d, v[0][2], v[1][2])
             if a > 0 and a > circle_square(v[0][2], v[1][2]) * 0.05:
                 # Stones are considered overlapping with more than 5% intersection
-                logging.debug('Stone {} overlaps {} by {}'.format(v[0], v[1], a))
+                self.master.log.debug('Stone {} overlaps {} by {}'.format(v[0], v[1], a))
                 dups.extend([v[0], v[1]])
 
         # Reporting
         if len(dups) > 0:
-            logging.debug("Overlapped stones found: {}".format(len(dups)))
+            self.master.log.debug("Overlapped stones found: {}".format(len(dups)))
 ##            if self.master.debug:
 ##                show_stones("Overlapped stones: {}".format(len(dups)),
 ##                    board.image.shape, dups, random_colors(len(dups)))
             return min(len(dups), 10.0) / 10.0
         else:
-            logging.debug("No overlapped stones found")
+            self.master.log.debug("No overlapped stones found")
             return 0.0
 
 class WatershedOkMetric(ParseQualityMetric):
@@ -230,7 +230,7 @@ class WipedOutMetric(ParseQualityMetric):
             u, c = np.unique(img, return_counts = True)
             n = c[ u == bg ]
             nc = img.shape[0] * img.shape[1]
-            logging.debug("{} out of {} pixels are of background color for {}".format(n, nc, bw))
+            self.master.log.debug("{} out of {} pixels are of background color for {}".format(n, nc, bw))
 
             return 1.0 if n > nc * 0.75 else 0.0
 
@@ -242,7 +242,8 @@ class BoardQualityChecker(object):
     """Quality checker master class"""
 
     def __init__(self, board = None, debug = False):
-        self.log = GrLogger(level = logging.DEBUG if debug else logging.INFO)
+        self.log = GrLogger(name = 'gbr.qc',
+            level = self.master.log.DEBUG if debug else self.master.log.INFO)
         self.metrics = [
             # Metric class, weight
             (BoardSizeMetric, 0.5),
@@ -288,7 +289,7 @@ class BoardQualityChecker(object):
         # Check every metric
         for mc in self.metrics:
             m = mc[0](self)
-            logging.info("Running metric {}".format(m.name))
+            self.master.log.info("Running metric {}".format(m.name))
             r[m.name]  = [m.check(self.board), mc[1]]
 
         # Check for local extremums
