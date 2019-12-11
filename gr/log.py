@@ -78,11 +78,13 @@ class GrLogger(object):
         def __init__(self, name=''):
             logging.Filter.__init__(self, name)
             self.errors = 0
+            self.last_error = None
 
         def filter(self, record):
             f = logging.Filter.filter(self, record)
             if f and record.levelno == logging.ERROR:
                 self.errors += 1
+                self.last_error = record.getMessage()
             return f
 
     def __init__(self, master = None, level = logging.INFO):
@@ -104,6 +106,11 @@ class GrLogger(object):
     def errors(self):
         """Number of errors"""
         return self.__log_filter.errors
+
+    @property
+    def last_error(self):
+        """Last error"""
+        return self.__log_filter.last_error
 
     def show(self):
         """Show Log info dialog. Returns either a dialog object or None if log is empty"""
