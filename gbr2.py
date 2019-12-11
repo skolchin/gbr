@@ -232,7 +232,7 @@ class GbrOptionsDlg(GrDialog):
 
     def log_click_callback(self):
         """Log button click callback"""
-        self.root.log.show(self.root)
+        self.root.log.show()
 
     def debug_click_callback(self):
         """Debug button click callback"""
