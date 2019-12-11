@@ -124,10 +124,13 @@ class GrBoard(object):
         p = json.load(open(str(filename)))
         self._params.assign(p, copy_all = True)
 
-    def save_params(self, filename = None):
+    def save_params(self, filename = None, f_bak = True):
         """Saves recognition parameters to specified file (JSON)"""
         if filename is None:
             filename = str(Path(self._img_file).with_suffix(BOARD_PARAM_EXT))
+        p = Path(filename)
+        if p.exists() and f_bak:
+            p.replace(p.with_suffix(BOARD_PARAM_EXT + ".bak"))
         with open(filename, "w+") as f:
             json.dump(self._params.todict(), f, indent=4, sort_keys=True, ensure_ascii=False)
         return filename
