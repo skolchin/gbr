@@ -127,6 +127,9 @@ class GrParams(object):
         return sorted(set([self.__params[k].group for k in self.__params if self.__params[k].group is not None]))
 
     def group_params(self, group):
+        if type(group) is int or type(group) is np.int or type(group) is np.int32:
+            group = self.groups[group]
+
         p = [self.__params[k] for k in self.__params \
             if self.__params[k].group == group and self.__params[k].title is not None]
         return sorted(p, key = lambda k: k.order)
