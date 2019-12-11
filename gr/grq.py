@@ -23,10 +23,11 @@ from skopt.space.space import Real, Integer
 
 # Recognition quality metrics
 #
-# Board recognition
-#
 #   Metric              Meaning
 #   ---                 ---
+#
+#   Board recognition
+#
 #   No errors           No errors during board recognition +
 #   Board size          Board size is 9, 13, 19, 21 +
 #   Grid is on black    Grid lines corresponds to dark pixels
@@ -38,10 +39,11 @@ from skopt.space.space import Real, Integer
 #   Same number         Almost the same number of stones for each color
 #   Proper position     Stone positions are between 1 and board size +
 #   Radius is equal     Stone radiuses are almost equal +
-#   Correct color       Color of stone image area matches stone colors
+#   Correct color       Color of stone area on board image matches stone color
 #   No overlaps         Stones are not overlapping +
 #   No duplicates       No stones are at the same position +
-#   Watershed is OK     Watershed did not report unmatched peaks
+#   Watershed is OK     Watershed did not report unmatched peaks +
+#   Wiped out           Thresholded image is mostly filled with stone color
 
 # Base class
 class ParseQualityMetric(object):
@@ -50,11 +52,14 @@ class ParseQualityMetric(object):
         self.log = GrLogger(master)
 
     def check(self, board):
+        """Quality check function.
+        Should return value in [0,1] range where 0 is perfect, 1 is worst"""
         raise NotImplementedError("Calling of abstract method")
 
     @property
     def name(self):
         return str(type(self)).split('.')[2].split("'")[0]
+
 
 #
 # Metric classes
@@ -64,41 +69,26 @@ class BoardSizeMetric(ParseQualityMetric):
     def check(self, board):
         if board.board_size in DEF_AVAIL_SIZES:
             # Standard size, ok
-            return 0
+            return 0.0
         elif board.board_size == 21 or board.board_size == 17:
-            # Well, it's not standard but acceptable
+            # Not standard but acceptable
             return 0.2
         else:
             # Something else - consider this to be a problem
-            return 1
+            return 1.0
 
-class AnyStoneMetric(ParseQualityMetric):
-    """Have any stone check"""
+class NumberOfStonesMetric(ParseQualityMetric):
+    """Any stone, too many stones, same number of stones checks"""
     def check(self, board):
         cb = len(board.black_stones) if board.black_stones is not None else 0
         cw = len(board.white_stones) if board.white_stones is not None else 0
         logging.debug("Number of stones: {} black, {} white".format(cb, cw))
-        return 1 if cb == 0 or cw == 0 else 0
-
-class TooManyStonesMetric(ParseQualityMetric):
-    """Too many stones detected check"""
-    def check(self, board):
-        def f(stones):
-            return 1 if stones is None or len(stones) > 100 else 0
-
-        return (f(board.black_stones) + f(board.white_stones)) / 2.0
-
-class SameNumberOfStonesMetric(ParseQualityMetric):
-    """Same number of stones detected check"""
-    def check(self, board):
-        cb = len(board.black_stones) if board.black_stones is not None else 0
-        cw = len(board.white_stones) if board.white_stones is not None else 0
-        logging.debug("Number of stones: {} black, {} white".format(cb, cw))
-        if cb == 0 or cw == 0:
-            return 1
+        if cb == 0 or cw == 0 or cb > 100 or cw > 100:
+            return 1.0
         else:
             d = max(abs(int(cb) - int(cw)) - 2, 0)
-            return min(d, 5) / 5.0
+            return min(d, 5.0) / 5.0
+
 
 class ProperPositionMetric(ParseQualityMetric):
     """Proper stone position check"""
@@ -108,7 +98,7 @@ class ProperPositionMetric(ParseQualityMetric):
             s = [x[GR_A] for x in stones]
             s.extend([x[GR_B] for x in stones])
 
-            return 1 if len(s) == 0 or max(s) > board.board_size or min(s) <= 0 else 0
+            return 1.0 if len(s) == 0 or max(s) > board.board_size or min(s) <= 0 else 0.0
 
         return f(board.black_stones) and f(board.white_stones)
 
@@ -119,7 +109,7 @@ class NoDuplicatesMetric(ParseQualityMetric):
         stones = [ [x[GR_A], x[GR_B]] for x in board.black_stones]
         stones.extend ([ [x[GR_A], x[GR_B]] for x in board.white_stones])
         if len(stones) == 0:
-            return 1
+            return 1.0
 
         # Sort on 1st dimension and calculate duplicates count
         u, c = np.unique(stones, return_counts=True, axis = 0)
@@ -130,7 +120,7 @@ class NoDuplicatesMetric(ParseQualityMetric):
                 if c[i] > 1:
                     logging.debug("Stone {} duplicated {} times".format(x, c[i]))
 
-        return min(n,10) / float(min(len(stones),10))
+        return min(n,10.0) / float(min(len(stones),10))
 
 class NormalRadiusMetric(ParseQualityMetric):
     """Radius is about the same"""
@@ -139,7 +129,7 @@ class NormalRadiusMetric(ParseQualityMetric):
         r = [ x[GR_R] for x in board.black_stones]
         r.extend ([ x[GR_R] for x in board.white_stones])
         if len(r) == 0:
-            return 1
+            return 1.0
 
         # Check for outliers
         u_q = np.percentile(r, 75)
@@ -148,14 +138,14 @@ class NormalRadiusMetric(ParseQualityMetric):
         out_r = [x for x in r if (x < l_q - IQR or x > u_q + IQR)]
         logging.debug("Outliers in stone radius found: {}".format(out_r))
         if len(out_r) > 0:
-            return 1
+            return 1.0
 
         # Calculate SD on array with outliers removed
         rr = [x for x in r if (x >= l_q - IQR and x <= u_q + IQR)]
         sd = np.std(rr) if len(rr) > 0 else 0
         logging.debug("Stone radius standard deviation: {}".format(sd))
 
-        return min(sd / 3, 1)
+        return min(sd / 3.0, 1.0)
 
         #return (min(len(out_r) / 10, 1) + min(sd / 3, 1)) / 2.0
 
@@ -179,7 +169,7 @@ class NoOverlapsMetric(ParseQualityMetric):
                 return circle_square(R, r)
             if d >= r + R:
                 # The circles don't overlap at all
-                return 0
+                return 0.0
 
             r2, R2, d2 = r**2, R**2, d**2
             alpha = np.arccos((d2 + r2 - R2) / (2*d*r))
@@ -215,16 +205,37 @@ class NoOverlapsMetric(ParseQualityMetric):
 ##            if self.master.debug:
 ##                show_stones("Overlapped stones: {}".format(len(dups)),
 ##                    board.image.shape, dups, random_colors(len(dups)))
-            return min(len(dups), 10) / 10.0
+            return min(len(dups), 10.0) / 10.0
         else:
             logging.debug("No overlapped stones found")
-            return 0
+            return 0.0
 
 class WatershedOkMetric(ParseQualityMetric):
     """Watershed did not report missing stones"""
     def check(self, board):
         ws = [w for w in str(self.master.log) if w.find("WARNING: WATERSHED") >= 0]
-        return 0 if ws is None or len(ws) == 0 else 1
+        return 0.0 if ws is None or len(ws) == 0 else 1.0
+
+class WipedOutMetric(ParseQualityMetric):
+    """Morphed image contains no objects"""
+    def check(self, board):
+        def f(bw, bg):
+            # Get the image
+            img = board.results.get("IMG_MORPH_" + bw)
+            if img is None or min(img.shape[:2]) == 0:
+                return 1.0
+
+            # Count number of pixels of bg color within the image
+            # It should be less than 75% of image
+            u, c = np.unique(img, return_counts = True)
+            n = c[ u == bg ]
+            nc = img.shape[0] * img.shape[1]
+            logging.debug("{} out of {} pixels are of background color for {}".format(n, nc, bw))
+
+            return 1.0 if n > nc * 0.75 else 0.0
+
+        return f('B', 0) and f('W', 255)
+
 
 # Quality checker class
 class BoardQualityChecker(object):
@@ -233,15 +244,15 @@ class BoardQualityChecker(object):
     def __init__(self, board = None, debug = False):
         self.log = GrLogger(level = logging.DEBUG if debug else logging.INFO)
         self.metrics = [
+            # Metric class, weight
             (BoardSizeMetric, 0.5),
-            (AnyStoneMetric, 0.3),
-            (TooManyStonesMetric, 0.5),
-            (SameNumberOfStonesMetric, 1),
+            (NumberOfStonesMetric, 1),
             (ProperPositionMetric, 1),
             (NoDuplicatesMetric, 1),
             (NormalRadiusMetric, 1),
             (NoOverlapsMetric, 1),
-            (WatershedOkMetric, 0.5)
+            (WatershedOkMetric, 0.5),
+            (WipedOutMetric, 1)
         ]
         self.debug = debug
         self.board = board
@@ -272,24 +283,50 @@ class BoardQualityChecker(object):
         self.board.process()
         if self.log.errors > 0:
             # Any errors during processing means quality is lowest possible
-            return 1, {"Errors: ", self.log.errors}
+            return 1.0, {"Errors ": self.log.errors, "Last error": self.log.last_error}
 
         # Check every metric
         for mc in self.metrics:
             m = mc[0](self)
             logging.info("Running metric {}".format(m.name))
-            r[m.name]  = (m.check(self.board), mc[1])
+            r[m.name]  = [m.check(self.board), mc[1]]
+
+        # Check for local extremums
+        self.check_empty_board(r)
 
         # Summarize
-        q = [x[0] * x[1] for x in r.values()]
-        return sum(q) / len(q), r
+        x = [x[0] for x in r.values()]
+        w = [x[1] for x in r.values()]
+        q = np.average(x, weights = w)
+        return q, r
 
 
-    def opt_space(self, group):
+    def opt_space(self, groups):
         """Generates optimization space for board params"""
         space = []
-        g = self.board.params.group_params(group)
-        for p in g:
-            if not p.no_copy:
-                space.extend([Integer(p.min_v, p.max_v, name = p.key)])
+        for g in groups:
+            gp = self.board.params.group_params(g)
+            for p in gp:
+                if not p.no_copy:
+                    space.extend([Integer(p.min_v, p.max_v, name = p.key)])
         return space
+
+    def check_empty_board(self, r):
+        """Empty board extremum check"""
+
+        # If a few stones detected on board due to invalid settings, other
+        # metrics could be validated as OK thus reporting a high quality - which is incorrect
+        # But a board can also be near empty and in this case reporting is correct
+        # To control this, we check number of stones and if there are only few of them,
+        # decrease weights of stone-related metrics
+        cb = len(self.board.black_stones) if self.board.black_stones is not None else 0
+        cw = len(self.board.white_stones) if self.board.white_stones is not None else 0
+
+        q_ns = r['NumberOfStonesMetric'][0]
+        if cb < 5 or cw < 5 and q_ns == 1.0:
+            # Suspicious, update weights of all other stone-checking metrics
+            r['ProperPositionMetric'][1] = 0.5
+            r['NoDuplicatesMetric'][1] = 0.5
+            r['NormalRadiusMetric'][1] = 0.5
+            r['NoOverlapsMetric'][1] = 0.5
+            r['WatershedOkMetric'][1] = 0.2

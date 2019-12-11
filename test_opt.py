@@ -83,10 +83,10 @@ qc = BoardQualityChecker(board = GrBoard(), debug = True)
 qc.board.load_image("./img/go_board_2.png", f_process = False)
 
 p_init = qc.board.params.todict()
-space = qc.opt_space(qc.board.params.groups[1])
+space = qc.opt_space(groups = [1,2])
 
 q_init = qc.quality()
-print("\n\nStaring quality {}".format(q_init[0]))
+print("\n\nQuality on start: {}".format(q_init[0]))
 npass = 0
 
 
@@ -102,7 +102,7 @@ def objective(**params):
         print("\t{} = {}".format(k, params[k]))
     return q
 
-f_res = forest_minimize(objective, space, n_calls = 100, n_jobs = -1)
+f_res = gbrt_minimize(objective, space, n_calls = 100, n_jobs = -1)
 
 print("\nResulting parameters")
 for n, v in enumerate(f_res.x):
@@ -114,10 +114,10 @@ p_res = qc.board.params.todict()
 print("\nParameters diff")
 for k in p_init:
     if p_init[k] != p_res[k]:
-        print("\t{}: {} (was {})".format(k, p_res[k], p_init[k]))
+        print("\t{}: {} (prior was {})".format(k, p_res[k], p_init[k]))
 
 q_last = qc.quality()
-print("\n==> Quality check {} (was {}), results are: {}".format(q_last[0], q_init[0], q_last[1]))
+print("\n==> Quality check: {} (prior was {}), results: {}".format(q_last[0], q_init[0], q_last[1]))
 
 #print("")
 #print(log)
