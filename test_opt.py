@@ -79,46 +79,52 @@ plt.set_cmap("viridis")
 ##    main()
 ##    cv2.destroyAllWindows()
 
-log = GrLogger()
-board = GrBoard()
-board.load_image("./img/go_board_1.png", f_process = False)
-p_init = board.params.todict()
+qc = BoardQualityChecker(board = GrBoard(), debug = True)
+qc.board.load_image("./img/go_board_2.png", f_process = False)
 
-qc = BoardQualityChecker(board, debug = False)
-space = qc.opt_space(board.params.groups[1])
+p_init = qc.board.params.todict()
+space = qc.opt_space(qc.board.params.groups[1])
 
-print("\n\nStaring quality {}".format(qc.quality()))
+q_init = qc.quality()
+print("\n\nStaring quality {}".format(q_init[0]))
 npass = 0
 
 
 @use_named_args(space)
 def objective(**params):
-    global npass, board, qc
+    global npass, qc
 
     npass += 1
-    board.params = params
+    qc.board.params = params
     q, p = qc.quality()
     print("Pass #{}: quality {}, {}".format(npass, q, p))
     for k in params:
         print("\t{} = {}".format(k, params[k]))
     return q
 
-#print(space)
-
-f_res = forest_minimize(objective, space, n_calls = 20)
+f_res = forest_minimize(objective, space, n_calls = 100, n_jobs = -1)
 
 print("\nResulting parameters")
 for n, v in enumerate(f_res.x):
     print("\t{} = {}".format(space[n].name,v))
-    board.params[space[n].name] = v
+    qc.board.params[space[n].name] = v
 
-p_res = board.params.todict()
+p_res = qc.board.params.todict()
 
 print("\nParameters diff")
 for k in p_init:
     if p_init[k] != p_res[k]:
-        print("\t{}: {} != {}".format(k, p_init[k], p_res[k]))
+        print("\t{}: {} (was {})".format(k, p_res[k], p_init[k]))
 
-print("\nSanity check {}".format(qc.quality()))
+q_last = qc.quality()
+print("\n==> Quality check {} (was {}), results are: {}".format(q_last[0], q_init[0], q_last[1]))
 
+#print("")
+#print(log)
+
+if q_init <= q_last:
+    print("\nQuality is less than or equal to initial, parameters not updated")
+else:
+    print("\nUpdating parameters")
+    print("Parameters file {} updated".format(qc.board.save_params()))
 

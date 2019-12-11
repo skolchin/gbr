@@ -62,7 +62,7 @@ GR_PARAMS = {
     "STONES_DILATE_B": (1, 0, 10, "Black stones detection", "Dilation", 5),         # Dilation
     "STONES_ERODE_B": (1, 0, 10, "Black stones detection", "Erosion", 6),           # Erosion
     "WATERSHED_B": (85, 0, 255, "Black stones detection", "Watershed", 7),          # Watershed
-    "WS_MORPH_B": (0, 0, 10, "Black stones detection", "Watershed morphing", 8),    # WS morphing
+    "WS_MORPH_B": (0, 0, 3, "Black stones detection", "Watershed morphing", 8),     # WS morphing
     "PYRAMID_B": (0, 0, 1, None, "Pyramid filter", 9, True),                        # Image pyramid filter on/off
     "STONES_MAXVAL_B": (255, 0, 255, None, None, None, True),                       # MaxVal - cannot be changed
 

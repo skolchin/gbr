@@ -35,6 +35,7 @@ from skopt.space.space import Real, Integer
 #
 #   Any stone           At least 1 stone of each color found +
 #   Not too many        Less than 100 stones of each color found +
+#   Same number         Almost the same number of stones for each color
 #   Proper position     Stone positions are between 1 and board size +
 #   Radius is equal     Stone radiuses are almost equal +
 #   Correct color       Color of stone image area matches stone colors
@@ -74,10 +75,10 @@ class BoardSizeMetric(ParseQualityMetric):
 class AnyStoneMetric(ParseQualityMetric):
     """Have any stone check"""
     def check(self, board):
-        def f(stones):
-            return 1 if stones is None or len(stones) == 0 else 0
-
-        return (f(board.black_stones) + f(board.white_stones)) / 2
+        cb = len(board.black_stones) if board.black_stones is not None else 0
+        cw = len(board.white_stones) if board.white_stones is not None else 0
+        logging.debug("Number of stones: {} black, {} white".format(cb, cw))
+        return 1 if cb == 0 or cw == 0 else 0
 
 class TooManyStonesMetric(ParseQualityMetric):
     """Too many stones detected check"""
@@ -85,7 +86,19 @@ class TooManyStonesMetric(ParseQualityMetric):
         def f(stones):
             return 1 if stones is None or len(stones) > 100 else 0
 
-        return (f(board.black_stones) + f(board.white_stones)) / 2
+        return (f(board.black_stones) + f(board.white_stones)) / 2.0
+
+class SameNumberOfStonesMetric(ParseQualityMetric):
+    """Same number of stones detected check"""
+    def check(self, board):
+        cb = len(board.black_stones) if board.black_stones is not None else 0
+        cw = len(board.white_stones) if board.white_stones is not None else 0
+        logging.debug("Number of stones: {} black, {} white".format(cb, cw))
+        if cb == 0 or cw == 0:
+            return 1
+        else:
+            d = max(abs(int(cb) - int(cw)) - 2, 0)
+            return min(d, 5) / 5.0
 
 class ProperPositionMetric(ParseQualityMetric):
     """Proper stone position check"""
@@ -134,13 +147,17 @@ class NormalRadiusMetric(ParseQualityMetric):
         IQR = (u_q - l_q) * 1.5
         out_r = [x for x in r if (x < l_q - IQR or x > u_q + IQR)]
         logging.debug("Outliers in stone radius found: {}".format(out_r))
+        if len(out_r) > 0:
+            return 1
 
         # Calculate SD on array with outliers removed
         rr = [x for x in r if (x >= l_q - IQR and x <= u_q + IQR)]
         sd = np.std(rr) if len(rr) > 0 else 0
         logging.debug("Stone radius standard deviation: {}".format(sd))
 
-        return (min(len(out_r) / 10, 1) + min(sd / 3, 1)) / 2
+        return min(sd / 3, 1)
+
+        #return (min(len(out_r) / 10, 1) + min(sd / 3, 1)) / 2.0
 
 class NoOverlapsMetric(ParseQualityMetric):
     """Stones are not overlapping"""
@@ -195,28 +212,36 @@ class NoOverlapsMetric(ParseQualityMetric):
         # Reporting
         if len(dups) > 0:
             logging.debug("Overlapped stones found: {}".format(len(dups)))
-            if self.master.debug:
-                show_stones("Overlapped stones: {}".format(len(dups)),
-                    board.image.shape, dups, random_colors(len(dups)))
-            return min(len(dups), 10) / 10
+##            if self.master.debug:
+##                show_stones("Overlapped stones: {}".format(len(dups)),
+##                    board.image.shape, dups, random_colors(len(dups)))
+            return min(len(dups), 10) / 10.0
         else:
             logging.debug("No overlapped stones found")
             return 0
+
+class WatershedOkMetric(ParseQualityMetric):
+    """Watershed did not report missing stones"""
+    def check(self, board):
+        ws = [w for w in str(self.master.log) if w.find("WARNING: WATERSHED") >= 0]
+        return 0 if ws is None or len(ws) == 0 else 1
 
 # Quality checker class
 class BoardQualityChecker(object):
     """Quality checker master class"""
 
     def __init__(self, board = None, debug = False):
-        self.log = GrLogger(level = logging.DEBUG if debug else logging.CRITICAL)
+        self.log = GrLogger(level = logging.DEBUG if debug else logging.INFO)
         self.metrics = [
             (BoardSizeMetric, 0.5),
             (AnyStoneMetric, 0.3),
             (TooManyStonesMetric, 0.5),
+            (SameNumberOfStonesMetric, 1),
             (ProperPositionMetric, 1),
             (NoDuplicatesMetric, 1),
             (NormalRadiusMetric, 1),
-            (NoOverlapsMetric, 1)
+            (NoOverlapsMetric, 1),
+            (WatershedOkMetric, 0.5)
         ]
         self.debug = debug
         self.board = board
