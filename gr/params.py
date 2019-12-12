@@ -33,86 +33,109 @@ GR_FROM = 0                       # index of line start in lines array
 GR_TO = 1                         # index of line end in lines array
 
 
+GR_PARAM_GROUPS = [
+    {"t": "Board recognition", "g": "."},
+    {"t": "Black stones detection", "g": "B"},
+    {"t": "White stones detection", "g": "W"}
+]
+
 # Parameter default values ans description
-# def, min, max, group, title, order, no_copy (optional)
 GR_PARAMS = {
     # Old params
-    "CANNY_MINVAL": (50, 1, 255, None, None, None, True),       # Canny min value - cannot be changed
-    "CANNY_MAXVAL": (100, 1, 255, None, None, None, True),      # Canny max value - cannot be changed
-    "CANNY_APERTURE": (3, 3, 7, None, None, None, True),        # Canny aperture - cannot be changed
-    "HL_RHO": (1, 1, 5, None, None, None, True),                # HoughLines rho - cannot be changed
-    "HL_THETA": (90, 1, 90, None, None, None, True),            # HoughLines theta - cannot be changed
-    "HL_THRESHOLD": (0, 0, 255, None, None, None, True),        # HoughLines threshold - cannot be changed
-    "HL_MINLEN": (0, 0, 30, None, None, None, True),            # HoughLines min len - cannot be changed
-    "HL_RHO2": (1, 1, 5, None, None, None, True),               # HoughLinesP threshold - cannot be changed
-    "HC_MINDIST": (1, 1, 5, None, None, None, True),            # HoughCircles min distance - not used
-    "HC_MAXRADIUS": (20, 1, 40, None, None, None, True),        # HoughCircles max radius - not used
+    "CANNY_MINVAL": {"v": 50, "min_v": 1, "max_v": 255, "no_copy": True},       # Canny min value - cannot be changed
+    "CANNY_MAXVAL": {"v": 100, "min_v": 1, "max_v": 255, "no_copy": True},      # Canny max value - cannot be changed
+    "CANNY_APERTURE": {"v": 3, "min_v": 3, "max_v": 7, "no_copy": True},        # Canny aperture - cannot be changed
+    "HL_RHO":       {"v": 1, "min_v": 1, "max_v": 5, "no_copy": True},          # HoughLines rho - cannot be changed
+    "HL_THETA":     {"v": 90, "min_v": 1, "max_v": 90, "no_copy": True},        # HoughLines theta - cannot be changed
+    "HL_THRESHOLD": {"v": 0, "min_v": 0, "max_v": 255, "no_copy": True},        # HoughLines threshold - cannot be changed
+    "HL_MINLEN":    {"v": 0, "min_v": 0, "max_v": 30, "no_copy": True},         # HoughLines min len - cannot be changed
+    "HL_RHO2":      {"v": 1, "min_v": 1, "max_v": 5, "no_copy": True},          # HoughLinesP threshold - cannot be changed
+    "HC_MINDIST":   {"v": 1, "min_v": 1, "max_v": 5, "no_copy": True},          # HoughCircles min distance - not used
+    "HC_MAXRADIUS": {"v": 20, "min_v": 1, "max_v": 40, "no_copy": True},        # HoughCircles max radius - not used
 
     # Board params group
-    'BOARD_SIZE': (19, 9, 21, " Board recognition", "Board size", 1, True),         # Board size
-    "HL_THETA2": (6, 1, 90, " Board recognition", "Angle", 2),                      # HoughLinesP theta
-    "HL_THRESHOLD2": (40, 1, 255, " Board recognition", "Threshold", 3),            # HoughLinesP threshold
-    'LUM_EQ': (0, 0, 1, " Board recognition", "Luminosity filter", 4),              # CLAHE filter on/off
+    'BOARD_SIZE': {"v": 19, "min_v": 9, "max_v": 21, "g": ".",
+        "title": "Board size", "n": 1, "no_opt": True},                         # Board size
+    "HL_THETA2": {"v": 6, "min_v": 1, "max_v": 90, "g": ".",
+        "title": "Angle", "n": 2},                                              # HoughLinesP theta
+    "HL_THRESHOLD2": {"v": 40, "min_v": 1, "max_v": 255, "g": ".",
+        "title": "Threshold", "n": 3},                                          # HoughLinesP threshold
+    'LUM_EQ': {"v": 0, "min_v": 0, "max_v": 1, "g": ".",
+        "title": "Luminosity filter", "n": 4},                                  # CLAHE filter on/off
 
     # Black stones detection
-    "STONES_THRESHOLD_B": (84, 1, 255, "Black stones detection", "Threshold", 1),   # Threshold
-    "HC_SENSITIVITY_B": (10, 1, 20, "Black stones detection", "Sensitivity", 2),    # Sensistivity
-    "HC_MASK_B": (3, 1, 10, "Black stones detection", "Mask granularity", 3),       # Mask
-    "BLUR_MASK_B": (0, 0, 10, "Black stones detection", "Blurring", 4),             # Blurring
-    "STONES_DILATE_B": (1, 0, 10, "Black stones detection", "Dilation", 5),         # Dilation
-    "STONES_ERODE_B": (1, 0, 10, "Black stones detection", "Erosion", 6),           # Erosion
-    "WATERSHED_B": (85, 0, 255, "Black stones detection", "Watershed", 7),          # Watershed
-    "WS_MORPH_B": (0, 0, 3, "Black stones detection", "Watershed morphing", 8),     # WS morphing
-    "PYRAMID_B": (0, 0, 1, None, "Pyramid filter", 9, True),                        # Image pyramid filter on/off
-    "STONES_MAXVAL_B": (255, 0, 255, None, None, None, True),                       # MaxVal - cannot be changed
+    "STONES_THRESHOLD_B": {"v": 84, "min_v": 1, "max_v": 255, "g": "B",
+        "title": "Threshold", "n": 1},                                          # Threshold
+    "HC_SENSITIVITY_B": {"v": 10, "min_v": 1, "max_v": 20, "g": "B",
+        "title": "Sensitivity", "n": 2},                                        # Sensistivity
+    "HC_MASK_B": {"v": 3, "min_v": 1, "max_v": 5, "g": "B",
+        "title": "Mask granularity", "n": 3},                                   # Mask
+    "BLUR_MASK_B": {"v": 0, "min_v": 0, "max_v": 5, "g": "B",
+        "title": "Blurring", "n": 4},                                           # Blurring
+    "STONES_DILATE_B": {"v": 1, "min_v": 0, "max_v": 5, "g": "B",
+        "title": "Dilation", "n": 5},                                           # Dilation
+    "STONES_ERODE_B": {"v": 1, "min_v": 0, "max_v": 5, "g": "B",
+        "title": "Erosion", "n": 6},                                            # Erosion
+    "WATERSHED_B": {"v": 85, "min_v": 0, "max_v": 255, "g": "B",
+        "title": "Watershed", "n": 7},                                          # Watershed
+    "WS_MORPH_B": {"v": 0, "min_v": 0, "max_v": 5, "g": "B",
+        "title": "Watershed morphing", "n": 8},                                 # WS morphing
+    "PYRAMID_B": {"v": 0, "min_v": 0, "max_v": 1, "g": "B",
+        "title": "Pyramid filter", "n": 9, "no_opt" : True},                    # Image pyramid filter on/off
+    "STONES_MAXVAL_B": {"v": 255, "min_v": 0, "max_v": 255, "no_copy": True},   # MaxVal - cannot be changed
 
     # White stones detection
-    "STONES_THRESHOLD_W": (173, 1, 255, "White stones detection", "Threshold", 1),  # Threshold
-    "HC_SENSITIVITY_W": (10, 1, 20, "White stones detection", "Sensitivity", 2),    # Sensistivity
-    "HC_MASK_W": (3, 1, 10, "White stones detection", "Mask granularity", 3),       # Mask
-    "BLUR_MASK_W": (0, 0, 10, "White stones detection", "Blurring", 4),             # Blurring
-    "STONES_DILATE_W": (1, 0, 10, "White stones detection", "Dilation", 5),         # Dilation
-    "STONES_ERODE_W": (0, 0, 10, "White stones detection", "Erosion", 6),           # Erosion
-    "WATERSHED_W": (131, 0, 255, "White stones detection", "Watershed", 7),         # Watershed
-    "WS_MORPH_W": (0, 0, 10, "White stones detection", "Watershed morphing", 8),    # WS morphing
-    "PYRAMID_W": (0, 0, 1, None, "Pyramid filter", 9, True),                        # Image pyramid filter on/off
-    "STONES_MAXVAL_W": (255, 0, 255, None, None, None, True),                       # MaxVal - cannot be changed
+    "STONES_THRESHOLD_W": {"v": 173, "min_v": 1, "max_v": 255, "g": "W",
+        "title": "Threshold", "n": 1},                                          # Threshold
+    "HC_SENSITIVITY_W": {"v": 10, "min_v": 1, "max_v": 20, "g": "W",
+        "title": "Sensitivity", "n": 2},                                        # Sensistivity
+    "HC_MASK_W": {"v": 3, "min_v": 1, "max_v": 5, "g": "W",
+        "title": "Mask granularity", "n": 3},                                   # Mask
+    "BLUR_MASK_W": {"v": 0, "min_v": 0, "max_v": 5, "g": "W",
+        "title": "Blurring", "n": 4},                                           # Blurring
+    "STONES_DILATE_W": {"v": 1, "min_v": 0, "max_v": 5, "g": "W",
+        "title": "Dilation", "n": 5},                                           # Dilation
+    "STONES_ERODE_W": {"v": 0, "min_v": 0, "max_v": 5, "g": "W",
+        "title": "Erosion", "n": 6},                                            # Erosion
+    "WATERSHED_W": {"v": 131, "min_v": 0, "max_v": 255,
+        "g": "W", "title": "Watershed", "n": 7},                                # Watershed
+    "WS_MORPH_W": {"v": 0, "min_v": 0, "max_v": 5, "g": "W",
+        "title": "Watershed morphing", "n": 8},                                 # WS morphing
+    "PYRAMID_W": {"v": 0, "min_v": 0, "max_v": 1, "g": "W",
+        "title": "Pyramid filter", "n": 9, "no_opt": True},                     # Image pyramid filter on/off
+    "STONES_MAXVAL_W": {"v": 255, "min_v": 0, "max_v": 255, "no_copy": True},   # MaxVal - cannot be changed
 
     # no_copy params
-    'AREA_MASK': (None, None, None, None, None, None, True),
-    'TRANSFORM': (None, None, None, None, None, None, True),
-    'BOARD_EDGES': (None, None, None, None, None, None, True)
+    'AREA_MASK': {"no_copy": True, "no_opt": True},
+    'TRANSFORM': {"no_copy": True, "no_opt": True},
+    'BOARD_EDGES': {"no_copy": True, "no_opt": True}
 }
 
+GR_PARAMS_DEF = {"v": None, "min_v": None, "max_v": None,
+        "g": None, "t": None, "n": None, "no_copy": False, "no_opt": False}
 
 # GrParam class
 class GrParam(object):
-    def __init__(self, *args):
-        if len(args) < 7:
-            raise ValueError("Not enought parameters for '" + args[0] + "'")
+    def __init__(self, key, d):
 
-        self.key = args[0]
-        self.v = args[1]
-        self.min_v = args[2]
-        self.max_v = args[3]
-        self.group = args[4]
-        self.title = args[5]
-        self.order = args[6]
-
-        self.no_copy = False
-        if len(args) > 7: self.no_copy = args[7]
+        self.key = key
+        self.__dict__.update(GR_PARAMS_DEF)
+        self.__dict__.update(d)
 
         self.def_v = self.v
 
     def tolist(self):
-        return [self.v, self.min_v, self.max_v, self.group, self.title, self.order]
+        return [self.v, self.min_v, self.max_v, self.g, self.t, self.n]
+
+    def __str__(self):
+        return str(self.__dict__)
 
 # Collection of params
 class GrParams(object):
     def __init__(self, descr = GR_PARAMS):
         self.__params = dict()
         for k in descr:
-            self.__params[k] = GrParam(k, *descr[k])
+            self.__params[k] = GrParam(k, descr[k])
 
     @property
     def params(self):
@@ -124,18 +147,24 @@ class GrParams(object):
 
     @property
     def groups(self):
-        return sorted(set([self.__params[k].group for k in self.__params if self.__params[k].group is not None]))
+        return [g["t"] for g in GR_PARAM_GROUPS]
 
     def group_params(self, group):
         if type(group) is int or type(group) is np.int or type(group) is np.int32:
-            group = self.groups[group]
+            g = GR_PARAM_GROUPS[group]["g"]
+        else:
+            g = [x["g"] for x in GR_PARAM_GROUPS if x["t"] == group]
+            g = g[0] if len(g) > 0 else group
 
         p = [self.__params[k] for k in self.__params \
-            if self.__params[k].group == group and self.__params[k].title is not None]
-        return sorted(p, key = lambda k: k.order)
+            if self.__params[k].g == g and self.__params[k].title is not None]
+        return sorted(p, key = lambda k: k.n)
 
     def get(self, key):
         return self.__params[key].v if key in self.__params else None
+
+    def __iter__(self):
+        yield from self.__params
 
     def __getitem__(self, key):
         return self.__params[key].v
@@ -165,8 +194,10 @@ class GrParams(object):
 
     def assign(self, p, copy_all = False):
         for k in self.__params:
-            if (not self.__params[k].no_copy or copy_all) and k in p:
-                self.__params[k].v = p[k]
+            p0 = self.__params[k]
+            if (copy_all or p0.no_copy == False) and k in p:
+                p0.v = p[k]
+
 
 # Analysis results
 GR_STONES_B = "BS"                  # black stones
