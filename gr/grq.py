@@ -20,6 +20,8 @@ from itertools import combinations
 import logging
 
 from skopt.space.space import Real, Integer
+from skopt import gp_minimize, gbrt_minimize, forest_minimize
+from skopt.utils import use_named_args
 
 # Recognition quality metrics
 #
@@ -31,6 +33,7 @@ from skopt.space.space import Real, Integer
 #   No errors           No errors during board recognition +
 #   Board size          Board size is 9, 13, 19, 21 +
 #   Grid is on black    Grid lines corresponds to dark pixels
+#   Expected size       Expected board size found
 #
 #   Stones recognition
 #
@@ -44,9 +47,10 @@ from skopt.space.space import Real, Integer
 #   No duplicates       No stones are at the same position +
 #   Watershed is OK     Watershed did not report unmatched peaks +
 #   Wiped out           Thresholded image is mostly filled with stone color
+#   Expected counts     Expected number of stones found
 
 # Base class
-class ParseQualityMetric(object):
+class QualityMetric(object):
     def __init__(self, master):
         self.master = master
         self.log = GrLogger(master)
@@ -64,7 +68,7 @@ class ParseQualityMetric(object):
 #
 # Metric classes
 #
-class BoardSizeMetric(ParseQualityMetric):
+class BoardSizeMetric(QualityMetric):
     """Board size verification"""
     def check(self, board):
         if board.board_size in DEF_AVAIL_SIZES:
@@ -77,12 +81,13 @@ class BoardSizeMetric(ParseQualityMetric):
             # Something else - consider this to be a problem
             return 1.0
 
-class NumberOfStonesMetric(ParseQualityMetric):
+class NumberOfStonesMetric(QualityMetric):
     """Any stone, too many stones, same number of stones checks"""
     def check(self, board):
         cb = len(board.black_stones) if board.black_stones is not None else 0
         cw = len(board.white_stones) if board.white_stones is not None else 0
         self.master.log.debug("Number of stones: {} black, {} white".format(cb, cw))
+
         if cb == 0 or cw == 0 or cb > 100 or cw > 100:
             return 1.0
         else:
@@ -90,11 +95,14 @@ class NumberOfStonesMetric(ParseQualityMetric):
             return min(d, 5.0) / 5.0
 
 
-class ProperPositionMetric(ParseQualityMetric):
+class ProperPositionMetric(QualityMetric):
     """Proper stone position check"""
     def check(self, board):
         def f(stones):
             # Collect all stones and check all are inside board's space
+            if stones is None:
+                return 1.0
+
             s = [x[GR_A] for x in stones]
             s.extend([x[GR_B] for x in stones])
 
@@ -102,12 +110,15 @@ class ProperPositionMetric(ParseQualityMetric):
 
         return f(board.black_stones) and f(board.white_stones)
 
-class NoDuplicatesMetric(ParseQualityMetric):
+class NoDuplicatesMetric(QualityMetric):
     """No duplicates check"""
     def check(self, board):
         # Merge black and white positions
-        stones = [ [x[GR_A], x[GR_B]] for x in board.black_stones]
-        stones.extend ([ [x[GR_A], x[GR_B]] for x in board.white_stones])
+        stones = []
+        if board.black_stones is not None:
+            stones = [ [x[GR_A], x[GR_B]] for x in board.black_stones]
+        if board.white_stones is not None:
+            stones.extend ([ [x[GR_A], x[GR_B]] for x in board.white_stones])
         if len(stones) == 0:
             return 1.0
 
@@ -122,12 +133,15 @@ class NoDuplicatesMetric(ParseQualityMetric):
 
         return min(n,10.0) / float(min(len(stones),10))
 
-class NormalRadiusMetric(ParseQualityMetric):
+class NormalRadiusMetric(QualityMetric):
     """Radius is about the same"""
     def check(self, board):
         # Merge black and white positions
-        r = [ x[GR_R] for x in board.black_stones]
-        r.extend ([ x[GR_R] for x in board.white_stones])
+        r = []
+        if board.black_stones is not None:
+            r = [ x[GR_R] for x in board.black_stones]
+        if board.white_stones is not None:
+            r.extend ([ x[GR_R] for x in board.white_stones])
         if len(r) == 0:
             return 1.0
 
@@ -149,7 +163,7 @@ class NormalRadiusMetric(ParseQualityMetric):
 
         #return (min(len(out_r) / 10, 1) + min(sd / 3, 1)) / 2.0
 
-class NoOverlapsMetric(ParseQualityMetric):
+class NoOverlapsMetric(QualityMetric):
     """Stones are not overlapping"""
 
     def check(self, board):
@@ -185,8 +199,13 @@ class NoOverlapsMetric(ParseQualityMetric):
             return np.sqrt(x**2 + y**2)
 
         # Merge black and white positions
-        stones = [ (x[GR_X], x[GR_Y], x[GR_R]) for x in board.black_stones]
-        stones.extend ([ (x[GR_X], x[GR_Y], x[GR_R]) for x in board.white_stones])
+        stones = []
+        if board.black_stones is not None:
+            stones = [ (x[GR_X], x[GR_Y], x[GR_R]) for x in board.black_stones]
+        if board.white_stones is not None:
+            stones.extend ([ (x[GR_X], x[GR_Y], x[GR_R]) for x in board.white_stones])
+        if len(stones) == 0:
+            return 1.0
 
         # Make a list of possible combinations and walk through
         pairs = combinations(stones, 2)
@@ -210,17 +229,20 @@ class NoOverlapsMetric(ParseQualityMetric):
             self.master.log.debug("No overlapped stones found")
             return 0.0
 
-class WatershedOkMetric(ParseQualityMetric):
+class WatershedOkMetric(QualityMetric):
     """Watershed did not report missing stones"""
     def check(self, board):
-        ws = [w for w in str(self.master.log) if w.find("WARNING: WATERSHED") >= 0]
+        ws = [w for w in str(self.master.board_log) if w.find("WARNING: WATERSHED") >= 0]
         return 0.0 if ws is None or len(ws) == 0 else 1.0
 
-class WipedOutMetric(ParseQualityMetric):
+class WipedOutMetric(QualityMetric):
     """Morphed image contains no objects"""
     def check(self, board):
         def f(bw, bg):
             # Get the image
+            if board.results is None:
+                return 1.0
+
             img = board.results.get("IMG_MORPH_" + bw)
             if img is None or min(img.shape[:2]) == 0:
                 return 1.0
@@ -236,14 +258,29 @@ class WipedOutMetric(ParseQualityMetric):
 
         return f('B', 0) and f('W', 255)
 
+class ExpectedCountMetric(QualityMetric):
+    """Expected number of stones found"""
+    def check(self, board):
+        def f(stones, exp_v):
+            if exp_v is None or exp_v == 0:
+                return 0.0
+            else:
+                c = len(stones) if stones is not None else 0
+                return 0.0 if c == exp_v else 1.0
+
+        return f(board.black_stones, self.master.expected['B']) and \
+               f(board.white_stones, self.master.expected['W'])
 
 # Quality checker class
-class BoardQualityChecker(object):
-    """Quality checker master class"""
+class BoardOptimizer(object):
+    """Quality checking and optimization master class"""
 
-    def __init__(self, board = None, debug = False):
-        self.log = GrLogger(name = 'gbr.qc',
-            level = self.master.log.DEBUG if debug else self.master.log.INFO)
+    def __init__(self, board = None, debug = False, echo = False):
+        self.log = GrLogger(name = 'qc',
+            level = logging.DEBUG if debug else logging.INFO,
+            echo = echo)
+        self.board_log = GrLogger(level = logging.INFO)
+
         self.metrics = [
             # Metric class, weight
             (BoardSizeMetric, 0.5),
@@ -257,6 +294,7 @@ class BoardQualityChecker(object):
         ]
         self.debug = debug
         self.board = board
+        self.expected = {' ': 0, 'B': 0, 'W': 0}
 
     def quality(self, board = None):
         """Board quality check function"""
@@ -270,26 +308,30 @@ class BoardQualityChecker(object):
                 # Assume this is a file name
                 self.board = GrBoard()
                 self.board.load_image(str(board), f_process = False)
+
         if self.board is None:
             raise ValueError("Board is not assigned")
         if self.board.is_gen_board:
             raise ValueError("Board not loaded")
 
         # Add extra parameter signaling of quality check been run
-        self.board.params.add('QUALITY_CHECK', GrParam('QUALITY_CHECK', 1, 0, 1, None, None, None, True))
+        self.board.params.add('QUALITY_CHECK',
+            GrParam('QUALITY_CHECK', {"v": 1, "no_copy": True, "no_opt": True}))
 
         # Process board
-        self.log.clear()
+        self.board_log.clear()
         r = {}
         self.board.process()
-        if self.log.errors > 0:
+        if self.board_log.errors > 0:
             # Any errors during processing means quality is lowest possible
-            return 1.0, {"Errors ": self.log.errors, "Last error": self.log.last_error}
+            self.log.error("Error in board processing {}".format(self.board_log.last_error))
+            return 1.0, \
+                {"Errors ": self.board_log.errors, "Last error": self.board_log.last_error}
 
         # Check every metric
         for mc in self.metrics:
             m = mc[0](self)
-            self.master.log.info("Running metric {}".format(m.name))
+            self.log.debug("Running metric {}".format(m.name))
             r[m.name]  = [m.check(self.board), mc[1]]
 
         # Check for local extremums
@@ -308,7 +350,7 @@ class BoardQualityChecker(object):
         for g in groups:
             gp = self.board.params.group_params(g)
             for p in gp:
-                if not p.no_copy:
+                if not p.no_opt:
                     space.extend([Integer(p.min_v, p.max_v, name = p.key)])
         return space
 
@@ -326,8 +368,68 @@ class BoardQualityChecker(object):
         q_ns = r['NumberOfStonesMetric'][0]
         if cb < 5 or cw < 5 and q_ns == 1.0:
             # Suspicious, update weights of all other stone-checking metrics
+            self.log.info("Local extremum found, avoiding")
             r['ProperPositionMetric'][1] = 0.5
             r['NoDuplicatesMetric'][1] = 0.5
             r['NormalRadiusMetric'][1] = 0.5
             r['NoOverlapsMetric'][1] = 0.5
             r['WatershedOkMetric'][1] = 0.2
+
+    def optimize(self, groups = None, n_calls = 100, save = "success", callback = None):
+        """Optimization"""
+        p_init = self.board.params.todict()
+        self.log.debug("Initial parameters:")
+        for k in p_init:
+            self.log.debug("\t{}: {}".format(k, p_init[k]))
+
+        q_init = self.quality()
+        self.log.info("Initial quality: {}".format(q_init[0]))
+        self.npass = 0
+
+        g = groups if groups is not None else self.board.params.groups
+        space = self.opt_space(groups = g)
+
+        # Enclosed objective function
+        @use_named_args(space)
+        def objective(**params):
+            self.npass += 1
+            self.board.params = params
+            q, p = self.quality()
+            self.log.info("Pass #{}: quality {}, {}".format(self.npass, q, p))
+            self.log.debug("Pass parameters:")
+            for k in params:
+                self.log.debug("\t{}: {}".format(k, params[k]))
+            return q
+
+        # Enclosed callback function
+        def callback_fun(res):
+            if callback is None:
+                return False
+            else:
+                return callback({"res": res, "npass": self.npass})
+
+        self.f_res = gbrt_minimize(objective, space, n_calls = n_calls,
+            n_jobs = -1, callback = callback_fun)
+
+        self.log.debug("Parameters after optimization")
+        for n, v in enumerate(self.f_res.x):
+            self.log.debug("\t{}: {}".format(space[n].name,v))
+            self.board.params[space[n].name] = v
+
+        self.log.debug("Parameters changed")
+        p_res = self.board.params.todict()
+        for k in p_init:
+            if p_init[k] != p_res[k]:
+                self.log.debug("\t{}: {} ( was {})".format(k, p_res[k], p_init[k]))
+
+        q_last = self.quality()
+        self.log.info("Resulting quality: {} (was {}), params: {}".format(q_last[0], q_init[0], q_last[1]))
+
+        if q_init <= q_last:
+            if save == "always":
+                self.log.info("Parameters file {} updated".format(self.board.save_params()))
+        else:
+            if save == "success" or save == "always":
+                self.log.info("Parameters file {} updated".format(self.board.save_params()))
+
+        return q_init, q_last

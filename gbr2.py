@@ -15,6 +15,8 @@ from gr.grdef import *
 from gr.ui_extra import *
 from gr.log import GrLogger
 from gr.utils import format_stone_pos, resize, img_to_imgtk
+from gr.grq import BoardOptimizer
+from threading import Thread
 
 import numpy as np
 import cv2
@@ -162,9 +164,15 @@ class GbrOptionsDlg(GrDialog):
         self.board_size_scale = None
         self.board_size_disabled = None
         self.debug_dlg = None
+        self.max_iter = 100
+        self.qc_thread = None
+        self.qc = None
+        self.optimize_cancel = False
+        self.last_params = None
 
     def init_frame(self):
         self.tkVars = self.add_switches(self.internalFrame, self.root.board.params)
+        self.add_optimization()
 
     def init_buttons(self):
         f_top = tk.Frame(self.buttonFrame)
@@ -179,6 +187,11 @@ class GbrOptionsDlg(GrDialog):
         NButton(f_bottom,
             text = "Detect", uimage = "detect_flat.png",
             command = self.detect_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+
+        self.resetButton = NButton(f_bottom,
+            text = "Reset", uimage = "reset_flat.png", state = tk.DISABLED,
+            command = self.reset_click_callback)
+        self.resetButton.pack(side = tk.LEFT, padx = 5, pady = 5)
 
         tk.Button(f_bottom, text = "Defaults",
             command = self.default_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
@@ -199,12 +212,26 @@ class GbrOptionsDlg(GrDialog):
         self.bind("<Return>", self.return_callback)
 
     def update_controls(self):
+        if self.qc_thread is not None:
+            # Optimization thread is running, don't update state
+            return
         if self.dbg_button is not None:
             self.dbg_button.configure(
                 state = tk.DISABLED if self.root.board.results is None else tk.NORMAL)
         if self.log_button is not None:
             self.log_button.configure(
                 state = tk.DISABLED if self.root.log.errors == 0 is None else tk.NORMAL)
+
+    def close(self):
+        """Graceful way to close the dialog"""
+        if self.debug_dlg is not None:
+            self.debug_dlg.close()
+            self.debug_dlg = None
+        if self.detectVar.get() > 0:
+            self.root.imageMarker.clear()
+        if not self.qc_thread is None:
+            self.optimize_cancel = True
+        GrDialog.close(self)
 
     def auto_detect_callback(self):
         """Auto-detect checkbox click callback"""
@@ -221,7 +248,6 @@ class GbrOptionsDlg(GrDialog):
 
     def default_click_callback(self):
         """Default button click callback"""
-
         self.root.board.params.reset()
         self.board_size_disabled.set(1)
         self.board_size_label.config(state = tk.DISABLED)
@@ -232,7 +258,10 @@ class GbrOptionsDlg(GrDialog):
 
     def log_click_callback(self):
         """Log button click callback"""
-        self.root.log.show()
+        if self.nb.index(self.nb.select()) == 3 and self.qc is not None:
+            self.qc.log.show()
+        else:
+            self.root.log.show()
 
     def debug_click_callback(self):
         """Debug button click callback"""
@@ -260,6 +289,75 @@ class GbrOptionsDlg(GrDialog):
     def return_callback(self, event):
         self.detect_click_callback()
 
+    def optimize_click_callback(self):
+        """Optimize button click"""
+        if not self.qc_thread is None:
+            # Seems that optimization is already running, try to cancel
+            self.optimize_cancel = True
+        else:
+            # Initialize optimizer
+            self.qc = BoardOptimizer(board = GrBoard(), debug = False)
+            self.qc.board.image = self.root.board.image
+            self.qc.board.params = self.root.board.params
+            self.last_params = self.root.board.params.todict()
+            self.resetButton.configure(state = tk.NORMAL)
+
+            # Launch a separate thread and return
+            self.qc_thread = Thread(target = self.optimizer_function)
+            self.qc_thread.start()
+
+    def optimizer_function(self):
+        """Optimization function (run in separate thread)"""
+        if self.qc is None:
+            return
+
+        # Disable all controls and auto-detection
+        for w in self.get_controls():
+            w.configure(state = tk.DISABLED)
+        self.detectVar.set(0)
+
+        # Run
+        self.optimize_cancel = False
+        self.optimizeButton.configure(text = "Cancel")
+        self.progressLabel.set("Running detection")
+        self.progressVar.set(0)
+
+        self.qc.optimize(groups = [1, 2], save = "never", n_calls = self.max_iter,
+            callback = self.optimize_callback)
+
+        # Clean up
+        self.optimizeButton.configure(text = "Auto-detect")
+        self.progressLabel.set("Finished")
+        self.qc_thread = None
+
+        for w in self.get_controls():
+            w.configure(state = tk.ACTIVE)
+
+        if not self.optimize_cancel:
+            self.root.board.params = self.qc.board.params
+            for k in self.qc.board.params:
+                if k in self.tkVars:
+                    self.tkVars[k].set(self.qc.board.params[k])
+
+    def optimize_callback(self, params):
+        """Optimize callback"""
+        if self.optimize_cancel:
+            return True
+        else:
+            npass = params['npass']
+            self.progressLabel.set("Running detection: pass {} of {}".format(npass, self.max_iter))
+            self.progressVar.set(npass)
+            return False
+
+    def reset_click_callback(self):
+        """Reset params button click"""
+        if self.last_params is not None:
+            self.root.board.params = self.last_params
+            for k in self.last_params:
+                if k in self.tkVars:
+                    self.tkVars[k].set(self.last_params[k])
+            self.resetButton.configure(state = tk.DISABLED)
+
     def add_switches(self, parent, params, max_in_row = 6):
         """Add Scale widgets with board parameters"""
         n = 1
@@ -268,14 +366,14 @@ class GbrOptionsDlg(GrDialog):
         vars = dict()
 
         # Add a tabbed notebook
-        nb = ttk.Notebook(parent)
-        nb.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+        self.nb = ttk.Notebook(parent)
+        self.nb.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
 
-        # Add switches to notebook tabs
+        # Add scales for board parameters to notebook tabs
         for tab in self.root.board.params.groups:
             # Add a tab frame
-            nbFrame = tk.Frame(nb, width = 400)
-            nb.add(nbFrame, text = tab)
+            nbFrame = tk.Frame(self.nb, width = 400)
+            self.nb.add(nbFrame, text = tab)
             frame = None
             n = 0
             ncol = 0
@@ -323,17 +421,47 @@ class GbrOptionsDlg(GrDialog):
 
         return vars
 
-    def close(self):
-        """Graceful way to close the dialog"""
-        if self.debug_dlg is not None:
-            self.debug_dlg.close()
-            self.debug_dlg = None
-        if self.detectVar.get() > 0:
-            self.root.imageMarker.clear()
-        GrDialog.close(self)
+    def add_optimization(self):
+        # Add "auto" tab to notebook
+        nbFrame = tk.Frame(self.nb, width = 400)
+        self.nb.add(nbFrame, text = "Optimization")
+
+        frame = tk.Frame(nbFrame, bd = 20, relief = tk.FLAT)
+        frame.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+        label = tk.Label(frame,
+            text = "Press the button below to initiate automatic selection of\n" +
+                    "stone recognition parameters\n\nMake sure that " +
+                    "board area and grid are defined and\n" +
+                    "proper board size set or detected" )
+        label.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+
+        frame = tk.Frame(nbFrame, bd = 5)
+        frame.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+        self.optimizeButton = tk.Button(frame, text = "Auto-detect",
+            takefocus = False,
+            command = self.optimize_click_callback)
+        self.optimizeButton.pack(anchor = tk.CENTER)
+
+        frame = tk.Frame(nbFrame, bd = 5)
+        frame.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+
+        self.progressLabel = tk.StringVar("")
+        label = tk.Label(frame, textvariable = self.progressLabel)
+        label.pack(side = tk.TOP, fill = tk.BOTH, expand = True, pady = 5)
+
+        self.progressVar = tk.IntVar(0)
+        progress = ttk.Progressbar(frame,
+            orient = "horizontal", maximum = self.max_iter,
+            mode = "determinate", length = 300,
+            variable = self.progressVar)
+        progress.pack(anchor = tk.CENTER, pady = 5)
 
     def detect_stones(self, highlight):
         """Detect stones with parameters currenly set"""
+        # Save parameters for resetting
+        self.last_params = self.root.board.params.todict()
+        self.resetButton.configure(state = tk.NORMAL)
+
         # Get params
         p = dict()
         for key in self.tkVars.keys():
@@ -350,6 +478,16 @@ class GbrOptionsDlg(GrDialog):
         # Update debug info, if the dialog is open
         if self.debug_dlg is not None:
             self.debug_dlg.update_debug_info()
+
+    def get_controls(self):
+        """Controls in button frame"""
+        ret = []
+        for w0 in self.buttonFrame.winfo_children():
+            for w2 in w0.winfo_children():
+                if isinstance(w2, tk.Button) or isinstance(w2, tk.Checkbutton):
+                    ret.extend([w2])
+        return ret
+
 
 # Stones dialog class
 class GbrStonesDlg(GrDialog):

@@ -67,7 +67,7 @@ class GrBoard(object):
         self._img_file = filename
         self._src_img_file = filename
         self._img = img
-        self._src_img = img
+        self._src_img = img.copy()
         self._res = None
 
         # Load params, if requested and file exists
@@ -247,6 +247,7 @@ class GrBoard(object):
     def params(self, p):
         """Recognition parameters"""
         self._params.assign(p)
+        self._gen_board = False
 
     @property
     def param_area_mask(self):
@@ -321,6 +322,9 @@ class GrBoard(object):
     def image(self, im):
         """Board image"""
         self._img = im
+        self._gen_board = False
+        if self._src_img is None:
+            self._src_img = im.copy()
 
     @property
     def src_image(self):

@@ -29,7 +29,7 @@ def transparent(src_file, dest_file, transp_color = (255, 255, 255)):
     img.save(dest_file, "PNG")
 
 def main():
-    fs = "C:/Users/kol/Documents/kol/gbr/ui/grid_down.png"
+    fs = "C:/Users/kol/Documents/kol/gbr/ui/reset_flat.png"
     transparent(fs, fs, (255, 255, 255))
 
 if __name__ == '__main__':
