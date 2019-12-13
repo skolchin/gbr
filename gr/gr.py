@@ -9,7 +9,6 @@
 # Licence:     MIT
 #-------------------------------------------------------------------------------
 
-import sys
 from .grdef import *
 from .utils import *
 from .cv2_watershed import apply_watershed

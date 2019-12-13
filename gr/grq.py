@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------------------
 # Name:        Go board recognition project
-# Purpose:     Recognition validation model
+# Purpose:     Recognition results validation and parameter optimization module
 #
 # Author:      kol
 #

@@ -32,7 +32,7 @@ GR_R = 4                          # index of stone radius dimension
 GR_FROM = 0                       # index of line start in lines array
 GR_TO = 1                         # index of line end in lines array
 
-
+# List if parameter groups
 GR_PARAM_GROUPS = [
     {"t": "Board recognition", "g": "."},
     {"t": "Black stones detection", "g": "B"},
@@ -77,7 +77,7 @@ GR_PARAMS = {
     "STONES_ERODE_B": {"v": 1, "min_v": 0, "max_v": 5, "g": "B",
         "title": "Erosion", "n": 6},                                            # Erosion
     "WATERSHED_B": {"v": 85, "min_v": 0, "max_v": 255, "g": "B",
-        "title": "Watershed", "n": 7},                                          # Watershed
+        "title": "Watershed threshold", "n": 7},                                # Watershed
     "WS_MORPH_B": {"v": 0, "min_v": 0, "max_v": 5, "g": "B",
         "title": "Watershed morphing", "n": 8},                                 # WS morphing
     "PYRAMID_B": {"v": 0, "min_v": 0, "max_v": 1, "g": "B",
@@ -98,7 +98,7 @@ GR_PARAMS = {
     "STONES_ERODE_W": {"v": 0, "min_v": 0, "max_v": 5, "g": "W",
         "title": "Erosion", "n": 6},                                            # Erosion
     "WATERSHED_W": {"v": 131, "min_v": 0, "max_v": 255,
-        "g": "W", "title": "Watershed", "n": 7},                                # Watershed
+        "g": "W", "title": "Watershed threshold", "n": 7},                      # Watershed
     "WS_MORPH_W": {"v": 0, "min_v": 0, "max_v": 5, "g": "W",
         "title": "Watershed morphing", "n": 8},                                 # WS morphing
     "PYRAMID_W": {"v": 0, "min_v": 0, "max_v": 1, "g": "W",
@@ -111,45 +111,68 @@ GR_PARAMS = {
     'BOARD_EDGES': {"no_copy": True, "no_opt": True}
 }
 
+# Default parameter value
+# Should always contain all parameter fields
 GR_PARAMS_DEF = {"v": None, "min_v": None, "max_v": None,
         "g": None, "t": None, "n": None, "no_copy": False, "no_opt": False}
 
 # GrParam class
 class GrParam(object):
+    """Parameter object"""
     def __init__(self, key, d):
+        """Constructor"""
 
+        # Copy all values from default descriptor and then update it with provided dict
         self.key = key
         self.__dict__.update(GR_PARAMS_DEF)
         self.__dict__.update(d)
 
+        # Save initial value
         self.def_v = self.v
 
     def tolist(self):
+        """Represents parameter as a list containing valuable fields"""
         return [self.v, self.min_v, self.max_v, self.g, self.t, self.n]
 
     def __str__(self):
+        """Printing support"""
         return str(self.__dict__)
 
 # Collection of params
 class GrParams(object):
+    """Parameters collection.
+    This class is desiged to be much like an ordinary dictionary of parameters.
+    To get a parameter value, use [] or get() methods, but if a parameter object
+    is needed, use params collection.
+    todict() method returns ordinary dictionary of parameter keys and values.
+    """
+
     def __init__(self, descr = GR_PARAMS):
+        """Constructor"""
         self.__params = dict()
         for k in descr:
             self.__params[k] = GrParam(k, descr[k])
 
     @property
     def params(self):
+        """Collection of parameter objects where keys are param names"""
         return self.__params
 
     @property
     def keys(self):
+        """All parameter keys"""
         return self.__params.keys()
 
     @property
     def groups(self):
+        """List of group titles"""
         return [g["t"] for g in GR_PARAM_GROUPS]
 
     def group_params(self, group):
+        """List of parameters belonging to specified group.
+        A group could be either integer index in GR_GROUPS list, a key
+        (g) or a group title (t).
+        """
         if type(group) is int or type(group) is np.int or type(group) is np.int32:
             g = GR_PARAM_GROUPS[group]["g"]
         else:
@@ -161,38 +184,50 @@ class GrParams(object):
         return sorted(p, key = lambda k: k.n)
 
     def get(self, key):
+        """Returns a parameter value of None if it doesn't exist"""
         return self.__params[key].v if key in self.__params else None
 
     def __iter__(self):
+        """Iterator"""
         yield from self.__params
 
     def __getitem__(self, key):
+        """Brackets getter"""
         return self.__params[key].v
 
     def __setitem__(self, key, value):
+        """Brackets setter"""
         if not key in self.__params: raise KeyError("Key '" + key + "' not found")
         self.__params[key].v = value
 
     def __contains__(self, item):
+        """in operation support"""
         return item in self.__params
 
     def __str__(self):
+        """Printing support"""
         return str(self.todict())
 
     def add(self, key, param):
+        """Add or replace a parameter object"""
         self.__params[key] = param
 
     def todict(self):
+        """Cast to a dictionary of parameter names and values"""
         d = {k: self.__params[k].v for k in self.__params}
         for k in d:
             if type(d[k]) is np.int32: d[k] = int(d[k])
         return d
 
     def reset(self):
+        """Reset all parameters to default values"""
         for p in self.__params:
             self.__params[p].v  = self.__params[p].def_v
 
     def assign(self, p, copy_all = False):
+        """Copy parameters from another dictionary or GrParams collection.
+        By default, only those parameters where no_copy = False are copied.
+        In order to copy all parameters, pass copy_all = True"""
         for k in self.__params:
             p0 = self.__params[k]
             if (copy_all or p0.no_copy == False) and k in p:
