@@ -35,9 +35,13 @@ Currently, the following filters are implemented:
   * Luminosity equalization using [CLAHE](http://books.google.com.au/books?hl=en&lr=&id=CCqzMm_-WucC&oi=fnd&pg=PR11&dq=Contrast%20Limited%20Adaptive%20Histogram%20Equalization%20Graphics%20Gems%20IV&ots=mtft15JJbl&sig=acQg6XLt7jzqR0MjO6sYUa0Sjtc#v=onepage&q=Contrast%20Limited%20Adaptive%20Histogram%20Equalization%20Graphics%20Gems%20IV&f=false)
   * Watershed (post-filter).
 
-Filter and board detection parameters can be changed through the interface and automatically saved to a property file (.GPAR). The property file is loaded automatically when an image is loaded for processing.
+Filter and board detection parameters can be changed through the interface and automatically saved to a property file (.GPAR). The property file is loaded automatically when an image is loaded for processing. 
 
 Recognised boards can be saved to an SGF file. The program creates standard SGF file, but, definetelly, it cannot reproduce an actual game flow and just saves stones one by one.
+
+Please note that this is not an AI system, but a "good old" algorythmic program. I couldn't manage to build an AI due to lack of time and compexity of the task, so it relies on computer vision algorithms to do the job. In particular, this means that correct board recognition is highly dependent on correct parameters set by end user, so even small changes could improve or reduce results.
+
+Currently, I'm working on automatic parameter selection using [Scikit-optimize](https://scikit-optimize.github.io/) library. This is really great lib, which simplifies multi-dimensional hyperparameter optimization very much, but, still, this is kind of experimental feature now.
 
 Examples of source images (left) and results of their processing (right):
 
@@ -65,6 +69,7 @@ Python 3.5 or later. Packages:
 * [Pillow](https://python-pillow.org/)
 * [sgfmill](https://mjw.woodcraft.me.uk/sgfmill/)
 * [Tkinter](http://effbot.org/tkinterbook/)
+* [Scikit-optimize](https://scikit-optimize.github.io/)
 * logging
 * json
 * pathlib
@@ -108,12 +113,14 @@ This will downlowd all code and database of images (img/ folder) along with para
 
 - [x] Add SGF file creation
 
-- [ ] Make a web interface with (probably) cloud deployment
+- [ ] Make a web interface with (probably) cloud deployment (postponded)
 
-- [x] Make DLN dataset creation and review interfaces (currently - in PASCAL VOC format)
+- [ ] Make DLN dataset creation and review interfaces (currently - in PASCAL VOC format) (postponded)
 
-- [ ] Train DLN model to recognize stones on computer boards
+- [ ] Train DLN model to recognize stones on computer boards (postponded)
 
-- [ ] Train DLN model to recognize stones on real boards
+- [ ] Train DLN model to recognize stones on real boards (postponded)
 
-- [ ] Create a mobile app
+- [ ] Create a mobile app (postponded)
+
+- [x] Automatic parameters selection
