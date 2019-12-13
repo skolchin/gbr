@@ -16,7 +16,7 @@ from gr.ui_extra import *
 from gr.log import GrLogger
 from gr.utils import format_stone_pos, resize, img_to_imgtk
 from gr.grq import BoardOptimizer
-from threading import Thread
+from threading import Thread, Lock
 
 import numpy as np
 import cv2
@@ -164,11 +164,15 @@ class GbrOptionsDlg(GrDialog):
         self.board_size_scale = None
         self.board_size_disabled = None
         self.debug_dlg = None
+        self.last_params = None
+
         self.max_iter = 100
+
+
+        self.lock = Lock()
         self.qc_thread = None
         self.qc = None
         self.optimize_cancel = False
-        self.last_params = None
 
     def init_frame(self):
         self.tkVars = self.add_switches(self.internalFrame, self.root.board.params)
@@ -238,12 +242,12 @@ class GbrOptionsDlg(GrDialog):
         if self.detectVar.get() == 0:
             self.root.hide_stones()
         else:
-            self.detect_stones(True)
+            self.detect_stones(highlight = True)
             self.update_controls()
 
     def detect_click_callback(self):
         """Detect button click callback"""
-        self.detect_stones(self.detectVar.get() != 0)
+        self.detect_stones(highlight = self.detectVar.get() != 0)
         self.update_controls()
 
     def default_click_callback(self):
@@ -291,62 +295,65 @@ class GbrOptionsDlg(GrDialog):
 
     def optimize_click_callback(self):
         """Optimize button click"""
-        if not self.qc_thread is None:
-            # Seems that optimization is already running, try to cancel
-            self.optimize_cancel = True
-        else:
-            # Initialize optimizer
-            self.qc = BoardOptimizer(board = GrBoard(), debug = False)
-            self.qc.board.image = self.root.board.image
-            self.qc.board.params = self.root.board.params
-            self.last_params = self.root.board.params.todict()
-            self.resetButton.configure(state = tk.NORMAL)
 
-            # Launch a separate thread and return
-            self.qc_thread = Thread(target = self.optimizer_function)
-            self.qc_thread.start()
+        # Use lock to prevent simultaneous access to the same variables
+        with self.lock:
+            if not self.qc_thread is None and self.qc_thread.is_alive():
+                # Seems that optimization is already running, try to cancel
+                self.progressLabel.set("Cancelling")
+                self.optimize_cancel = True
+            else:
+                # Initialize optimizer
+                self.qc = BoardOptimizer(board = GrBoard(), debug = False)
+                self.qc.board.image = self.root.board.image
+                self.qc.board.params = self.root.board.params
+                self.last_params = self.root.board.params.todict()
+                self.resetButton.configure(state = tk.NORMAL)
+
+                # Launch a separate thread and return
+                self.qc_thread = Thread(target = self.optimizer_function)
+                self.qc_thread.start()
 
     def optimizer_function(self):
         """Optimization function (run in separate thread)"""
         if self.qc is None:
             return
 
-        # Disable all controls and auto-detection
-        for w in self.get_controls():
-            w.configure(state = tk.DISABLED)
-        self.detectVar.set(0)
+        # Prepare
+        with self.lock:
+            self.set_controls_state(tk.DISABLED)
+            self.optimize_cancel = False
+            self.optimizeButton.configure(text = "Cancel")
+            self.progressLabel.set("Running detection")
+            self.progressVar.set(0)
 
         # Run
-        self.optimize_cancel = False
-        self.optimizeButton.configure(text = "Cancel")
-        self.progressLabel.set("Running detection")
-        self.progressVar.set(0)
-
         self.qc.optimize(groups = [1, 2], save = "never", n_calls = self.max_iter,
             callback = self.optimize_callback)
 
         # Clean up
-        self.optimizeButton.configure(text = "Auto-detect")
-        self.progressLabel.set("Finished")
-        self.qc_thread = None
+        with self.lock:
+            if not self.optimize_cancel:
+                self.root.board.params = self.qc.board.params
+                for k in self.qc.board.params:
+                    if k in self.tkVars:
+                        self.tkVars[k].set(self.qc.board.params[k])
 
-        for w in self.get_controls():
-            w.configure(state = tk.ACTIVE)
-
-        if not self.optimize_cancel:
-            self.root.board.params = self.qc.board.params
-            for k in self.qc.board.params:
-                if k in self.tkVars:
-                    self.tkVars[k].set(self.qc.board.params[k])
+            self.optimizeButton.configure(text = "Auto-detect")
+            self.progressLabel.set("Finished")
+            self.set_controls_state(tk.ACTIVE)
+            self.qc_thread = None
 
     def optimize_callback(self, params):
         """Optimize callback"""
-        if self.optimize_cancel:
-            return True
-        else:
-            npass = params['npass']
-            self.progressLabel.set("Running detection: pass {} of {}".format(npass, self.max_iter))
-            self.progressVar.set(npass)
+        with self.lock:
+            if self.optimize_cancel:
+                self.progressVar.set(0)
+                return True
+            else:
+                npass = params['npass']
+                self.progressLabel.set("Running detection: pass {} of {}".format(npass, self.max_iter))
+                self.progressVar.set(npass)
             return False
 
     def reset_click_callback(self):
@@ -356,10 +363,17 @@ class GbrOptionsDlg(GrDialog):
             for k in self.last_params:
                 if k in self.tkVars:
                     self.tkVars[k].set(self.last_params[k])
+
+            self.last_params = None
             self.resetButton.configure(state = tk.DISABLED)
 
+            if self.detectVar.get() > 0:
+                self.detect_stones(highlight = True)
+                self.update_controls()
+
+
     def add_switches(self, parent, params, max_in_row = 6):
-        """Add Scale widgets with board parameters"""
+        """Add Scale widgets for changing board parameters"""
         n = 1
         ncol = 0
         frame = None
@@ -422,7 +436,7 @@ class GbrOptionsDlg(GrDialog):
         return vars
 
     def add_optimization(self):
-        # Add "auto" tab to notebook
+        # Add "optimization" tab to notebook
         nbFrame = tk.Frame(self.nb, width = 400)
         self.nb.add(nbFrame, text = "Optimization")
 
@@ -458,9 +472,11 @@ class GbrOptionsDlg(GrDialog):
 
     def detect_stones(self, highlight):
         """Detect stones with parameters currenly set"""
+
         # Save parameters for resetting
-        self.last_params = self.root.board.params.todict()
-        self.resetButton.configure(state = tk.NORMAL)
+        if self.last_params is None:
+            self.last_params = self.root.board.params.todict()
+            self.resetButton.configure(state = tk.NORMAL)
 
         # Get params
         p = dict()
@@ -479,14 +495,16 @@ class GbrOptionsDlg(GrDialog):
         if self.debug_dlg is not None:
             self.debug_dlg.update_debug_info()
 
-    def get_controls(self):
-        """Controls in button frame"""
-        ret = []
+    def set_controls_state(self, state):
+        """Enables/disables all controls"""
         for w0 in self.buttonFrame.winfo_children():
             for w2 in w0.winfo_children():
                 if isinstance(w2, tk.Button) or isinstance(w2, tk.Checkbutton):
-                    ret.extend([w2])
-        return ret
+                    w2.configure(state = state)
+
+        for w in self.root.toolbarPanel.winfo_children():
+            if isinstance(w, ImgButton):
+                w.configure(state = state)
 
 
 # Stones dialog class
@@ -618,46 +636,46 @@ class GbrGUI2(tk.Tk):
         pass
 
     def __init_toolbar(self):
-        toolbarPanel = tk.Frame(self.internalFrame, bd = 1, relief = tk.RAISED)
-        toolbarPanel.pack(side = tk.TOP, fill = tk.X, expand = False)
+        self.toolbarPanel = tk.Frame(self.internalFrame, bd = 1, relief = tk.RAISED)
+        self.toolbarPanel.pack(side = tk.TOP, fill = tk.X, expand = False)
 
-        ImgButton(toolbarPanel,
+        ImgButton(self.toolbarPanel,
             tag = "open", tooltip = "Open image",
             command = self.open_image_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
-        ImgButton(toolbarPanel,
+        ImgButton(self.toolbarPanel,
             tag = "edge", tooltip = "Transform image", disabled = True,
             command = self.transform_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
-        ImgButton(toolbarPanel,
+        ImgButton(self.toolbarPanel,
             tag = "area", tooltip = "Define board area", disabled = True,
             command = self.set_area_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
-        ImgButton(toolbarPanel,
+        ImgButton(self.toolbarPanel,
             tag = "grid", tooltip = "Set board grid", disabled = True,
             command = self.set_grid_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
-        ImgButton(toolbarPanel,
+        ImgButton(self.toolbarPanel,
             tag = "detect", tooltip = "Detect stones", disabled = True,
             command = self.detect_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
-        ImgButton(toolbarPanel,
+        ImgButton(self.toolbarPanel,
             tag = "stones", tooltip = "List of stones", disabled = True,
             dlg_class = GbrStonesDlg).pack(side = tk.LEFT, padx = 2, pady = 2)
 
-        ImgButton(toolbarPanel,
+        ImgButton(self.toolbarPanel,
             tag = "params", tooltip = "Detection params", disabled = True,
             dlg_class = GbrOptionsDlg).pack(side = tk.LEFT, padx = 2, pady = 2)
 
-        ImgButton(toolbarPanel,
+        ImgButton(self.toolbarPanel,
             tag = "save", tooltip = "Save as SGF", disabled = True,
             command = self.save_sgf_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
-        ImgButton(toolbarPanel,
+        ImgButton(self.toolbarPanel,
             tag = "reset", tooltip = "Reset image", disabled = True,
             command = self.reset_image_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
-        self.bg = ImgButtonGroup(toolbarPanel)
+        self.bg = ImgButtonGroup(self.toolbarPanel)
         self.bg.add_group("has_file", ["edge", "area", "grid", "detect", "params"])
         self.bg.add_group("edges", ["edge", "area", "grid"], BG_DEPENDENT)
         self.bg.add_group("detected", ["stones", "save"])
