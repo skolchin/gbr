@@ -20,7 +20,7 @@
     "HL_THETA2": 6,
     "HL_THRESHOLD": 0,
     "HL_THRESHOLD2": 40,
-    "LUM_EQ": 0,
+    "LUM_EQ": 1,
     "PYRAMID_B": 0,
     "PYRAMID_W": 0,
     "STONES_DILATE_B": 4,
