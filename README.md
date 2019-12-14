@@ -1,6 +1,6 @@
 # Go board image recognition (GBR)
 
-This project is aiming to create a program which would be able to analyse a Go board image in order to determine board parameters and stone placement.
+This project is aiming to create a program which will be able to analyse a image of a [Go game](https://en.wikipedia.org/wiki/Go_(game)) board in order to determine board parameters and stone positions.
 
 The project is build on wonderfull [OpenCV](https://opencv.org/) library.
 
