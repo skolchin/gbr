@@ -71,6 +71,7 @@ class QualityMetric(object):
 class BoardSizeMetric(QualityMetric):
     """Board size verification"""
     def check(self, board):
+        self.master.log.debug("Board size: {}".format(board.board_size))
         if board.board_size in DEF_AVAIL_SIZES:
             # Standard size, ok
             return 0.0
@@ -126,10 +127,9 @@ class NoDuplicatesMetric(QualityMetric):
         u, c = np.unique(stones, return_counts=True, axis = 0)
         n = sum(c[c > 1]) - len(c[c > 1])
         self.master.log.debug("Number of duplicates {}".format(n))
-        if self.master.debug:
-            for i, x in enumerate(u):
-                if c[i] > 1:
-                    self.master.log.debug("Stone {} duplicated {} times".format(x, c[i]))
+        for i, x in enumerate(u):
+            if c[i] > 1:
+                self.master.log.debug("Stone {} found {} times".format(x, c[i]))
 
         return min(n,10.0) / float(min(len(stones),10))
 
@@ -145,23 +145,27 @@ class NormalRadiusMetric(QualityMetric):
         if len(r) == 0:
             return 1.0
 
+        # Stone radius is not very small
+        m = np.mean(r)
+        self.master.log.debug("Stone radius mean: {}".format(m))
+        if m <= 5:
+            return 1.0
+
         # Check for outliers
         u_q = np.percentile(r, 75)
         l_q = np.percentile(r, 25)
         IQR = (u_q - l_q) * 1.5
         out_r = [x for x in r if (x < l_q - IQR or x > u_q + IQR)]
-        self.master.log.debug("Outliers in stone radius list: {}".format(out_r))
+        self.master.log.debug("Stone radius outliers: {}".format(out_r))
         if len(out_r) > 0:
             return 1.0
 
         # Calculate SD on array with outliers removed
         rr = [x for x in r if (x >= l_q - IQR and x <= u_q + IQR)]
         sd = np.std(rr) if len(rr) > 0 else 0
-        self.master.log.debug("Stone radius standard deviation: {}".format(sd))
+        self.master.log.debug("Stone radius SD: {}".format(sd))
 
         return min(sd / 3.0, 1.0)
-
-        #return (min(len(out_r) / 10, 1) + min(sd / 3, 1)) / 2.0
 
 class NoOverlapsMetric(QualityMetric):
     """Stones are not overlapping"""
@@ -224,7 +228,7 @@ class NoOverlapsMetric(QualityMetric):
 ##            if self.master.debug:
 ##                show_stones("Overlapped stones: {}".format(len(dups)),
 ##                    board.image.shape, dups, random_colors(len(dups)))
-            return min(len(dups), 10.0) / 10.0
+            return min(len(dups), 5.0) / 5.0
         else:
             self.master.log.debug("No overlapped stones found")
             return 0.0
@@ -238,7 +242,7 @@ class WatershedOkMetric(QualityMetric):
 class WipedOutMetric(QualityMetric):
     """Morphed image contains no objects"""
     def check(self, board):
-        def f(bw, bg):
+        def f(bw):
             # Get the image
             if board.results is None:
                 return 1.0
@@ -247,29 +251,26 @@ class WipedOutMetric(QualityMetric):
             if img is None or min(img.shape[:2]) == 0:
                 return 1.0
 
-            # Count number of pixels of bg color within the image
-            # It should be less than 75% of image
+            # Count number of pixels of pure white or black color within the image
+            # Since we're looking at thresholded image (and negative for white),
+            # in ideal case it will be mostly white with black areas for stones
+            # Coefficients below are approximated and could be changed
             u, c = np.unique(img, return_counts = True)
-            n = c[ u == bg ]
             nc = img.shape[0] * img.shape[1]
-            self.master.log.debug("{} out of {} pixels are of background color for {}".format(n, nc, bw))
+            nb = sum(c[ u == 0 ])
+            nw = sum(c[ u == 255 ])
+            self.master.log.debug(
+                "Stone color {}: {}% of morphed image is black, {}% is white".format(
+                bw, round(nb / nc * 100, 3), round(nw / nc * 100, 3)))
 
-            return 1.0 if n > nc * 0.75 else 0.0
+            return 1.0 if nb > nc * 0.50 or nw > nc * 0.95 else 0.0
 
-        return f('B', 0) and f('W', 255)
+        return 0.0 if f('B') + f('W') == 0.0 else 1.0
 
-class ExpectedCountMetric(QualityMetric):
-    """Expected number of stones found"""
+class ExpectedStonesMetric(QualityMetric):
+    """Expected stones at specified positions - TBD"""
     def check(self, board):
-        def f(stones, exp_v):
-            if exp_v is None or exp_v == 0:
-                return 0.0
-            else:
-                c = len(stones) if stones is not None else 0
-                return 0.0 if c == exp_v else 1.0
-
-        return f(board.black_stones, self.master.expected['B']) and \
-               f(board.white_stones, self.master.expected['W'])
+        pass
 
 # Quality checker class
 class BoardOptimizer(object):
@@ -282,19 +283,21 @@ class BoardOptimizer(object):
         self.board_log = GrLogger(level = logging.INFO)
 
         self.metrics = [
-            # Metric class, weight
-            (BoardSizeMetric, 0.5),
-            (NumberOfStonesMetric, 1),
-            (ProperPositionMetric, 1),
-            (NoDuplicatesMetric, 1),
-            (NormalRadiusMetric, 1),
-            (NoOverlapsMetric, 1),
-            (WatershedOkMetric, 0.5),
-            (WipedOutMetric, 1)
+            # Metric class, weight, groups were applicable
+            (BoardSizeMetric, 0.5, '.'),
+            (NumberOfStonesMetric, 1, 'BW'),
+            (ProperPositionMetric, 1, '.BW'),
+            (NoDuplicatesMetric, 1, 'BW'),
+            (NormalRadiusMetric, 1, 'BW'),
+            (NoOverlapsMetric, 1, 'BW'),
+            (WatershedOkMetric, 0.5, 'BW'),
+            (WipedOutMetric, 1, 'BW')
         ]
         self.debug = debug
         self.board = board
-        self.expected = {' ': 0, 'B': 0, 'W': 0}
+        self.expected = []  # TBD
+        self.last_q = None
+        self.last_res = None
 
     def quality(self, board = None):
         """Board quality check function"""
@@ -331,8 +334,8 @@ class BoardOptimizer(object):
         # Check every metric
         for mc in self.metrics:
             m = mc[0](self)
-            self.log.debug("Running metric {}".format(m.name))
             r[m.name]  = [m.check(self.board), mc[1]]
+            self.log.debug("{} check returns {}".format(m.name, r[m.name][0]))
 
         # Check for local extremums
         self.check_empty_board(r)
@@ -341,17 +344,22 @@ class BoardOptimizer(object):
         x = [x[0] for x in r.values()]
         w = [x[1] for x in r.values()]
         q = np.average(x, weights = w)
-        return q, r
+        self.last_q = (q, r)
+        return self.last_q
 
 
     def opt_space(self, groups):
-        """Generates optimization space for board params"""
+        """Generates optimization space for given groups for the board"""
         space = []
         for g in groups:
             gp = self.board.params.group_params(g)
             for p in gp:
                 if not p.no_opt:
-                    space.extend([Integer(p.min_v, p.max_v, name = p.key)])
+                    ##min_v = p.min_v
+                    ##max_v = p.max_v
+                    min_v = p.opt_minv if p.opt_minv is not None else p.min_v
+                    max_v = p.opt_maxv if p.opt_maxv is not None else p.max_v
+                    space.extend([Integer(min_v, max_v, name = p.key)])
         return space
 
     def check_empty_board(self, r):
@@ -361,21 +369,20 @@ class BoardOptimizer(object):
         # metrics could be validated as OK thus reporting a high quality - which is incorrect
         # But a board can also be near empty and in this case reporting is correct
         # To control this, we check number of stones and if there are only few of them,
-        # decrease weights of stone-related metrics
+        # decrease weights of stone-related metrics. Thus, parameters combinations
+        # which allows to detect more stones gets more preferred over this one
         cb = len(self.board.black_stones) if self.board.black_stones is not None else 0
         cw = len(self.board.white_stones) if self.board.white_stones is not None else 0
 
-        q_ns = r['NumberOfStonesMetric'][0]
-        if cb < 5 or cw < 5 and q_ns == 1.0:
-            # Suspicious, update weights of all other stone-checking metrics
-            self.log.info("Local extremum found, avoiding")
+        if cb < 5 or cw < 5:
+            self.log.info("Avoiding 'few stones' local extremum")
             r['ProperPositionMetric'][1] = 0.5
             r['NoDuplicatesMetric'][1] = 0.5
             r['NormalRadiusMetric'][1] = 0.5
             r['NoOverlapsMetric'][1] = 0.5
             r['WatershedOkMetric'][1] = 0.2
 
-    def optimize(self, groups = None, n_calls = 100, save = "success", callback = None):
+    def optimize(self, groups = None, max_pass = 100, save = "success", callback = None):
         """Optimization"""
         p_init = self.board.params.todict()
         self.log.debug("Initial parameters:")
@@ -392,11 +399,21 @@ class BoardOptimizer(object):
         # Enclosed objective function
         @use_named_args(space)
         def objective(**params):
+            # Estimate qualist
             self.npass += 1
+            self.log.info("Evaluating quality at pass #{}".format(self.npass))
             self.board.params = params
             q, p = self.quality()
-            self.log.info("Pass #{}: quality {}, {}".format(self.npass, q, p))
-            self.log.debug("Pass parameters:")
+
+            # If board params are not been optimized, save board size and edges
+            # to prevent them from detection next time
+##            if self.board.results is not None and 'LUM_EQ' not in params.keys():
+##                self.board.param_board_size = self.board.board_size
+##                self.board.param_board_edges = self.board.board_edges
+
+            # Logging
+            self.log.info("Pass #{} quality: {}, metrics: {}".format(self.npass, q, p))
+            self.log.debug("Parameters:")
             for k in params:
                 self.log.debug("\t{}: {}".format(k, params[k]))
             return q
@@ -406,24 +423,37 @@ class BoardOptimizer(object):
             if callback is None:
                 return False
             else:
-                return callback({"res": res, "npass": self.npass})
+                return callback({"res": res,
+                                "npass": self.npass,
+                                "max_pass": max_pass})
 
-        self.f_res = gbrt_minimize(objective, space, n_calls = n_calls,
-            n_jobs = -1, callback = callback_fun)
+        x0, y0 = None, None
+        if self.last_res is not None:
+            self.log.info("Reusing last optimization results as starting points")
+            x0 = self.last_res.x_iters
+            y0 = list(self.last_res.func_vals)
+
+        self.last_res = gbrt_minimize(objective,
+            space,
+            n_calls = max_pass,
+            n_jobs = -1,
+            x0 = x0,
+            y0 = y0,
+            callback = callback_fun)
 
         self.log.debug("Parameters after optimization")
-        for n, v in enumerate(self.f_res.x):
+        for n, v in enumerate(self.last_res.x):
             self.log.debug("\t{}: {}".format(space[n].name,v))
             self.board.params[space[n].name] = v
 
-        self.log.debug("Parameters changed")
+        self.log.debug("Parameter changes")
         p_res = self.board.params.todict()
         for k in p_init:
             if p_init[k] != p_res[k]:
                 self.log.debug("\t{}: {} ( was {})".format(k, p_res[k], p_init[k]))
 
         q_last = self.quality()
-        self.log.info("Resulting quality: {} (was {}), params: {}".format(q_last[0], q_init[0], q_last[1]))
+        self.log.info("Resulting quality: {} (was {}), metrics: {}".format(q_last[0], q_init[0], q_last[1]))
 
         if q_init <= q_last:
             if save == "always":

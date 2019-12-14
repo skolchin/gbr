@@ -192,13 +192,13 @@ class GbrOptionsDlg(GrDialog):
             text = "Detect", uimage = "detect_flat.png",
             command = self.detect_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
-        self.resetButton = NButton(f_bottom,
-            text = "Reset", uimage = "reset_flat.png", state = tk.DISABLED,
-            command = self.reset_click_callback)
-        self.resetButton.pack(side = tk.LEFT, padx = 5, pady = 5)
-
         tk.Button(f_bottom, text = "Defaults",
             command = self.default_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+
+        self.resetButton = NButton(f_bottom,
+            text = "Revert", uimage = "reset_flat.png", state = tk.DISABLED,
+            command = self.reset_click_callback)
+        self.resetButton.pack(side = tk.LEFT, padx = 5, pady = 5)
 
         self.log_button = tk.Button(f_bottom, text = "Log",
             state = tk.DISABLED if self.root.log.errors == 0 is None else tk.NORMAL,
@@ -328,7 +328,7 @@ class GbrOptionsDlg(GrDialog):
             self.progressVar.set(0)
 
         # Run
-        self.qc.optimize(groups = [1, 2], save = "never", n_calls = self.max_iter,
+        self.qc.optimize(groups = [1, 2], save = "never", max_pass = self.max_iter,
             callback = self.optimize_callback)
 
         # Clean up

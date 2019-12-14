@@ -65,45 +65,47 @@ GR_PARAMS = {
 
     # Black stones detection
     "STONES_THRESHOLD_B": {"v": 84, "min_v": 1, "max_v": 255, "g": "B",
-        "title": "Threshold", "n": 1},                                          # Threshold
+        "title": "Threshold", "n": 1, "opt_maxv": 150},                         # Threshold
     "HC_SENSITIVITY_B": {"v": 10, "min_v": 1, "max_v": 20, "g": "B",
-        "title": "Sensitivity", "n": 2},                                        # Sensistivity
+        "title": "Sensitivity", "n": 2, "opt_minv": 8, "opt_maxv": 14},         # Sensistivity
     "HC_MASK_B": {"v": 3, "min_v": 1, "max_v": 5, "g": "B",
-        "title": "Mask granularity", "n": 3},                                   # Mask
-    "BLUR_MASK_B": {"v": 0, "min_v": 0, "max_v": 5, "g": "B",
-        "title": "Blurring", "n": 4},                                           # Blurring
+        "title": "Mask granularity", "n": 3, "opt_maxv": 4},                    # Mask
+    "BLUR_MASK_B": {"v": 0, "min_v": 0, "max_v": 10, "g": "B",
+        "title": "Blurring", "n": 4, "opt_maxv": 4},                            # Blurring
     "STONES_DILATE_B": {"v": 1, "min_v": 0, "max_v": 5, "g": "B",
-        "title": "Dilation", "n": 5},                                           # Dilation
+        "title": "Dilation", "n": 5, "opt_maxv": 4},                            # Dilation
     "STONES_ERODE_B": {"v": 1, "min_v": 0, "max_v": 5, "g": "B",
-        "title": "Erosion", "n": 6},                                            # Erosion
+        "title": "Erosion", "n": 6, "opt_maxv": 4},                             # Erosion
     "WATERSHED_B": {"v": 85, "min_v": 0, "max_v": 255, "g": "B",
-        "title": "Watershed threshold", "n": 7},                                # Watershed
+        "title": "Watershed threshold", "n": 7, "opt_maxv": 150},               # Watershed
     "WS_MORPH_B": {"v": 0, "min_v": 0, "max_v": 5, "g": "B",
-        "title": "Watershed morphing", "n": 8},                                 # WS morphing
+        "title": "Watershed morphing", "n": 8, "opt_maxv": 3},                  # WS morphing
     "PYRAMID_B": {"v": 0, "min_v": 0, "max_v": 1, "g": "B",
         "title": "Pyramid filter", "n": 9, "no_opt" : True},                    # Image pyramid filter on/off
-    "STONES_MAXVAL_B": {"v": 255, "min_v": 0, "max_v": 255, "no_copy": True},   # MaxVal - cannot be changed
+    "STONES_MAXVAL_B": {"v": 255, "min_v": 0, "max_v": 255,
+        "no_copy": True, "no_opt": True},                                       # MaxVal - cannot be changed
 
     # White stones detection
     "STONES_THRESHOLD_W": {"v": 173, "min_v": 1, "max_v": 255, "g": "W",
-        "title": "Threshold", "n": 1},                                          # Threshold
+        "title": "Threshold", "n": 1, "opt_minv": 120},                         # Threshold
     "HC_SENSITIVITY_W": {"v": 10, "min_v": 1, "max_v": 20, "g": "W",
-        "title": "Sensitivity", "n": 2},                                        # Sensistivity
+        "title": "Sensitivity", "n": 2, "opt_minv": 8, "opt_maxv": 14},         # Sensistivity
     "HC_MASK_W": {"v": 3, "min_v": 1, "max_v": 5, "g": "W",
-        "title": "Mask granularity", "n": 3},                                   # Mask
-    "BLUR_MASK_W": {"v": 0, "min_v": 0, "max_v": 5, "g": "W",
-        "title": "Blurring", "n": 4},                                           # Blurring
+        "title": "Mask granularity", "n": 3, "opt_maxv": 4},                    # Mask
+    "BLUR_MASK_W": {"v": 0, "min_v": 0, "max_v": 10, "g": "W",
+        "title": "Blurring", "n": 4, "opt_maxv": 4},                            # Blurring
     "STONES_DILATE_W": {"v": 1, "min_v": 0, "max_v": 5, "g": "W",
-        "title": "Dilation", "n": 5},                                           # Dilation
+        "title": "Dilation", "n": 5, "opt_maxv": 4},                            # Dilation
     "STONES_ERODE_W": {"v": 0, "min_v": 0, "max_v": 5, "g": "W",
-        "title": "Erosion", "n": 6},                                            # Erosion
+        "title": "Erosion", "n": 6, "opt_maxv": 4},                             # Erosion
     "WATERSHED_W": {"v": 131, "min_v": 0, "max_v": 255,
         "g": "W", "title": "Watershed threshold", "n": 7},                      # Watershed
     "WS_MORPH_W": {"v": 0, "min_v": 0, "max_v": 5, "g": "W",
-        "title": "Watershed morphing", "n": 8},                                 # WS morphing
+        "title": "Watershed morphing", "n": 8, "opt_maxv": 3},                  # WS morphing
     "PYRAMID_W": {"v": 0, "min_v": 0, "max_v": 1, "g": "W",
         "title": "Pyramid filter", "n": 9, "no_opt": True},                     # Image pyramid filter on/off
-    "STONES_MAXVAL_W": {"v": 255, "min_v": 0, "max_v": 255, "no_copy": True},   # MaxVal - cannot be changed
+    "STONES_MAXVAL_W": {"v": 255, "min_v": 0, "max_v": 255,
+        "no_copy": True, "no_opt": True},                                       # MaxVal - cannot be changed
 
     # no_copy params
     'AREA_MASK': {"no_copy": True, "no_opt": True},
@@ -114,7 +116,8 @@ GR_PARAMS = {
 # Default parameter value
 # Should always contain all parameter fields
 GR_PARAMS_DEF = {"v": None, "min_v": None, "max_v": None,
-        "g": None, "t": None, "n": None, "no_copy": False, "no_opt": False}
+        "g": None, "t": None, "n": None, "no_copy": False, "no_opt": False,
+        "opt_minv": None, "opt_maxv": None}
 
 # GrParam class
 class GrParam(object):

@@ -12,8 +12,6 @@ from skopt.plots import plot_evaluations, plot_convergence
 from pathlib import Path
 from matplotlib import pyplot as plt
 
-np.random.seed(123)
-
 plt.set_cmap("viridis")
 
 ##
@@ -46,8 +44,12 @@ plt.set_cmap("viridis")
 ##    main()
 ##    cv2.destroyAllWindows()
 
-qc = BoardOptimizer(board = GrBoard(), debug = False, echo = True)
+qc = BoardOptimizer(board = GrBoard(), debug = True, echo = False)
 qc.board.load_image("./img/go_board_2.png", f_process = False)
-qc.optimize(groups = [1, 2], save = "always")
+#print(qc.quality())
 
+qc.log.logger.addHandler(logging.FileHandler("./opt.log","w"))
+p_init, p_last = qc.optimize(groups = [1, 2], save = "always", max_pass = 100)
+
+#p_init, p_last = qc.optimize(groups = [1, 2], save = "never", max_pass = 10)
 
