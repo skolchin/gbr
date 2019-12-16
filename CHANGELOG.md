@@ -1,6 +1,11 @@
 
 ## Changelog
 
+12/12/2019
+
+* New option: automatic selection of recognition parameters available in Options dialog
+
+
 04/12/2019
 
 New user-friendly UI created (gbr2.py). Primary features:
