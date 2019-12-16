@@ -14,6 +14,7 @@ from .utils import *
 from .cv2_watershed import apply_watershed
 #from .py_accumulate import accumulate  # uncomment for Python 2.7
 from itertools import accumulate
+from copy import deepcopy
 
 import cv2
 import numpy as np
@@ -438,7 +439,7 @@ def get_board_from_params(img, params, res):
     if params.get('BOARD_EDGES') is None:
        raise Exception('Board edges not set')
 
-    edges = params['BOARD_EDGES'].copy()
+    edges = deepcopy(params['BOARD_EDGES'])
     res[GR_EDGES] = edges
     logging.info("Predefined board edges: {}".format(edges))
 
