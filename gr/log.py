@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------------------
 # Name:        Go board recognition project
-# Purpose:     Log display modal window
+# Purpose:     Log display modal window and GrLog supporting class
 #
 # Author:      kol
 #
@@ -13,6 +13,8 @@ from .ui_extra import GrDialog
 import logging
 import tkinter as tk
 from io import StringIO
+from time import clock
+from functools import reduce
 
 class GrLogDlg(GrDialog):
     """Log display dialog"""
@@ -92,7 +94,7 @@ class GrLogger(object):
                 self.last_error = record.getMessage()
             return f
 
-    def __init__(self, master = None, name = None, level = logging.INFO, echo = False):
+    def __init__(self, master = None, name = None, level = logging.INFO, echo = False, ts = False):
         """Initialize logger
 
         Parameters:
@@ -103,19 +105,23 @@ class GrLogger(object):
                         are initialized with the same name, loging level will be
                         set by last instance
             echo        If True, all output will also be printed to stderr
+            ts          if True, a timestamp will be added to each log line
         """
         self.master = master
         self.__logger = logging.getLogger(name)
         self.__log_stream = StringIO()
         self.__log_filter = self.GrLogFilter()
         self.__log_dlg = None
+        self.t = 0
 
         self.__logger.setLevel(level)
         self.__logger.addFilter(self.__log_filter)
         self.__logger.propagate = False
 
         handler = logging.StreamHandler(self.__log_stream)
-        formatter = logging.Formatter(fmt = '%(levelname)s: %(message)s')
+        formatter = logging.Formatter(
+            fmt = '%(levelname)s: %(message)s' if not ts
+            else '%(asctime)s %(levelname)s: %(message)s')
         handler.setFormatter(formatter)
         self.__logger.addHandler(handler)
 
@@ -179,4 +185,17 @@ class GrLogger(object):
     def warning(self, *args, **kwargs):
         """Sends a warning message to current logger"""
         self.__logger.warning(*args, **kwargs)
+
+
+    def start(self):
+        """Saves time of some code execution start"""
+        self.t = clock()
+        return self.t
+
+    def stop(self):
+        """Returns execution time"""
+        # Taken from https://stackoverflow.com/questions/1557571/how-do-i-get-time-of-a-python-programs-execution
+        self.t = clock() - self.t
+        return "%d:%02d:%02d.%03d" % \
+            reduce(lambda v,b : divmod(v[0],b) + v[1:], [(self.t*1000,),1000,60,60])
 
