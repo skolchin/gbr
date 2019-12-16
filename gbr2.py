@@ -29,6 +29,7 @@ from tkinter import filedialog
 from tkinter import ttk
 from tkinter import messagebox
 
+
 # Debug info dialog class
 class GbrDebugDlg(GrDialog):
     def __init__(self, *args, **kwargs):

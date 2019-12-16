@@ -19,9 +19,14 @@ import numpy as np
 from itertools import combinations
 import logging
 
-from skopt.space.space import Real, Integer
-from skopt import gp_minimize, gbrt_minimize, forest_minimize
-from skopt.utils import use_named_args
+import warnings
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=FutureWarning)
+
+    from skopt.space.space import Real, Integer
+    from skopt import gp_minimize, gbrt_minimize, forest_minimize
+    from skopt.utils import use_named_args
+
 
 # Recognition quality metrics
 #
@@ -92,6 +97,10 @@ class NumberOfStonesMetric(QualityMetric):
         if cb == 0 or cw == 0 or cb > 100 or cw > 100:
             return 1.0
         else:
+            if cb <= 3:
+                self.master.log.debug("Black stones: {}".format(board.black_stones))
+            if cw <= 3:
+                self.master.log.debug("White stones: {}".format(board.white_stones))
             d = max(abs(int(cb) - int(cw)) - 2, 0)
             return min(d, 5.0) / 5.0
 
@@ -384,11 +393,21 @@ class BoardOptimizer(object):
 
     def optimize(self, groups = None, max_pass = 100, save = "success", callback = None):
         """Optimization"""
+
+        # Initialize
+        self.log.info("Optimization run for {}".format(self.board.image_file))
+        self.log.start()
+
+        # Pyramid filters has to be turned off as they are extra heavy
+        self.board.params['PYRAMID_B'] = 0
+        self.board.params['PYRAMID_W'] = 0
+
         p_init = self.board.params.todict()
         self.log.debug("Initial parameters:")
         for k in p_init:
             self.log.debug("\t{}: {}".format(k, p_init[k]))
 
+        # Get quality on start
         q_init = self.quality()
         self.log.info("Initial quality: {}".format(q_init[0]))
         self.npass = 0
@@ -401,15 +420,19 @@ class BoardOptimizer(object):
         def objective(**params):
             # Estimate qualist
             self.npass += 1
-            self.log.info("Evaluating quality at pass #{}".format(self.npass))
+            self.log.info("== Pass #{}".format(self.npass))
+            self.board_log.info("== Pass #{}".format(self.npass))
             self.board.params = params
             q, p = self.quality()
 
             # If board params are not been optimized, save board size and edges
             # to prevent them from detection next time
-##            if self.board.results is not None and 'LUM_EQ' not in params.keys():
-##                self.board.param_board_size = self.board.board_size
-##                self.board.param_board_edges = self.board.board_edges
+            if self.board.results is not None and 'LUM_EQ' not in params.keys() \
+                and self.board.param_board_edges is None:
+                self.board.param_board_size = self.board.board_size
+                self.board.param_board_edges = self.board.board_edges
+                self.log.debug("Saving calculated board size {} and edges {}".format(
+                    self.board.param_board_size, self.board.param_board_edges))
 
             # Logging
             self.log.info("Pass #{} quality: {}, metrics: {}".format(self.npass, q, p))
@@ -433,7 +456,7 @@ class BoardOptimizer(object):
             x0 = self.last_res.x_iters
             y0 = list(self.last_res.func_vals)
 
-        self.last_res = gbrt_minimize(objective,
+        self.last_res = forest_minimize(objective,
             space,
             n_calls = max_pass,
             n_jobs = -1,
@@ -441,13 +464,16 @@ class BoardOptimizer(object):
             y0 = y0,
             callback = callback_fun)
 
-        self.log.debug("Parameters after optimization")
+        self.log.info("Optimization took {} seconds".format(self.log.stop()))
         for n, v in enumerate(self.last_res.x):
-            self.log.debug("\t{}: {}".format(space[n].name,v))
             self.board.params[space[n].name] = v
 
-        self.log.debug("Parameter changes")
+        self.log.debug("Parameters after optimization")
         p_res = self.board.params.todict()
+        for k in p_res:
+            self.log.debug("\t{}: {}".format(k, p_res[k]))
+
+        self.log.debug("Parameter changes")
         for k in p_init:
             if p_init[k] != p_res[k]:
                 self.log.debug("\t{}: {} ( was {})".format(k, p_res[k], p_init[k]))

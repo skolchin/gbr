@@ -30,7 +30,7 @@ plt.set_cmap("viridis")
 ## print(gp_res.x)
 
 ## gbrt_res = gbrt_minimize(f, [(-2.0, 2.0)])
-## print(gbrt_res.x)
+## print(gbrt_res.x)O
 
 ## f_res = forest_minimize(f, [Real(-2.0, 2.0, name='x0'), Real(-2.0, 2.0, name='x1')])
 ## print(f_res.x)
@@ -45,11 +45,11 @@ plt.set_cmap("viridis")
 ##    cv2.destroyAllWindows()
 
 qc = BoardOptimizer(board = GrBoard(), debug = True, echo = False)
-qc.board.load_image("./img/go_board_2.png", f_process = False)
+qc.board.load_image("./img/go_board_47.jpg", f_process = False)
+
 #print(qc.quality())
 
 qc.log.logger.addHandler(logging.FileHandler("./opt.log","w"))
+qc.board_log.logger.addHandler(logging.FileHandler("./board.log","w"))
 p_init, p_last = qc.optimize(groups = [1, 2], save = "always", max_pass = 100)
-
-#p_init, p_last = qc.optimize(groups = [1, 2], save = "never", max_pass = 10)
 
