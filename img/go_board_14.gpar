@@ -3,7 +3,7 @@
     "BLUR_MASK_B": 2,
     "BLUR_MASK_W": 2,
     "BOARD_EDGES": null,
-    "BOARD_SIZE": null,
+    "BOARD_SIZE": 9,
     "CANNY_APERTURE": 3,
     "CANNY_MAXVAL": 100,
     "CANNY_MINVAL": 50,
