@@ -45,11 +45,25 @@ plt.set_cmap("viridis")
 ##    cv2.destroyAllWindows()
 
 qc = BoardOptimizer(board = GrBoard(), debug = True, echo = False)
-qc.board.load_image("./img/go_board_47.jpg", f_process = False)
-
+qc.board.load_image("./img/go_board_17.png", f_process = False)
 #print(qc.quality())
 
-qc.log.logger.addHandler(logging.FileHandler("./opt.log","w"))
+qc.log.logger.addHandler(logging.FileHandler("./opt.log", "w"))
 qc.board_log.logger.addHandler(logging.FileHandler("./board.log","w"))
-p_init, p_last = qc.optimize(groups = [1, 2], save = "always", max_pass = 100)
 
+qc.optimize(groups = [1, 2], save = "never", max_pass = 100)
+
+##
+####for n in range(3):
+####    q_init, q_last = qc.optimize(groups = [1, 2], save = "never", max_pass = 100)
+####    print("Quality after pass {} is {}".format(n, q_last[0]))
+##
+##
+
+##for x in Path.cwd().glob("./img/*.png"):
+##    if x.is_file:
+##        print("File {}".format(str(x)))
+##        qc = BoardOptimizer(board = GrBoard(), debug = True, echo = False)
+##        qc.board.load_image(str(x), f_process = False)
+##        qc.log.logger.addHandler(logging.FileHandler("./opt.log"))
+##        qc.optimize(groups = [1, 2], save = "always", max_pass = 100)

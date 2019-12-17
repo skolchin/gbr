@@ -277,9 +277,23 @@ class WipedOutMetric(QualityMetric):
         return 0.0 if f('B') + f('W') == 0.0 else 1.0
 
 class ExpectedStonesMetric(QualityMetric):
-    """Expected stones at specified positions - TBD"""
+    """Expecting stones at specified positions"""
     def check(self, board):
-        pass
+        if self.master.expected is None:
+            return 0.0
+        found = []
+        for v in self.master.expected:
+            dbg_msg = "Expecting stone at {}, {} of color {}".format(
+                v[0], v[1], v[3])
+            stone, bw = self.master.board.find_stone(p = (v[0], v[1]))
+            if stone is None:
+                dbg_msg += ": not found"
+            else:
+                dbg_msg += ": found color {}".format(bw)
+                if bw == v[3]:
+                    found.extend([v])
+            self.master.log.debug(dbg_msg)
+        return 1.0 if len(found) < len(self.master.expected) else 0.0
 
 # Quality checker class
 class BoardOptimizer(object):
@@ -301,6 +315,7 @@ class BoardOptimizer(object):
             (NoOverlapsMetric, 1, 'BW'),
             (WatershedOkMetric, 0.5, 'BW'),
             (WipedOutMetric, 1, 'BW')
+            #(ExpectedStonesMetric, 10, 'BW')
         ]
         self.debug = debug
         self.board = board
@@ -326,14 +341,15 @@ class BoardOptimizer(object):
         if self.board.is_gen_board:
             raise ValueError("Board not loaded")
 
+        # Process board
         # Add extra parameter signaling of quality check been run
+        r = {}
+        self.board_log.clear()
         self.board.params.add('QUALITY_CHECK',
             GrParam('QUALITY_CHECK', {"v": 1, "no_copy": True, "no_opt": True}))
-
-        # Process board
-        self.board_log.clear()
-        r = {}
         self.board.process()
+        del self.board.params['QUALITY_CHECK']
+
         if self.board_log.errors > 0:
             # Any errors during processing means quality is lowest possible
             self.log.error("Error in board processing {}".format(self.board_log.last_error))
@@ -354,6 +370,7 @@ class BoardOptimizer(object):
         w = [x[1] for x in r.values()]
         q = np.average(x, weights = w)
         self.last_q = (q, r)
+
         return self.last_q
 
 
@@ -378,24 +395,28 @@ class BoardOptimizer(object):
         # metrics could be validated as OK thus reporting a high quality - which is incorrect
         # But a board can also be near empty and in this case reporting is correct
         # To control this, we check number of stones and if there are only few of them,
-        # decrease weights of stone-related metrics. Thus, parameters combinations
-        # which allows to detect more stones gets more preferred over this one
+        # slightly decrease quality estimation thus giving other parameter combinations
+        # an advantage
         cb = len(self.board.black_stones) if self.board.black_stones is not None else 0
         cw = len(self.board.white_stones) if self.board.white_stones is not None else 0
 
         if cb < 5 or cw < 5:
-            self.log.info("Avoiding 'few stones' local extremum")
-            r['ProperPositionMetric'][1] = 0.5
-            r['NoDuplicatesMetric'][1] = 0.5
-            r['NormalRadiusMetric'][1] = 0.5
-            r['NoOverlapsMetric'][1] = 0.5
-            r['WatershedOkMetric'][1] = 0.2
+            self.log.info("Avoiding 'empty board' local extremum")
+
+            for k in ['NumberOfStonesMetric', 'ProperPositionMetric',
+                      'NoDuplicatesMetric', 'NormalRadiusMetric',
+                      'NoOverlapsMetric', 'WatershedOkMetric']:
+                if r[k][0] == 0.0:
+                    r[k][0] += 0.03
+                elif r[k][0] < 0.9:
+                    r[k][0] += 0.01
+
 
     def optimize(self, groups = None, max_pass = 100, save = "success", callback = None):
         """Optimization"""
 
         # Initialize
-        self.log.info("Optimization run for {}".format(self.board.image_file))
+        self.log.info("Running parameters optimization for {}".format(self.board.image_file))
         self.log.start()
 
         # Pyramid filters has to be turned off as they are extra heavy
@@ -435,7 +456,10 @@ class BoardOptimizer(object):
                     self.board.param_board_size, self.board.param_board_edges))
 
             # Logging
-            self.log.info("Pass #{} quality: {}, metrics: {}".format(self.npass, q, p))
+            self.log.info("Pass #{} quality: {}".format(self.npass, q))
+            self.log.debug("Metrics:")
+            for k in p:
+                self.log.debug("\t{}: {}".format(k, p[k]))
             self.log.debug("Parameters:")
             for k in params:
                 self.log.debug("\t{}: {}".format(k, params[k]))
@@ -464,7 +488,6 @@ class BoardOptimizer(object):
             y0 = y0,
             callback = callback_fun)
 
-        self.log.info("Optimization took {} seconds".format(self.log.stop()))
         for n, v in enumerate(self.last_res.x):
             self.board.params[space[n].name] = v
 
@@ -479,13 +502,17 @@ class BoardOptimizer(object):
                 self.log.debug("\t{}: {} ( was {})".format(k, p_res[k], p_init[k]))
 
         q_last = self.quality()
-        self.log.info("Resulting quality: {} (was {}), metrics: {}".format(q_last[0], q_init[0], q_last[1]))
+        self.log.info("Resulting quality: {} (was {})".format(q_last[0], q_init[0]))
+        self.log.debug("Resulting quality metrics:")
+        for k in q_last[1]:
+            self.log.debug("\t{}: {}".format(k, q_last[1][k]))
 
-        if q_init <= q_last:
+        if q_init[0] <= q_last[0]:
             if save == "always":
                 self.log.info("Parameters file {} updated".format(self.board.save_params()))
         else:
             if save == "success" or save == "always":
                 self.log.info("Parameters file {} updated".format(self.board.save_params()))
 
+        self.log.info("Optimization run took {} seconds".format(self.log.stop()))
         return q_init, q_last
