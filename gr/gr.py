@@ -300,7 +300,7 @@ def find_board(img, params, res):
         return np.array(ret)
 
     def unique_lines(a, delta = 10):
-        """Return lines with are far from each other on more than a given distance"""
+        """Return lines with are far from each other by more than a given distance"""
         if a is None: return None
 
         v = accumulate(a, lambda x,y: x if abs(y[0][0] - x[0][0]) < delta else y)
@@ -458,7 +458,8 @@ def get_board_from_params(img, params, res):
     # image passed in has already been clipped, so edges have to be offset-ed
     area = params.get('AREA_MASK')
     if area is not None:
-        edges = offset_edges(edges, [-1 * area[0][0], -1 * area[0][1]])
+        area = np.array(area).flatten().tolist()
+        edges = offset_edges(edges, [-1 * area[0], -1 * area[1]])
 
     # Spacing
     space_x, space_y = board_spacing(edges, size)
@@ -488,40 +489,38 @@ def convert_xy(coord, res):
     if coord is None or not GR_EDGES in res:
         return None
 
-     # Make up an empty array
-    stones = np.zeros((len(coord), 2), dtype = np.uint16)
-
     # Get edges and spacing
     edges = res[GR_EDGES]
     size = res[GR_BOARD_SIZE]
     space_x, space_y = res[GR_SPACING]
 
-    # Loop through, converting board coordinates to integer positions
-    # Radius is stored in dictiotary to retrieve later. This is kinda dumb way but I cannot find other one
-    rd = dict()
-    for i in range(len(coord)):
-        x = coord[i,0] - edges[0][0] if coord[i,0] >= edges[0][0] else 0
-        y = coord[i,1] - edges[0][1] if coord[i,1] >= edges[0][1] else 0
+    # Loop through converting board coordinates to stone positions
+    # Positions start at 1 and have to be within board's edges
+    stones = []
+    for c in coord:
+        x = int(round(c[0],0))
+        y = int(round(c[1],0))
+        r = int(round(c[2], 0))
 
-        stones[i,0] = int(round(x / space_x, 0)) + 1
-        stones[i,1] = int(round(y / space_y, 0)) + 1
-        rd[str(stones[i,0]) + "_" + str(stones[i,1])] = coord[i]
+        a = int(round((c[0] - edges[0][0]) / space_x, 0)) + 1
+        b = size - int(round((c[1] - edges[0][1]) / space_y, 0))
+
+        if a <= 0 or a > size or b <= 0 or b > size:
+            logging.error("A stone at ({}, {}) is outside the board space".format(a, b))
+        else:
+            stones.extend([[x, y, a, b, r]])
+
+    if len(stones) == 0:
+        return None
 
     # Remove duplicates
-    stones_u = unique_rows(stones)
+    # In case when several stones are at the same place, maximum radius is taken
+    s = np.array(sorted(stones, key = lambda x: [x[2], x[3]]))
+    u, c = np.unique(np.take(s, [2, 3], axis = 1), axis = 0, return_counts = True)
+    g = np.split(s, np.cumsum(c)[:-1])
+    stones_u = np.array([np.max(x, axis = 0) for x in g])
 
-    # Calculate coordinates for stones left in the list
-    stones = np.zeros((len(stones_u), 5), dtype = np.uint16)
-
-    for i in range(len(stones_u)):
-        old_coord = rd[str(stones_u[i,0]) + "_" + str(stones_u[i,1])]
-        stones[i,GR_X] = old_coord[0]
-        stones[i,GR_Y] = old_coord[1]
-        stones[i,GR_A] = stones_u[i, 0]
-        stones[i,GR_B] = size - stones_u[i, 1] + 1 if stones_u[i, 1] <= size else 0
-        stones[i,GR_R] = old_coord[2]
-
-    return stones
+    return stones_u
 
 # Find a stone for given image coordinates
 # Takes X and Y in image coordinates and a list of stones created by convert_xy
