@@ -254,12 +254,17 @@ class GbrOptionsDlg(GrDialog):
     def default_click_callback(self):
         """Default button click callback"""
         self.root.board.params.reset()
+        self.update_switches()
+
         self.board_size_disabled.set(1)
         self.board_size_label.config(state = tk.DISABLED)
         self.board_size_scale.config(state = tk.DISABLED)
 
         self.root.board.save_params()
         self.update_controls()
+
+        self.root.boardArea.mask = None
+        self.root.boardGrid.mask = None
 
     def log_click_callback(self):
         """Log button click callback"""
@@ -336,9 +341,7 @@ class GbrOptionsDlg(GrDialog):
         with self.lock:
             if not self.optimize_cancel:
                 self.root.board.params = self.qc.board.params
-                for k in self.qc.board.params:
-                    if k in self.tkVars:
-                        self.tkVars[k].set(self.qc.board.params[k])
+                self.update_switches()
 
             self.optimizeButton.configure(text = "Auto-detect")
             self.progressLabel.set("Finished")
@@ -361,9 +364,7 @@ class GbrOptionsDlg(GrDialog):
         """Reset params button click"""
         if self.last_params is not None:
             self.root.board.params = self.last_params
-            for k in self.last_params:
-                if k in self.tkVars:
-                    self.tkVars[k].set(self.last_params[k])
+            self.update_switches()
 
             self.last_params = None
             self.resetButton.configure(state = tk.DISABLED)
@@ -436,6 +437,12 @@ class GbrOptionsDlg(GrDialog):
 
         return vars
 
+    def update_switches(self):
+        """Update controls by changed board parameter values"""
+        for k in self.root.board.params:
+            if k in self.tkVars:
+                self.tkVars[k].set(self.root.board.params[k])
+
     def add_optimization(self):
         # Add "optimization" tab to notebook
         nbFrame = tk.Frame(self.nb, width = 400)
@@ -506,7 +513,6 @@ class GbrOptionsDlg(GrDialog):
         for w in self.root.toolbarPanel.winfo_children():
             if isinstance(w, ImgButton):
                 w.configure(state = state)
-
 
 # Stones dialog class
 class GbrStonesDlg(GrDialog):
