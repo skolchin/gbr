@@ -885,7 +885,7 @@ class ImageMask(object):
     def mask(self, m):
         """Mask as it is displayed on canvas"""
         self.hide()
-        self.__mask = list(m)
+        self.__mask = list(m) if m is not None else None
 
     @property
     def scaled_mask(self):
