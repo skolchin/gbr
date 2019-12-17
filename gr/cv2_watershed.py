@@ -60,7 +60,7 @@ def apply_watershed(gray, stones, n_thresh, f_bw, n_morph = 0, f_debug = False):
         x = int(stones[i,0])
         y = int(stones[i,1])
 
-        if thresh[y,x] > 0:
+        if x >= 0 and y >= 0 and x < thresh.shape[1] and y < thresh.shape[0] and thresh[y,x] > 0:
            #cv2.circle(peaks, (x,y), 1, (i+1), -1)
            peaks[y,x] = (i+1)
         else:
