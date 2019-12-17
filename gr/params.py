@@ -195,13 +195,17 @@ class GrParams(object):
         yield from self.__params
 
     def __getitem__(self, key):
-        """Brackets getter"""
+        """Getter"""
         return self.__params[key].v
 
     def __setitem__(self, key, value):
-        """Brackets setter"""
+        """Setter"""
         if not key in self.__params: raise KeyError("Key '" + key + "' not found")
         self.__params[key].v = value
+
+    def __delitem__(self, key):
+        """Deleter"""
+        del self.__params[key]
 
     def __contains__(self, item):
         """in operation support"""
