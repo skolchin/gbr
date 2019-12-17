@@ -41,7 +41,6 @@
     "LUM_EQ": 0,
     "PYRAMID_B": 0,
     "PYRAMID_W": 0,
-    "QUALITY_CHECK": 1,
     "STONES_DILATE_B": 4,
     "STONES_DILATE_W": 3,
     "STONES_ERODE_B": 3,
