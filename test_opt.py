@@ -51,7 +51,8 @@ qc.board.load_image("./img/go_board_17.png", f_process = False)
 qc.log.logger.addHandler(logging.FileHandler("./opt.log", "w"))
 qc.board_log.logger.addHandler(logging.FileHandler("./board.log","w"))
 
-qc.optimize(groups = [1, 2], save = "never", max_pass = 100)
+qc.optimize(groups = [1, 2], max_pass = 100)
+qc.board.save_params()
 
 ##
 ####for n in range(3):
