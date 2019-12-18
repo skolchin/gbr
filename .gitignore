@@ -113,4 +113,3 @@ t.py
 *.caffemodel
 /out/*
 /gbr_ds/*
-train.bat
