@@ -345,10 +345,11 @@ class GbrOptionsDlg(GrDialog):
                 self.update_switches()
 
             self.optimizeButton.configure(text = "Auto-detect")
-            self.progressLabel.set("Comleted {}".format("successfully"
+            self.progressLabel.set("Completed {}".format("successfully"
                 if success else "unsuccessfully"))
             self.set_controls_state(tk.ACTIVE)
             self.qc_thread = None
+            self.qc.res = None  # to free up memory
 
     def optimize_callback(self, params):
         """Optimize callback"""
@@ -581,7 +582,7 @@ class GbrStonesDlg(GrDialog):
 
     def save_click_callback(self):
         """Save button click callback"""
-        self.root.save_sgf_callback(None, "save", True)
+        self.root.save_sgf_callback(self)
 
     def select_callback(self, event):
         """List box selection chang callback"""

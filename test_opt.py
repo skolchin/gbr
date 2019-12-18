@@ -45,7 +45,7 @@ plt.set_cmap("viridis")
 ##    cv2.destroyAllWindows()
 
 qc = BoardOptimizer(board = GrBoard(), debug = True, echo = False)
-qc.board.load_image("./img/go_board_17.png", f_process = False)
+qc.board.load_image("./img/go_board_28.png", f_process = False)
 #print(qc.quality())
 
 qc.log.logger.addHandler(logging.FileHandler("./opt.log", "w"))
