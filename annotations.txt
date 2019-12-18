@@ -1,0 +1,2 @@
+/users/kol/Documents/kol/gbr/img\go_board_1.png 2 392 369 24 23 276 369 26 25
+/users/kol/Documents/kol/gbr/img\go_board_10.png 0
