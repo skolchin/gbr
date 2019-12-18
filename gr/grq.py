@@ -320,11 +320,16 @@ class BoardOptimizer(object):
         self.debug = debug
         self.board = board
         self.expected = []  # TBD
-        self.last_q = None
-        self.last_res = None
+        self.q_init = None
+        self.q_opt = None
+        self.res = None
+        self.success = False
 
     def quality(self, board = None):
-        """Board quality check function"""
+        """Board recognition quality check function.
+        Returns a quality of board image recogition with current parameters.
+        A auality is a floating point between 0 (best) and 1 (worst)
+        """
 
         # Load board
         if board is not None:
@@ -375,7 +380,7 @@ class BoardOptimizer(object):
 
 
     def opt_space(self, groups):
-        """Generates optimization space for given groups for the board"""
+        """Internal - generates optimization space for given groups for the board"""
         space = []
         for g in groups:
             gp = self.board.params.group_params(g)
@@ -389,7 +394,7 @@ class BoardOptimizer(object):
         return space
 
     def check_empty_board(self, r):
-        """Empty board extremum check"""
+        """Internal - empty board extremum check"""
 
         # If a few stones detected on board due to invalid settings, other
         # metrics could be validated as OK thus reporting a high quality - which is incorrect
@@ -412,8 +417,11 @@ class BoardOptimizer(object):
                     r[k][0] += 0.01
 
 
-    def optimize(self, groups = None, max_pass = 100, save = "success", callback = None):
-        """Optimization"""
+    def optimize(self, groups = None, max_pass = 100, callback = None):
+        """Optimize board recogiton parameters.
+        A function runs max_pass iterations of forest regression trying
+        to find parameters combination which gives the best quality of
+        recognition."""
 
         # Initialize
         self.log.info("Running parameters optimization for {}".format(self.board.image_file))
@@ -429,8 +437,8 @@ class BoardOptimizer(object):
             self.log.debug("\t{}: {}".format(k, p_init[k]))
 
         # Get quality on start
-        q_init = self.quality()
-        self.log.info("Initial quality: {}".format(q_init[0]))
+        self.q_init = self.quality()
+        self.log.info("Initial quality: {}".format(self.q_init[0]))
         self.npass = 0
 
         g = groups if groups is not None else self.board.params.groups
@@ -475,12 +483,12 @@ class BoardOptimizer(object):
                                 "max_pass": max_pass})
 
         x0, y0 = None, None
-        if self.last_res is not None:
+        if self.res is not None:
             self.log.info("Reusing last optimization results as starting points")
-            x0 = self.last_res.x_iters
-            y0 = list(self.last_res.func_vals)
+            x0 = self.res.x_iters
+            y0 = list(self.res.func_vals)
 
-        self.last_res = forest_minimize(objective,
+        self.res = forest_minimize(objective,
             space,
             n_calls = max_pass,
             n_jobs = -1,
@@ -488,7 +496,7 @@ class BoardOptimizer(object):
             y0 = y0,
             callback = callback_fun)
 
-        for n, v in enumerate(self.last_res.x):
+        for n, v in enumerate(self.res.x):
             self.board.params[space[n].name] = v
 
         self.log.debug("Parameters after optimization")
@@ -501,18 +509,14 @@ class BoardOptimizer(object):
             if p_init[k] != p_res[k]:
                 self.log.debug("\t{}: {} ( was {})".format(k, p_res[k], p_init[k]))
 
-        q_last = self.quality()
-        self.log.info("Resulting quality: {} (was {})".format(q_last[0], q_init[0]))
+        self.q_opt = self.quality()
+        self.log.info("Resulting quality: {} (was {})".format(self.q_opt[0], self.q_init[0]))
         self.log.debug("Resulting quality metrics:")
-        for k in q_last[1]:
-            self.log.debug("\t{}: {}".format(k, q_last[1][k]))
+        for k in self.q_opt[1]:
+            self.log.debug("\t{}: {}".format(k, self.q_opt[1][k]))
 
-        if q_init[0] <= q_last[0]:
-            if save == "always":
-                self.log.info("Parameters file {} updated".format(self.board.save_params()))
-        else:
-            if save == "success" or save == "always":
-                self.log.info("Parameters file {} updated".format(self.board.save_params()))
-
+        self.success = self.q_opt[0] < self.q_init[0]
+        self.log.info("Optimization is {}".format("successfull" if self.success else "unsuccessfull"))
         self.log.info("Optimization run took {} seconds".format(self.log.stop()))
-        return q_init, q_last
+
+        return self.success

@@ -334,17 +334,19 @@ class GbrOptionsDlg(GrDialog):
             self.progressVar.set(0)
 
         # Run
-        self.qc.optimize(groups = [1, 2], save = "never", max_pass = self.max_iter,
+        success = self.qc.optimize(groups = [1, 2],
+            max_pass = self.max_iter,
             callback = self.optimize_callback)
 
         # Clean up
         with self.lock:
-            if not self.optimize_cancel:
+            if not self.optimize_cancel and success:
                 self.root.board.params = self.qc.board.params
                 self.update_switches()
 
             self.optimizeButton.configure(text = "Auto-detect")
-            self.progressLabel.set("Finished")
+            self.progressLabel.set("Comleted {}".format("successfully"
+                if success else "unsuccessfully"))
             self.set_controls_state(tk.ACTIVE)
             self.qc_thread = None
 
