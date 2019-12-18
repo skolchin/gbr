@@ -840,7 +840,7 @@ class GbrGUI2(tk.Tk):
             x, y = self.imagePanel.frame2image((event.x, event.y))
             stone, bw = self.board.find_stone(c = (x, y))
             if not stone is None:
-                self.show_stone(stone, bw)
+                self.show_stone(stone, bw, (x, y))
             else:
                 self.statusBar.set("")
 
@@ -938,17 +938,20 @@ class GbrGUI2(tk.Tk):
             self.board.save_sgf(fn)
             self.statusBar.set_file("Board saved to ", str(fn))
 
-    def show_stone(self, stone, bw):
+    def show_stone(self, stone, bw, p = None):
         """Highlight one stone"""
         self.imageMarker.clear()
         if stone is None:
             return
 
-        self.imageMarker.add_stone(stone, bw)
-        self.statusBar.set("{} {}".format(
-            "Black" if bw == "B" else "White",
-            format_stone_pos(stone)))
+        msg = "{} {}".format("Black" if bw == "B" else "White",
+            format_stone_pos(stone))
+        if p is not None:
+            msg += " at ({}, {})".format(p[0], p[1])
+
+        self.statusBar.set(msg)
         self.last_stone = stone
+        self.imageMarker.add_stone(stone, bw)
 
     def show_all_stones(self):
         """Highlight all stones"""

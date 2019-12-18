@@ -44,15 +44,15 @@ plt.set_cmap("viridis")
 ##    main()
 ##    cv2.destroyAllWindows()
 
-qc = BoardOptimizer(board = GrBoard(), debug = True, echo = False)
-qc.board.load_image("./img/go_board_28.png", f_process = False)
-#print(qc.quality())
-
-qc.log.logger.addHandler(logging.FileHandler("./opt.log", "w"))
-qc.board_log.logger.addHandler(logging.FileHandler("./board.log","w"))
-
-qc.optimize(groups = [1, 2], max_pass = 100)
-qc.board.save_params()
+##qc = BoardOptimizer(board = GrBoard(), debug = True, echo = False)
+##qc.board.load_image("./img/go_board_28.png", f_process = False)
+###print(qc.quality())
+##
+##qc.log.logger.addHandler(logging.FileHandler("./opt.log", "w"))
+##qc.board_log.logger.addHandler(logging.FileHandler("./board.log","w"))
+##
+##qc.optimize(groups = [1, 2], max_pass = 100)
+##qc.board.save_params()
 
 ##
 ####for n in range(3):
@@ -61,10 +61,19 @@ qc.board.save_params()
 ##
 ##
 
-##for x in Path.cwd().glob("./img/*.png"):
-##    if x.is_file:
-##        print("File {}".format(str(x)))
-##        qc = BoardOptimizer(board = GrBoard(), debug = True, echo = False)
-##        qc.board.load_image(str(x), f_process = False)
-##        qc.log.logger.addHandler(logging.FileHandler("./opt.log"))
-##        qc.optimize(groups = [1, 2], save = "always", max_pass = 100)
+def callback(params):
+    print("\tPass {} of {}".format(params["npass"], params["max_pass"]))
+
+def process_ext(ext):
+    for x in Path.cwd().glob("./img/" + ext):
+        if x.is_file:
+            print("File {}".format(str(x)))
+            qc = BoardOptimizer(board = GrBoard())
+            qc.board.load_image(str(x), f_process = False)
+            qc.log.logger.addHandler(logging.FileHandler("./opt.log", "a"))
+            if qc.optimize(groups = [1, 2], max_pass = 100, callback = callback):
+                qc.board.save_params()
+
+
+process_ext("*.png")
+process_ext("*.jpg")
