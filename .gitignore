@@ -111,5 +111,4 @@ t.py
 
 # Net dataset and out
 *.caffemodel
-/out/*
-/gbr_ds/*
+/archive/*
