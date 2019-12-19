@@ -66,11 +66,11 @@ def one_file(file_name):
     pn.mkdir(exist_ok = True, parents = True)
 
     d = int(np.median(r_list) * 2)
-    area = [0, 0, d-1, d-1]
+    area = [0, 0, d-1, d-1]     # x1, y1, x2, y2
     n = 0
     f_reg = open(str(pn.joinpath("negatives.txt")), "a")
 
-    while area[3] <= board.image.shape[1]:
+    while area[3] <= board.image.shape[CV_HEIGTH]:
         rc_in = [x for x in covered if overlap(area, x)]
         if len(rc_in) == 0:
             print("\tNegative: {}".format(area))
@@ -82,7 +82,7 @@ def one_file(file_name):
 
         area[0] = area[2] + 1
         area[2] = area[0] + d
-        if area[2] > board.image.shape[0]:
+        if area[2] > board.image.shape[CV_WIDTH]:
             area[0] = 0
             area[1] = area[3] + 1
             area[2] = area[0] + d
@@ -93,7 +93,15 @@ one_file("./img/go_board_1.png")
 one_file("./img/go_board_2.png")
 one_file("./img/go_board_6.png")
 one_file("./img/go_board_7.png")
+one_file("./img/go_board_10.png")
 one_file("./img/go_board_19.png")
 one_file("./img/go_board_20.png")
+one_file("./img/go_board_21.png")
+one_file("./img/go_board_22.png")
 one_file("./img/go_board_24.png")
+one_file("./img/go_board_26.png")
+one_file("./img/go_board_27.png")
+one_file("./img/go_board_53.jpg")
+one_file("./img/go_board_54.jpg")
+one_file("./img/go_board_55.png")
 
