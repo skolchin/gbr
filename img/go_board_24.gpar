@@ -1,7 +1,7 @@
 {
     "AREA_MASK": null,
     "BLUR_MASK_B": 0,
-    "BLUR_MASK_W": 0,
+    "BLUR_MASK_W": 3,
     "BOARD_EDGES": [
         [
             12,

@@ -20,7 +20,7 @@
     "HC_MASK_W": 3,
     "HC_MAXRADIUS": 20,
     "HC_MINDIST": 1,
-    "HC_SENSITIVITY_B": 12,
+    "HC_SENSITIVITY_B": 11,
     "HC_SENSITIVITY_W": 14,
     "HL_MINLEN": 0,
     "HL_RHO": 1,
@@ -41,8 +41,8 @@
     "STONES_THRESHOLD_B": 101,
     "STONES_THRESHOLD_W": 123,
     "TRANSFORM": null,
-    "WATERSHED_B": 148,
-    "WATERSHED_W": 226,
-    "WS_MORPH_B": 1,
-    "WS_MORPH_W": 3
+    "WATERSHED_B": 111,
+    "WATERSHED_W": 125,
+    "WS_MORPH_B": 0,
+    "WS_MORPH_W": 1
 }

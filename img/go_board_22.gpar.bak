@@ -1,6 +1,6 @@
 {
     "AREA_MASK": null,
-    "BLUR_MASK_B": 1,
+    "BLUR_MASK_B": 0,
     "BLUR_MASK_W": 2,
     "BOARD_EDGES": [
         [

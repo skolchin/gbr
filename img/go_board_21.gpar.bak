@@ -25,7 +25,7 @@
     "PYRAMID_W": 0,
     "STONES_DILATE_B": 2,
     "STONES_DILATE_W": 0,
-    "STONES_ERODE_B": 1,
+    "STONES_ERODE_B": 2,
     "STONES_ERODE_W": 2,
     "STONES_MAXVAL_B": 255,
     "STONES_MAXVAL_W": 255,
