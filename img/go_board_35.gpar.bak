@@ -31,7 +31,7 @@
     "HL_THRESHOLD2": 23,
     "LUM_EQ": 0,
     "PYRAMID_B": 0,
-    "PYRAMID_W": 1,
+    "PYRAMID_W": 0,
     "STONES_DILATE_B": 2,
     "STONES_DILATE_W": 3,
     "STONES_ERODE_B": 0,

@@ -1684,8 +1684,8 @@ class ImgButtonGroup(object):
         def disabled(self, d):
             self.parent.set_disabled(self.group, d)
 
-        def release(self):
-            self.parent.release(self.group)
+        def release(self, exclude = None):
+            self.parent.release(self.group, exclude)
 
     def __init__(self, master, **kwargs):
         """Create an instance.

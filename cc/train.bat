@@ -1,1 +1,1 @@
-C:\Users\kol\Downloads\opencv\build\x64\vc15\bin\opencv_traincascade -data m/ -vec samples.vec -bg negatives.txt -numPos 300 -numNeg 300
+"C:\Users\kol\Documents\opencv\opencv-3.4.8\build\bin\Release\opencv_traincascade.exe" -data m/ -vec samples.vec -bg n/negatives.txt -numPos 1000 -numNeg 1000 -mode ALL -w 24 -h 24  -nstages 10 -nsplits 2 -minhitrate 0.999 -maxfalsealarm 0.5 -mem 512 -numThreads 40

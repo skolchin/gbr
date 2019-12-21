@@ -28,6 +28,7 @@ GR_Y = 1                          # index of Y coordinate dimension
 GR_A = 2                          # index of horizontal board position dimension
 GR_B = 3                          # index of vertical board position dimension
 GR_R = 4                          # index of stone radius dimension
+GR_BW = 5                         # index of stone color dimension in board.all_stones
 GR_FROM = 0                       # index of line start in lines array
 GR_TO = 1                         # index of line end in lines array
 

@@ -41,15 +41,20 @@ def one_file(file_name):
     r_list = []
     covered = []
     f_reg = open(str(pd.joinpath("positives.txt")), "a")
-    for bw in ['B', 'W']:
-        for n, stone in enumerate(board.stones[bw]):
+    for n, stone in enumerate(board.all_stones):
+        # Check no stones around
+        nearby_stones = board.find_nearby(stone, 1)
+        if len(nearby_stones) == 0:
             x = stone[GR_X]
             y = stone[GR_Y]
             r = stone[GR_R]
-            area = [max(x-r-1,0),
-                max(y-r-1,0),
-                min(x+r+1, board.image.shape[1]),
-                min(y+r+1, board.image.shape[0])]
+            a = stone[GR_A]
+            b = stone[GR_B]
+            bw = stone[GR_BW]
+            area = [max(x-r-5,0),
+                max(y-r-5,0),
+                min(x+r+5, board.image.shape[CV_WIDTH]),
+                min(y+r+5, board.image.shape[CV_HEIGTH])]
 
             print("\tPositive: {}, {}, {}".format(x, y, r))
             r_list.extend([r])
@@ -66,11 +71,11 @@ def one_file(file_name):
     pn.mkdir(exist_ok = True, parents = True)
 
     d = int(np.median(r_list) * 2)
-    area = [0, 0, d-1, d-1]
+    area = [0, 0, d-1, d-1]     # x1, y1, x2, y2
     n = 0
     f_reg = open(str(pn.joinpath("negatives.txt")), "a")
 
-    while area[3] <= board.image.shape[1]:
+    while area[3] <= board.image.shape[CV_HEIGTH]:
         rc_in = [x for x in covered if overlap(area, x)]
         if len(rc_in) == 0:
             print("\tNegative: {}".format(area))
@@ -78,11 +83,11 @@ def one_file(file_name):
             fn = pn.joinpath(prefix + "_" + bw.lower() + "_" + str(n).zfill(5) + ".png")
             n += 1
             cv2.imwrite(str(fn), im)
-            f_reg.write("{}\n".format(str(fn.name), area))
+            f_reg.write("{}\n".format("n/" + str(fn.name)))
 
         area[0] = area[2] + 1
         area[2] = area[0] + d
-        if area[2] > board.image.shape[0]:
+        if area[2] > board.image.shape[CV_WIDTH]:
             area[0] = 0
             area[1] = area[3] + 1
             area[2] = area[0] + d
@@ -90,10 +95,18 @@ def one_file(file_name):
     f_reg.close()
 
 one_file("./img/go_board_1.png")
-one_file("./img/go_board_2.png")
-one_file("./img/go_board_6.png")
-one_file("./img/go_board_7.png")
-one_file("./img/go_board_19.png")
-one_file("./img/go_board_20.png")
-one_file("./img/go_board_24.png")
-
+##one_file("./img/go_board_2.png")
+##one_file("./img/go_board_6.png")
+##one_file("./img/go_board_7.png")
+##one_file("./img/go_board_10.png")
+##one_file("./img/go_board_19.png")
+##one_file("./img/go_board_20.png")
+##one_file("./img/go_board_21.png")
+##one_file("./img/go_board_22.png")
+##one_file("./img/go_board_24.png")
+##one_file("./img/go_board_26.png")
+##one_file("./img/go_board_27.png")
+##one_file("./img/go_board_53.jpg")
+##one_file("./img/go_board_54.jpg")
+##one_file("./img/go_board_55.png")
+##

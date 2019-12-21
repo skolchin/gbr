@@ -696,7 +696,7 @@ class GbrGUI2(tk.Tk):
         img = cv2.imread("ui\\def_board.png")
         self.imagePanel = ImagePanel(self.internalFrame,
             image = img,
-            mode = "clip",
+            mode = "fit",
             max_size = 500,
             min_size = 300,
             frame_callback = self.mouse_click_callback)

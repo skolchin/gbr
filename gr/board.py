@@ -365,6 +365,17 @@ class GrBoard(object):
         else:
             return { 'W': self._res[GR_STONES_W], 'B': self._res[GR_STONES_B] }
 
+    @property
+    def all_stones(self):
+        """All stones on a board.
+        Returns list of stones, where every stone is [x, y, a, b, r, bw]"""
+        r = []
+        if not self.black_stones is None:
+            r.extend([list(r) + ['B'] for r in self.black_stones])
+        if not self.white_stones is None:
+            r.extend([list(r) + ['W'] for r in self.white_stones])
+        return r
+
     def find_stone(self, c = None, p = None, s = None, bw = None):
         """Finds a stone at given coordinates or position
         Parameters:
@@ -404,6 +415,22 @@ class GrBoard(object):
 
         return stone, bw
 
+    def find_nearby(self, p, d = 1):
+        """Finds all stones near specified position.
+        Parameters:
+            p   board position coordinates
+            d   delta
+        Return: a list of stones the same as for all_stones
+        """
+        if p is None:
+            return None
+        r = []
+        rg_a = range(max(p[GR_A]-d,1), min(p[GR_A]+d, self.board_size))
+        rg_b = range(max(p[GR_B]-d,1), min(p[GR_B]+d, self.board_size))
+        for s in self.all_stones:
+            if s[GR_A] != p[GR_A] and s[GR_A] in rg_a and s[GR_B] != p[GR_B] and s[GR_B] in rg_b:
+                r.extend([s])
+        return r
 
     @property
     def debug_images(self):
