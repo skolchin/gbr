@@ -425,10 +425,11 @@ class GrBoard(object):
         if p is None:
             return None
         r = []
-        rg_a = range(max(p[GR_A]-d,1), min(p[GR_A]+d, self.board_size))
-        rg_b = range(max(p[GR_B]-d,1), min(p[GR_B]+d, self.board_size))
+        rg_a = range(max(p[GR_A]-d,1), min(p[GR_A]+d, self.board_size)+1)
+        rg_b = range(max(p[GR_B]-d,1), min(p[GR_B]+d, self.board_size)+1)
         for s in self.all_stones:
-            if s[GR_A] != p[GR_A] and s[GR_A] in rg_a and s[GR_B] != p[GR_B] and s[GR_B] in rg_b:
+            if not(s[GR_A] == p[GR_A] and s[GR_B] == p[GR_B]) and \
+            s[GR_A] in rg_a and s[GR_B] in rg_b:
                 r.extend([s])
         return r
 
