@@ -235,18 +235,18 @@ def get_args():
         help = 'Source directory')
     parser.add_argument('-p', "--positive",
         default = "./p/",
-        help = 'Directory to store positive mages')
+        help = 'Directory to store positive images')
     parser.add_argument('-n', "--negative",
         default = "./n/",
-        help = 'Directory to store negative mages')
+        help = 'Directory to store negative images')
     parser.add_argument('-m', "--method",
         choices = ["a", "b", "s"], default = "a",
         help = 'Image generation method, one of: ' + \
-            "s: saving free-staying stones only, " + \
-            "b: saving all stones with different area for free-staying/closed ones, " + \
-            "a: saving all stones with surrounding area free of other stones"
+            "s - keep areas of free-staying stones only, " + \
+            "b - keep areas of all stones but with different size for free-staying/closed ones, " + \
+            "a - keep areas of all stones with nearby stones removed"
         )
-    parser.add_argument('-g', "--is_gen", type = int,
+    parser.add_argument('-g', "--for_gen", type = int,
         choices = [0, 1], default = 0,
         help = 'Set to 1 if images will be used for samples generation, 0 otherwise')
     parser.add_argument('-f', "--space_free", type = int,
@@ -254,20 +254,20 @@ def get_args():
         help = 'Space to add around free-staying stones')
     parser.add_argument('-c', "--space_close", type = int,
         default = 1,
-        help = 'Space to add around stones staying close to each other')
+        help = 'Space to add around stones having any nearby stone')
     parser.add_argument('-i', "--neg_img", type = int,
         default = 0,
         help = 'Number of negative images to generate from one image')
     parser.add_argument('-r', "--resize", type = int,
         default = 0,
-        help = 'Resize image to specified size')
+        help = 'Resize positive image to specified size')
 
     args = parser.parse_args()
     source_dir = args.source
     positive_dir = args.positive
     negative_dir = args.negative
     p_method = args.method
-    is_gen = args.is_gen > 0
+    is_gen = args.for_gen > 0
     free_space = args.space_free
     close_space = args.space_close
     neg_per_image = args.neg_img
