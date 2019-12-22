@@ -1,0 +1,1 @@
+"C:\Users\kol\Documents\opencv\opencv-3.4.8\build\bin\Release\opencv_visualisation.exe" --image=../img/go_board_1.png --model=m/cascade.xml --data=d/

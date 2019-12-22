@@ -112,3 +112,9 @@ t.py
 # Net dataset and out
 *.caffemodel
 /archive/*
+/cc/d/*
+/cc/m/*
+/cc/n/*
+/cc/p/*
+/cc/s/*
+/samples.vec
