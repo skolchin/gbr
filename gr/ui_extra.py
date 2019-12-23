@@ -15,6 +15,7 @@ import random
 import numpy as np
 import cv2
 from imutils.perspective import four_point_transform
+from collections import namedtuple
 
 from .grdef import *
 from .utils import img_to_imgtk, resize3, is_on_w
@@ -153,14 +154,6 @@ class NBinder(object):
                             widget.bind(event, callback)
 
 
-# ImageButton event support class
-class ImgButtonEvent(object):
-    """Image button event class"""
-    def __init__(self, event, tag, state):
-        self.event, self.tag, self.state = event, tag, state
-        self.cancel = False
-
-
 # ImageButton
 class ImgButton(tk.Label):
     """Button with image face.
@@ -170,6 +163,12 @@ class ImgButton(tk.Label):
     A callback bound to the event should set event .cancel attribute to prevent
     button from become pressed.
     """
+    # ImageButton event support classes
+    class ImgButtonClickEvent(object):
+        def __init__(self, event, tag, state):
+            self.event, self.tag, self.state, self.cancel = event, tag, state, False
+
+    ImgButtonDialogEvent = namedtuple('ImgButtonDialogEvent', ['tag', 'dlg'])
 
     def __init__(self, *args, **kwargs):
         """Creates new ImgButton.
@@ -252,6 +251,10 @@ class ImgButton(tk.Label):
             self.__disabled = ds
             self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
 
+    @property
+    def dialog(self):
+        return self.__dlg
+
     def press(self):
         """Press a button """
         if not self.__state: self.toggle()
@@ -270,7 +273,7 @@ class ImgButton(tk.Label):
         self.__state = new_state
 
         # Handle event
-        e = ImgButtonEvent(event, self.__tag, new_state)
+        e = self.ImgButtonClickEvent(event, self.__tag, new_state)
         self.__binder.trigger(self, '<Click>', e)
         if e.cancel:
             # Cancelling a state change
@@ -285,12 +288,14 @@ class ImgButton(tk.Label):
         if not self.__dlg_class is None:
             if self.__dlg is not None:
                 self.__binder.unbind(self.__dlg, "<Close>")
+                self.__binder.trigger(self, '<Dialog-Close>', self.ImgButtonDialogEvent(self.__tag, self.__dlg))
                 self.__dlg.destroy()
                 self.__dlg = None
 
             if self.__state:
                 self.__dlg = self.__dlg_class(master = self.master)
                 self.__binder.register(self.__dlg, "<Close>", self.__dialog_close_callback)
+                self.__binder.trigger(self, '<Dialog-Open>', self.ImgButtonDialogEvent(self.__tag, self.__dlg))
 
     def __mouse_click(self, event):
         """Mouse click callback"""
@@ -300,6 +305,7 @@ class ImgButton(tk.Label):
         """Dialog close callback"""
         if self.__dlg is not None:
             self.__binder.unbind(self.__dlg, "<Close>")
+            self.__binder.trigger(self, '<Dialog-Close>', self.ImgButtonDialogEvent(self.__tag, self.__dlg))
             self.__dlg = None
         self.state = False
 
@@ -1488,6 +1494,12 @@ class GrDialog(tk.Toplevel):
         self.binder.trigger(self, "<Close>", None)
         self.destroy()
 
+    def update_position(self):
+        m = self.get_minsize()
+        p = self.get_position()
+        self.minsize(m[0], m[1])
+        self.geometry("%+d%+d" % (p[0], p[1]))
+
 # A marker on an ImagePanel
 class ImageMarker(object):
     """A marker on a panel"""
@@ -1637,7 +1649,7 @@ class ImageMarker(object):
             self.__draw_marker(stone, bw)
             if cnt > 0:
                 self.canvas.after(100, lambda: self.__flash_marker(stone,bw,cnt,False))
-        else:
+        elif len(self.__markers) > 0:
             # Marker is OFF
             m = self.__markers.pop(-1)
             self.canvas.delete(m)
