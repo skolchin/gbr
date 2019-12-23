@@ -8,35 +8,18 @@
 # Copyright:   (c) kol 2019
 # Licence:     MIT
 #-------------------------------------------------------------------------------
+from .grdef import *
 import numpy as np
 
-# Constants
-COLOR_WHITE = (255, 255, 255)     # white
-COLOR_BLACK = (0, 0, 0)           # black
-COLOR_RED = (0, 0, 255)           # red
-COLOR_BLUE = (255, 0, 0)          # blue
-DEF_IMG_SIZE = (500, 500)         # default shape for board generation
-MIN_EDGE_DIST = 2                 # minimum board area distance from edge
-DEF_IMG_COLOR = (80, 145, 210)    # default generated board color
-DEF_BOARD_SIZE = 19               # default board size
-DEF_AVAIL_SIZES = [9, 13, 19]     # available standard board sizes
-MAX_BOARD_SIZE = 21               # maximum board size
-CV_HEIGTH = 0                     # index of height dimension of OpenCv image
-CV_WIDTH = 1                      # index of width dimension of OpenCv image
-CV_CHANNEL = 2                    # index of channel dimension of OpenCv image
-GR_X = 0                          # index of X coordinate dimension
-GR_Y = 1                          # index of Y coordinate dimension
-GR_A = 2                          # index of horizontal board position dimension
-GR_B = 3                          # index of vertical board position dimension
-GR_R = 4                          # index of stone radius dimension
-GR_FROM = 0                       # index of line start in lines array
-GR_TO = 1                         # index of line end in lines array
-
 # List if parameter groups
+GROUP_BOARD = '.'
+GROUP_BLACK = STONE_BLACK
+GROUP_WHITE = STONE_WHITE
+
 GR_PARAM_GROUPS = [
-    {"t": "Board recognition", "g": "."},
-    {"t": "Black stones detection", "g": "B"},
-    {"t": "White stones detection", "g": "W"}
+    {"t": "Board recognition", "g": GROUP_BOARD},
+    {"t": "Black stones detection", "g": GROUP_BLACK},
+    {"t": "White stones detection", "g": GROUP_WHITE}
 ]
 
 # Parameter default values ans description
@@ -54,55 +37,55 @@ GR_PARAMS = {
     "HC_MAXRADIUS": {"v": 20, "min_v": 1, "max_v": 40, "no_copy": True},        # HoughCircles max radius - not used
 
     # Board params group
-    'BOARD_SIZE': {"v": 19, "min_v": 9, "max_v": 21, "g": ".",
+    'BOARD_SIZE': {"v": 19, "min_v": 9, "max_v": 21, "g": GROUP_BOARD,
         "title": "Board size", "n": 1, "no_opt": True},                         # Board size
-    "HL_THETA2": {"v": 6, "min_v": 1, "max_v": 90, "g": ".",
+    "HL_THETA2": {"v": 6, "min_v": 1, "max_v": 90, "g": GROUP_BOARD,
         "title": "Angle", "n": 2},                                              # HoughLinesP theta
-    "HL_THRESHOLD2": {"v": 40, "min_v": 1, "max_v": 255, "g": ".",
+    "HL_THRESHOLD2": {"v": 40, "min_v": 1, "max_v": 255, "g": GROUP_BOARD,
         "title": "Threshold", "n": 3},                                          # HoughLinesP threshold
-    'LUM_EQ': {"v": 0, "min_v": 0, "max_v": 1, "g": ".",
+    'LUM_EQ': {"v": 0, "min_v": 0, "max_v": 1, "g": GROUP_BOARD,
         "title": "Luminosity filter", "n": 4},                                  # CLAHE filter on/off
 
     # Black stones detection
-    "STONES_THRESHOLD_B": {"v": 84, "min_v": 1, "max_v": 255, "g": "B",
+    "STONES_THRESHOLD_B": {"v": 84, "min_v": 1, "max_v": 255, "g": GROUP_BLACK,
         "title": "Threshold", "n": 1, "opt_maxv": 150},                         # Threshold
-    "HC_SENSITIVITY_B": {"v": 10, "min_v": 1, "max_v": 20, "g": "B",
+    "HC_SENSITIVITY_B": {"v": 10, "min_v": 1, "max_v": 20, "g": GROUP_BLACK,
         "title": "Sensitivity", "n": 2, "opt_minv": 8, "opt_maxv": 14},         # Sensistivity
-    "HC_MASK_B": {"v": 3, "min_v": 1, "max_v": 5, "g": "B",
+    "HC_MASK_B": {"v": 3, "min_v": 1, "max_v": 5, "g": GROUP_BLACK,
         "title": "Mask granularity", "n": 3, "opt_maxv": 4},                    # Mask
-    "BLUR_MASK_B": {"v": 0, "min_v": 0, "max_v": 10, "g": "B",
+    "BLUR_MASK_B": {"v": 0, "min_v": 0, "max_v": 10, "g": GROUP_BLACK,
         "title": "Blurring", "n": 4, "opt_maxv": 4},                            # Blurring
-    "STONES_DILATE_B": {"v": 1, "min_v": 0, "max_v": 5, "g": "B",
+    "STONES_DILATE_B": {"v": 1, "min_v": 0, "max_v": 5, "g": GROUP_BLACK,
         "title": "Dilation", "n": 5, "opt_maxv": 4},                            # Dilation
-    "STONES_ERODE_B": {"v": 1, "min_v": 0, "max_v": 5, "g": "B",
+    "STONES_ERODE_B": {"v": 1, "min_v": 0, "max_v": 5, "g": GROUP_BLACK,
         "title": "Erosion", "n": 6, "opt_maxv": 4},                             # Erosion
-    "WATERSHED_B": {"v": 85, "min_v": 0, "max_v": 255, "g": "B",
+    "WATERSHED_B": {"v": 85, "min_v": 0, "max_v": 255, "g": GROUP_BLACK,
         "title": "Watershed threshold", "n": 7, "opt_maxv": 150},               # Watershed
-    "WS_MORPH_B": {"v": 0, "min_v": 0, "max_v": 5, "g": "B",
+    "WS_MORPH_B": {"v": 0, "min_v": 0, "max_v": 5, "g": GROUP_BLACK,
         "title": "Watershed morphing", "n": 8, "opt_maxv": 3},                  # WS morphing
-    "PYRAMID_B": {"v": 0, "min_v": 0, "max_v": 1, "g": "B",
+    "PYRAMID_B": {"v": 0, "min_v": 0, "max_v": 1, "g": GROUP_BLACK,
         "title": "Pyramid filter", "n": 9, "no_opt" : True},                    # Image pyramid filter on/off
     "STONES_MAXVAL_B": {"v": 255, "min_v": 0, "max_v": 255,
         "no_copy": True, "no_opt": True},                                       # MaxVal - cannot be changed
 
     # White stones detection
-    "STONES_THRESHOLD_W": {"v": 173, "min_v": 1, "max_v": 255, "g": "W",
+    "STONES_THRESHOLD_W": {"v": 173, "min_v": 1, "max_v": 255, "g": GROUP_WHITE,
         "title": "Threshold", "n": 1, "opt_minv": 120},                         # Threshold
-    "HC_SENSITIVITY_W": {"v": 10, "min_v": 1, "max_v": 20, "g": "W",
+    "HC_SENSITIVITY_W": {"v": 10, "min_v": 1, "max_v": 20, "g": GROUP_WHITE,
         "title": "Sensitivity", "n": 2, "opt_minv": 8, "opt_maxv": 14},         # Sensistivity
-    "HC_MASK_W": {"v": 3, "min_v": 1, "max_v": 5, "g": "W",
+    "HC_MASK_W": {"v": 3, "min_v": 1, "max_v": 5, "g": GROUP_WHITE,
         "title": "Mask granularity", "n": 3, "opt_maxv": 4},                    # Mask
-    "BLUR_MASK_W": {"v": 0, "min_v": 0, "max_v": 10, "g": "W",
+    "BLUR_MASK_W": {"v": 0, "min_v": 0, "max_v": 10, "g": GROUP_WHITE,
         "title": "Blurring", "n": 4, "opt_maxv": 4},                            # Blurring
-    "STONES_DILATE_W": {"v": 1, "min_v": 0, "max_v": 5, "g": "W",
+    "STONES_DILATE_W": {"v": 1, "min_v": 0, "max_v": 5, "g": GROUP_WHITE,
         "title": "Dilation", "n": 5, "opt_maxv": 4},                            # Dilation
-    "STONES_ERODE_W": {"v": 0, "min_v": 0, "max_v": 5, "g": "W",
+    "STONES_ERODE_W": {"v": 0, "min_v": 0, "max_v": 5, "g": GROUP_WHITE,
         "title": "Erosion", "n": 6, "opt_maxv": 4},                             # Erosion
     "WATERSHED_W": {"v": 131, "min_v": 0, "max_v": 255,
-        "g": "W", "title": "Watershed threshold", "n": 7},                      # Watershed
-    "WS_MORPH_W": {"v": 0, "min_v": 0, "max_v": 5, "g": "W",
+        "g": GROUP_WHITE, "title": "Watershed threshold", "n": 7},                      # Watershed
+    "WS_MORPH_W": {"v": 0, "min_v": 0, "max_v": 5, "g": GROUP_WHITE,
         "title": "Watershed morphing", "n": 8, "opt_maxv": 3},                  # WS morphing
-    "PYRAMID_W": {"v": 0, "min_v": 0, "max_v": 1, "g": "W",
+    "PYRAMID_W": {"v": 0, "min_v": 0, "max_v": 1, "g": GROUP_WHITE,
         "title": "Pyramid filter", "n": 9, "no_opt": True},                     # Image pyramid filter on/off
     "STONES_MAXVAL_W": {"v": 255, "min_v": 0, "max_v": 255,
         "no_copy": True, "no_opt": True},                                       # MaxVal - cannot be changed
@@ -162,11 +145,6 @@ class GrParams(object):
         return self.__params
 
     @property
-    def keys(self):
-        """All parameter keys"""
-        return self.__params.keys()
-
-    @property
     def groups(self):
         """List of group titles"""
         return [g["t"] for g in GR_PARAM_GROUPS]
@@ -185,6 +163,10 @@ class GrParams(object):
         p = [self.__params[k] for k in self.__params \
             if self.__params[k].g == g and self.__params[k].title is not None]
         return sorted(p, key = lambda k: k.n)
+
+    def keys(self):
+        """All parameter keys"""
+        return self.__params.keys()
 
     def get(self, key):
         """Returns a parameter value of None if it doesn't exist"""

@@ -9,9 +9,10 @@
 # Licence:     MIT
 #-------------------------------------------------------------------------------
 from .grdef import *
-from .gr import process_img, detect_board, generate_board, find_coord, find_position
+from .gr import process_img, detect_board, generate_board
 from .utils import resize2
 from .params import GrParams
+from .stones import GrStones
 
 from pathlib import Path
 import cv2
@@ -40,6 +41,8 @@ class GrBoard(object):
         self._src_img = None
         self._src_img_file = None
         self._gen_board = False
+        self._black = GrStones(STONE_BLACK)
+        self._white = GrStones(STONE_WHITE)
 
         if image_file is None or image_file == '':
             # Generate default board
@@ -149,12 +152,14 @@ class GrBoard(object):
             filename = str(Path(self._img_file).with_suffix('.sgf'))
 
         game = sgf.Sgf_game(size = self.board_size)
-        stones = self.stones
-        for n in range(max(len(stones['W']), len(stones['B']))):
-            if n < len(stones['B']):
-                _add_stone(game, 'b', stones['B'][n]-1)
-            if n < len(stones['W']):
-                _add_stone(game, 'w', stones['W'][n]-1)
+        bs = self.black_stones.tolist()
+        ws = self.white_stones.tolist()
+
+        for n in range(max(len(bs), len(ws))):
+            if n < len(bs):
+                _add_stone(game, STONE_BLACK.lower(), bs[n])
+            if n < len(ws):
+                _add_stone(game, STONE_WHITE.lower(), ws[n])
 
         with open(filename, "wb") as f:
             f.write(game.serialise())
@@ -177,11 +182,12 @@ class GrBoard(object):
         """Perform recognition of board image"""
         if self._img is None or self._gen_board:
             self._res = None
+            self._black.clear()
+            self._white.clear()
         else:
             self._res = process_img(self._img, self._params)
-            if not self._res is None:
-               if self._res[GR_STONES_B] is None: self._res[GR_STONES_B] = np.array([])
-               if self._res[GR_STONES_W] is None: self._res[GR_STONES_W] = np.array([])
+            self._black.assign(self._res[GR_STONES_B])
+            self._white.assign(self._res[GR_STONES_W])
 
     def show_board(self, f_black = True, f_white = True, f_det = False, show_state = None):
         """Generates a new board image of given shape and returns it.
@@ -236,6 +242,8 @@ class GrBoard(object):
                                         self._res[GR_EDGES][0][1] * scale[1]), \
                                         (self._res[GR_EDGES][1][0] * scale[0], \
                                         self._res[GR_EDGES][1][1] * scale[1]))
+            self._black.assign(self._res[GR_STONES_B])
+            self._white.assign(self._res[GR_STONES_W])
 
 
     @property
@@ -344,37 +352,23 @@ class GrBoard(object):
     @property
     def black_stones(self):
         """List of black stones"""
-        if self._res is None:
-            return None
-        else:
-            return self._res[GR_STONES_B]
+        return self._black
 
     @property
     def white_stones(self):
         """List of white stones"""
-        if self._res is None:
-            return None
-        else:
-            return self._res[GR_STONES_W]
+        return self._white
 
     @property
     def stones(self):
         """Dictionary with all stones (keys are B, W)"""
-        if self._res is None:
-            return None
-        else:
-            return { 'W': self._res[GR_STONES_W], 'B': self._res[GR_STONES_B] }
+        return { STONE_WHITE: self._white, STONE_BLACK: self._black }
 
     @property
     def all_stones(self):
         """All stones on a board.
         Returns list of stones, where every stone is [x, y, a, b, r, bw]"""
-        r = []
-        if not self.black_stones is None:
-            r.extend([list(r) + ['B'] for r in self.black_stones])
-        if not self.white_stones is None:
-            r.extend([list(r) + ['W'] for r in self.white_stones])
-        return r
+        return GrStones.all_stones(self.black_stones, self.white_stones)
 
     def find_stone(self, c = None, p = None, s = None, bw = None):
         """Finds a stone at given coordinates or position
@@ -389,14 +383,11 @@ class GrBoard(object):
         """
         def _find(stones):
             if c is not None:
-                return find_coord(c[0], c[1], stones)
+                return stones.find_coord(c[0], c[1])
             elif p is not None:
-                return find_position(p[0], p[1], stones)
+                return stones.find_position(p[0], p[1])
             elif s is not None:
-                return find_position(
-                    ord(s.upper()[0]) - ord('A') + 1,
-                    int(s[1:len(s)]),
-                    stones)
+                return stones.find(s)
             else:
                 return None
 
@@ -408,10 +399,10 @@ class GrBoard(object):
         else:
             stone = _find(self.black_stones)
             if stone is not None:
-                bw = 'B'
+                bw = STONE_BLACK
             else:
                 stone = _find(self.white_stones)
-                if not stone is None: bw = 'W'
+                if not stone is None: bw = STONE_WHITE
 
         return stone, bw
 
@@ -422,17 +413,7 @@ class GrBoard(object):
             d   delta
         Return: a list of stones the same as for all_stones
         """
-        if p is None:
-            return None
-        r = []
-        rg_a = range(max(p[GR_A]-d,1), min(p[GR_A]+d, self.board_size)+1)
-        rg_b = range(max(p[GR_B]-d,1), min(p[GR_B]+d, self.board_size)+1)
-        stones = self.all_stones
-        for s in stones:
-            if not(s[GR_A] == p[GR_A] and s[GR_B] == p[GR_B]) and \
-            s[GR_A] in rg_a and s[GR_B] in rg_b:
-                r.extend([s])
-        return r
+        return GrStones.find_nearby_all(self.black_stones, self.white_stones, p, d)
 
     @property
     def debug_images(self):

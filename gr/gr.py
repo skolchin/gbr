@@ -522,37 +522,6 @@ def convert_xy(coord, res):
 
     return stones_u
 
-# Find a stone for given image coordinates
-# Takes X and Y in image coordinates and a list of stones created by convert_xy
-def find_coord(x, y, stones):
-    """Returns index of a stone at given (X,Y) coordinates or None"""
-    if stones is None:
-        return None
-
-    for s in stones:
-        min_x = max(1, int(s[GR_X]) - int(s[GR_R]))
-        min_y = max(1, int(s[GR_Y]) - int(s[GR_R]))
-        max_x = s[GR_X] + s[GR_R]
-        max_y = s[GR_Y] + s[GR_R]
-        if (x >= min_x and x <= max_x and y >= min_y and y <= max_y):
-            return s
-
-    return None
-
-# Find a stone for given board position
-# Takes A and B of stone positions and a list of stones created by convert_xy
-def find_position(a, b, stones):
-    """Returns index of a stone at given (A,B) position or None"""
-    if stones is None:
-        return None
-
-    if type(a) is str: a = ord(a.upper()) - ord('A') + 1
-    for s in stones:
-        if s[GR_A] == a and s[GR_B] == b:
-            return s
-
-    return None
-
 # Internal function: apply area mask
 def apply_area_mask(img, params):
     """Eliminate area defined by area mask. If mask is not provided, use default gap.

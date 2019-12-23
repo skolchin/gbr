@@ -31,6 +31,8 @@ GR_R = 4                          # index of stone radius dimension
 GR_BW = 5                         # index of stone color dimension in board.all_stones
 GR_FROM = 0                       # index of line start in lines array
 GR_TO = 1                         # index of line end in lines array
+STONE_BLACK = 'B'                 # key for black stones
+STONE_WHITE = 'W'                 # key for white stones
 
 # Parameters moved to gr.params
 

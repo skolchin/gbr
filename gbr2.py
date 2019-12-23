@@ -606,11 +606,9 @@ class GbrStonesDlg(GrDialog):
 
     def get_stones(self):
         """Gets a list of stones and formats it for display"""
-        bs = self.root.board.stones
-        t = [(x, 'W') for x in bs['W']]
-        t.extend([(x, 'B') for x in bs['B']])
-        ts = sorted(t, key = lambda x: np.sqrt(x[0][GR_A]**2 + x[0][GR_B]**2))
-        self.stones = [(format_stone_pos(x[0]), x[1]) for x in ts]
+        t = self.root.board.all_stones
+        ts = sorted(t, key = lambda x: np.sqrt(x[GR_A]**2 + x[GR_B]**2))
+        self.stones = [(format_stone_pos(x), x[GR_BW]) for x in ts]
 
     def update_listbox(self):
         self.tv.delete(*self.tv.get_children())
@@ -944,7 +942,7 @@ class GbrGUI2(tk.Tk):
         if stone is None:
             return
 
-        msg = "{} {}".format("Black" if bw == "B" else "White",
+        msg = "{} {}".format("Black" if bw == STONE_BLACK else "White",
             format_stone_pos(stone))
         if p is not None:
             msg += " at ({}, {})".format(p[0], p[1])
@@ -956,8 +954,8 @@ class GbrGUI2(tk.Tk):
     def show_all_stones(self):
         """Highlight all stones"""
         self.imageMarker.clear()
-        self.imageMarker.add_stones(self.board.black_stones, "B")
-        self.imageMarker.add_stones(self.board.white_stones, "W")
+        self.imageMarker.add_stones(np.array(self.board.black_stones), STONE_BLACK)
+        self.imageMarker.add_stones(np.array(self.board.white_stones), STONE_WHITE)
         self.imageMarker.show()
 
     def hide_stones(self):
