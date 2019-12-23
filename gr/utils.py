@@ -115,14 +115,14 @@ def img1_to_img3(img):
     return img3
 
 def format_stone_pos(stone, axis = None):
-    if stone[GR_A] > 30 or stone[GR_B] > 30:
+    if stone[GR_A] > 30 or stone[GR_B] > 30 or stone[GR_A] <= 0 or stone[GR_B] <= 0:
         return 'XX'
     elif axis is None:
         return ss.ascii_uppercase[stone[GR_A]-1] + str(stone[GR_B])
     elif axis == GR_A:
         return ss.ascii_uppercase[stone[GR_A]-1]
     elif axis == GR_B:
-        return str(stone[axis])
+        return str(stone[GR_B])
     else:
         return int(round(stone[axis],0))
 
