@@ -35,14 +35,13 @@ class GrBoard(object):
 
         """
         self._params = GrParams()
+        self._stones = GrStones()
         self._res = None
         self._img = None
         self._img_file = None
         self._src_img = None
         self._src_img_file = None
         self._gen_board = False
-        self._black = GrStones(STONE_BLACK)
-        self._white = GrStones(STONE_WHITE)
 
         if image_file is None or image_file == '':
             # Generate default board
@@ -124,18 +123,36 @@ class GrBoard(object):
 
     def load_params(self, filename):
         """Loads recognition parameters from specified file (JSON)"""
-        p = json.load(open(str(filename)))
+
+        # Load the file
+        with open(str(filename)) as f:
+            p = json.load(f)
+            f.close()
+
+        # Populate parameters
         self._params.assign(p, copy_all = True)
+
+        # Retrieve forced stones
+        if 'FORCED_STONES' in p: self._stones.forced_fromlist(p['FORCED_STONES'])
 
     def save_params(self, filename = None, f_bak = True):
         """Saves recognition parameters to specified file (JSON)"""
+
+        # Get filename and backup previous file
         if filename is None:
             filename = str(Path(self._img_file).with_suffix(BOARD_PARAM_EXT))
         p = Path(filename)
         if p.exists() and f_bak:
             p.replace(p.with_suffix(BOARD_PARAM_EXT + ".bak"))
-        with open(filename, "w+") as f:
+
+        # Save forced stones as params
+        self._params['FORCED_STONES'] = self._stones.forced_tolist()
+
+        # Save
+        with open(str(filename), "w+") as f:
             json.dump(self._params.todict(), f, indent=4, sort_keys=True, ensure_ascii=False)
+            f.close()
+
         return filename
 
     def save_sgf(self, filename = None):
@@ -182,12 +199,12 @@ class GrBoard(object):
         """Perform recognition of board image"""
         if self._img is None or self._gen_board:
             self._res = None
-            self._black.clear()
-            self._white.clear()
+            self._stones.clear()
         else:
             self._res = process_img(self._img, self._params)
-            self._black.assign(self._res[GR_STONES_B])
-            self._white.assign(self._res[GR_STONES_W])
+            self._stones.clear(with_forced = False)
+            self._stones.add(self._res[GR_STONES_B], STONE_BLACK, with_forced = False)
+            self._stones.add(self._res[GR_STONES_W], STONE_WHITE, with_forced = False)
 
     def show_board(self, f_black = True, f_white = True, f_det = False, show_state = None):
         """Generates a new board image of given shape and returns it.
@@ -242,9 +259,9 @@ class GrBoard(object):
                                         self._res[GR_EDGES][0][1] * scale[1]), \
                                         (self._res[GR_EDGES][1][0] * scale[0], \
                                         self._res[GR_EDGES][1][1] * scale[1]))
-            self._black.assign(self._res[GR_STONES_B])
-            self._white.assign(self._res[GR_STONES_W])
-
+            self._stones.clear()
+            self._stones.add(self._res[GR_STONES_B])
+            self._stones.add(self._res[GR_STONES_W])
 
     @property
     def params(self):
@@ -259,18 +276,17 @@ class GrBoard(object):
 
     @property
     def param_area_mask(self):
-        """Board recognition area rectangle - tuple of tuples ((x1,y1),(x2,y2)).
-        Image is clipped to this rectangle during processing.
-        """
+        """Board recognition area rectangle - tuple of tuples ((x1,y1),(x2,y2))"""
         p = self._params.get('AREA_MASK')
         return list(p) if p is not None else None
 
     @param_area_mask.setter
     def param_area_mask(self, mask):
-        # ImageMask uses flattened list, conversion required
+        """Board recognition area rectangle - tuple of tuples ((x1,y1),(x2,y2))"""
         if mask is None:
             self._params['AREA_MASK'] = None
         else:
+            # ImageMask uses flattened list, conversion required
             m = np.array(mask).reshape((2,2)).tolist()
             self._params['AREA_MASK'] = m
 
@@ -298,8 +314,7 @@ class GrBoard(object):
     def param_board_size(self):
         """Board size to be used for image recognition.
         Note that param_area_size should also be set in parameters to proper board recognition.
-        Use detect_edges() to define edges and board size before processing.
-        """
+        Use detect_edges() to define edges and board size before processing."""
         return self._params.get('BOARD_SIZE')
 
     @param_board_size.setter
@@ -314,6 +329,7 @@ class GrBoard(object):
 
     @param_transform_rect.setter
     def param_transform_rect(self, rect):
+        """Board image transformation rectangle - tuple of tuples ((x1,y1),(x2,y2))"""
         self._params['TRANSFORM'] = rect
 
     @property
@@ -352,23 +368,23 @@ class GrBoard(object):
     @property
     def black_stones(self):
         """List of black stones"""
-        return self._black
+        return self._stones.black
 
     @property
     def white_stones(self):
         """List of white stones"""
-        return self._white
+        return self._stones.white
 
     @property
     def stones(self):
         """Dictionary with all stones (keys are B, W)"""
-        return { STONE_WHITE: self._white, STONE_BLACK: self._black }
+        return self._stones
 
     @property
     def all_stones(self):
         """All stones on a board.
         Returns list of stones, where every stone is [x, y, a, b, r, bw]"""
-        return GrStones.all_stones(self.black_stones, self.white_stones)
+        return self._stones.tolist()
 
     def find_stone(self, c = None, p = None, s = None, bw = None):
         """Finds a stone at given coordinates or position
@@ -381,39 +397,14 @@ class GrBoard(object):
             stone list of stone properties
             type  B/W stone type
         """
-        def _find(stones):
-            if c is not None:
-                return stones.find_coord(c[0], c[1])
-            elif p is not None:
-                return stones.find_position(p[0], p[1])
-            elif s is not None:
-                return stones.find(s)
-            else:
-                return None
-
-        if self._res is None:
-            return None, None
-
-        if bw is not None:
-            stone = _find(self.stones[bw])
+        if c is not None:
+            return self._stones.find_coord(c[0], c[1])
+        elif p is not None:
+            return self._stones.find_position(p[0], p[1])
+        elif s is not None:
+            return self._stones.find(s)
         else:
-            stone = _find(self.black_stones)
-            if stone is not None:
-                bw = STONE_BLACK
-            else:
-                stone = _find(self.white_stones)
-                if not stone is None: bw = STONE_WHITE
-
-        return stone, bw
-
-    def find_nearby(self, p, d = 1):
-        """Finds all stones near specified position.
-        Parameters:
-            p   board position coordinates
-            d   delta
-        Return: a list of stones the same as for all_stones
-        """
-        return GrStones.find_nearby_all(self.black_stones, self.white_stones, p, d)
+            return None, None
 
     @property
     def debug_images(self):
@@ -478,4 +469,3 @@ class GrBoard(object):
         """Returns True if a transformation was applied to the image.
         Use reset_image() to revert to original image"""
         return not self._img is None and np.any(self._img != self._src_img)
-

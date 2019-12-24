@@ -93,7 +93,8 @@ GR_PARAMS = {
     # no_copy params
     'AREA_MASK': {"no_copy": True, "no_opt": True},
     'TRANSFORM': {"no_copy": True, "no_opt": True},
-    'BOARD_EDGES': {"no_copy": True, "no_opt": True}
+    'BOARD_EDGES': {"no_copy": True, "no_opt": True},
+    'FORCED_STONES': {"no_copy": True, "no_opt": True}
 }
 
 # Default parameter value

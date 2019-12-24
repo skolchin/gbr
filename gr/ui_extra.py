@@ -1410,8 +1410,8 @@ class GrDialog(tk.Toplevel):
         self.buttonFrame = tk.Frame(self, bd = 1, relief = tk.RAISED)
         self.buttonFrame.pack(side = tk.BOTTOM, fill = tk.X)
 
-        self.init_frame()
-        self.init_buttons()
+        self.init_frame(self.internalFrame)
+        self.init_buttons(self.buttonFrame)
 
         # Focus
         self.grab_focus()
@@ -1454,11 +1454,11 @@ class GrDialog(tk.Toplevel):
         """Override to setup after widget initialization done"""
         pass
 
-    def init_frame(self):
+    def init_frame(self, internalFrame):
         """Override to add controls to internal frame"""
         pass
 
-    def init_buttons(self):
+    def init_buttons(self, buttonFrame):
         """Override to add buttons to button frame. Inherited method should be called."""
         tk.Button(self.buttonFrame, text = "Close",
             command = self.close_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)

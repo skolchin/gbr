@@ -1,5 +1,5 @@
 ﻿[PyScripter]
-Version=3.6.1.0
+Version=3.6.2.0
 
 [Project]
 ClassName=TProjectRootNode
@@ -43,14 +43,18 @@ FileName=$[Project-Path]gr\params.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node8]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gr\ui_extra.py
+FileName=$[Project-Path]gr\stones.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node9]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]gr\ui_extra.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node10]
 ClassName=TProjectFileNode
 FileName=$[Project-Path]gr\utils.py
 
 [Project\ChildNodes\Node0\ChildNodes]
-Count=10
+Count=11
 
 [Project\ChildNodes\Node1]
 ClassName=TProjectRunConfiguationsNode

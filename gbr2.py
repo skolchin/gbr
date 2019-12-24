@@ -46,9 +46,9 @@ class GbrDebugDlg(GrDialog):
     def get_offset(self):
         return (15, 200)
 
-    def init_frame(self):
-        sbr = tk.Scrollbar(self.internalFrame)
-        self.canvas = tk.Canvas(self.internalFrame, yscrollcommand=sbr.set)
+    def init_frame(self, internalFrame):
+        sbr = tk.Scrollbar(internalFrame)
+        self.canvas = tk.Canvas(internalFrame, yscrollcommand=sbr.set)
         self.canvas.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
         sbr.pack(side = tk.RIGHT, fill = tk.Y)
         sbr.config(command = self.canvas.yview)
@@ -59,10 +59,10 @@ class GbrDebugDlg(GrDialog):
 
         self.canvas.bind('<Configure>', self.on_scroll_configure)
 
-    def init_buttons(self):
-        tk.Button(self.buttonFrame, text = "Save images",
+    def init_buttons(self, buttonFrame):
+        tk.Button(buttonFrame, text = "Save images",
             command = self.save_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
-        GrDialog.init_buttons(self)
+        GrDialog.init_buttons(self, buttonFrame)
 
     def close(self):
         """Graceful way to close the dialog"""
@@ -175,13 +175,13 @@ class GbrOptionsDlg(GrDialog):
         self.qc = None
         self.optimize_cancel = False
 
-    def init_frame(self):
-        self.tkVars = self.add_switches(self.internalFrame, self.root.board.params)
+    def init_frame(self, internalFrame):
+        self.tkVars = self.add_switches(internalFrame, self.root.board.params)
         self.add_optimization()
 
-    def init_buttons(self):
-        f_top = tk.Frame(self.buttonFrame)
-        f_bottom = tk.Frame(self.buttonFrame)
+    def init_buttons(self, buttonFrame):
+        f_top = tk.Frame(buttonFrame)
+        f_bottom = tk.Frame(buttonFrame)
         f_top.pack(side = tk.TOP, fill = tk.BOTH)
         f_bottom.pack(side = tk.BOTTOM, fill = tk.BOTH)
 
@@ -254,6 +254,7 @@ class GbrOptionsDlg(GrDialog):
     def default_click_callback(self):
         """Default button click callback"""
         self.root.board.params.reset()
+        self.root.board.stones.clear(with_forced = True)
         self.update_switches()
 
         self.board_size_disabled.set(1)
@@ -523,6 +524,8 @@ class GbrStoneDlg(GrDialog):
         self.stone = None
         self.bw = None
         self.vars = None
+        self.frame = None
+        self.is_new = False
 
     def get_minsize(self):
         return (200, 200)
@@ -538,65 +541,120 @@ class GbrStoneDlg(GrDialog):
             y = self.root.winfo_y()
             return (x + self.stone[GR_X] + 60, y + self.stone[GR_Y])
 
-    def init_frame(self):
+    def init_frame(self, internalFrame):
         if self.stone is not None:
             self.update_vars()
-            self.add_controls()
+            self.add_controls(internalFrame)
 
-    def init_buttons(self):
-        tk.Button(self.buttonFrame, text = "OK",
+    def init_buttons(self, buttonFrame):
+        tk.Button(buttonFrame, text = "OK",
             command = self.save_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
-        tk.Button(self.buttonFrame, text = "Cancel",
+        tk.Button(buttonFrame, text = "Cancel",
             command = self.close_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
     def save_click_callback(self):
-        pass
+        self.stone[GR_X] = self.vars['x'].get()
+        self.stone[GR_Y] = self.vars['y'].get()
+        self.stone[GR_R] = self.vars['r'].get()
+        self.bw = STONE_BLACK if self.vars['bw'].get() == "Black" else STONE_WHITE
+
+        self.master.master.master.update_stone(self.stone, self.bw)
+        self.close()
 
     def update_vars(self):
         if self.vars is None:
-            self.vars = [None] * len(self.stone)
+            self.vars = {
+                'pos': tk.StringVar(),
+                'x': tk.IntVar(),
+                'y': tk.IntVar(),
+                'r': tk.IntVar(),
+                'bw': tk.StringVar()
+                }
 
-        for n, v in enumerate(self.stone):
-            if self.vars[n] is None:
-                self.vars[n] = tk.IntVar()
-            self.vars[n].set(v)
+        self.vars['pos'].set(format_stone_pos(self.stone))
+        self.vars['x'].set(self.stone[GR_X])
+        self.vars['y'].set(self.stone[GR_Y])
+        self.vars['r'].set(self.stone[GR_R])
+        self.vars['bw'].set("Black" if self.bw == STONE_BLACK else "White")
 
     def close(self):
         GrDialog.close(self)
 
-    def add_controls(self):
-        _P = [
-            ["X", 0, self.root.board.image.shape[CV_WIDTH]-1],
-            ["Y", 0, self.root.board.image.shape[CV_HEIGTH]-1],
-            ["A", 1, self.root.board.board_size],
-            ["B", 1, self.root.board.board_size],
-            ["R", 5, 40]
-        ]
+    def add_controls(self, internalFrame):
+        if self.frame is not None:
+            return
 
-        r = 0
-        c = 0
-        for n, v in enumerate(self.vars):
-            label = tk.Label(self.internalFrame,
-                text = _P[n][0]).grid(row = r, column = c,
+        self.frame = tk.Frame(internalFrame, bd = 8)
+        self.frame.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
+
+        # Stone position
+        tk.Label(self.frame,
+            text = "Stone").grid(row = 0, column = 0,
+                padx = 2, pady = 0, sticky = "s", ipady=4)
+        tk.Label(self.frame,
+            textvariable = self.vars['pos']).grid(row = 0, column = 1,
                 padx = 2, pady = 0, sticky = "s", ipady=4)
 
-            scale = tk.Scale(self.internalFrame,
-                from_ = _P[n][1],
-                to = _P[n][2],
-                orient = tk.HORIZONTAL,
-                width = 10,
-                variable = v).grid(row = r, column = c+1,
+        # X
+        tk.Label(self.frame,
+            text = "x").grid(row = 1, column = 0,
                 padx = 2, pady = 0, sticky = "s", ipady=4)
-            c += 2
-            if c > 3:
-                c = 0
-                r += 1
+        tk.Scale(self.frame,
+            from_ = 0,
+            to = self.root.board.image.shape[CV_WIDTH]-1,
+            orient = tk.HORIZONTAL,
+            width = 8,
+            variable = self.vars['x']).grid(row = 1, column = 1,
+            padx = 2, pady = 0, sticky = "s", ipady=4)
+
+        # Y
+        tk.Label(self.frame,
+            text = "y").grid(row = 1, column = 3,
+                padx = 2, pady = 0, sticky = "s", ipady=4)
+        tk.Scale(self.frame,
+            from_ = 0,
+            to = self.root.board.image.shape[CV_WIDTH]-1,
+            orient = tk.HORIZONTAL,
+            width = 8,
+            variable = self.vars['y']).grid(row = 1, column = 4,
+            padx = 2, pady = 0, sticky = "s", ipady=4)
+
+        # R
+        tk.Label(self.frame,
+            text = "Radius").grid(row = 2, column = 0,
+                padx = 2, pady = 0, sticky = "s", ipady=4)
+        tk.Scale(self.frame,
+            from_ = 5,
+            to = 40,
+            orient = tk.HORIZONTAL,
+            width = 8,
+            variable = self.vars['r']).grid(row = 2, column = 1,
+            padx = 2, pady = 0, sticky = "s", ipady=4)
+
+        # BW
+        tk.Label(self.frame,
+            text = "Color").grid(row = 2, column = 3,
+                padx = 2, pady = 0, sticky = "s", ipady=4)
+
+        ttk.Combobox(self.frame,
+            state = "readonly",
+            values = ["Black", "White"],
+            width = 10,
+            textvariable = self.vars['bw']).grid(row = 2, column = 4,
+            padx = 2, pady = 0, sticky = "s", ipady=4)
+
+        # Notice
+        tk.Label(self.frame,
+            text = "Please note that forced stone properties remain unchanged after detection\n" + \
+                   "To reset them, set default parameters or click Clear button in stones list").grid(
+                row = 3, columnspan = 5,
+                padx = 2, pady = 5, sticky = "s", ipady=4)
 
     def set_stone(self, stone, bw):
         self.stone = stone
         self.bw = bw
         self.update_vars()
-        self.add_controls()
+        self.add_controls(self.internalFrame)
         self.update_position()
 
 
@@ -620,9 +678,9 @@ class GbrStonesDlg(GrDialog):
     def get_title(self):
         return "Stones"
 
-    def init_frame(self):
-        f_top = tk.Frame(self.internalFrame)
-        f_bottom = tk.Frame(self.internalFrame)
+    def init_frame(self, internalFrame):
+        f_top = tk.Frame(internalFrame)
+        f_bottom = tk.Frame(internalFrame)
         f_top.pack(side = tk.TOP, fill = tk.BOTH)
         f_bottom.pack(side = tk.BOTTOM, fill = tk.BOTH)
 
@@ -637,6 +695,10 @@ class GbrStonesDlg(GrDialog):
         self.binder.register(self.editBtn, '<Click>', self.edit_click_callback)
         self.binder.register(self.editBtn, '<Dialog-Open>', self.dlg_open_callback)
         self.binder.register(self.editBtn, '<Dialog-Close>', self.dlg_close_callback)
+
+        ImgButton(f_top,
+            tag = "clear_small", tooltip = "Reset stones properties to default",
+            command = self.reset_stones_click_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
         sbr = tk.Scrollbar(f_bottom)
         sbr.pack(side=tk.RIGHT, fill=tk.Y)
@@ -658,9 +720,9 @@ class GbrStonesDlg(GrDialog):
         sbr.config(command = self.tv.yview)
         self.tv.config(yscrollcommand = sbr.set)
 
-    def init_buttons(self):
-        f_top = tk.Frame(self.buttonFrame)
-        f_bottom = tk.Frame(self.buttonFrame)
+    def init_buttons(self, buttonFrame):
+        f_top = tk.Frame(buttonFrame)
+        f_bottom = tk.Frame(buttonFrame)
         f_top.pack(side = tk.TOP, fill = tk.BOTH)
         f_bottom.pack(side = tk.BOTTOM, fill = tk.BOTH)
 
@@ -682,8 +744,7 @@ class GbrStonesDlg(GrDialog):
 
     def update_controls(self):
         """Focus set"""
-        self.get_stones()
-        self.update_listbox()
+        pass
 
     def add_stone_callback(self, event):
         """Add stone button click callback"""
@@ -693,6 +754,17 @@ class GbrStonesDlg(GrDialog):
         """Change stone button click callback"""
         stone, bw = self.selected_stone()
         event.cancel = stone is None
+
+    def reset_stones_click_callback(self, event):
+        """Reset stones button click callback"""
+        self.editBtn.release()
+        self.root.imageMarker.clear()
+
+        self.root.board.stones.reset()
+        self.get_stones()
+        self.update_listbox()
+
+        event.cancel = True
 
     def dlg_open_callback(self, event):
         """A stone dialog open callback"""
@@ -763,21 +835,40 @@ class GbrStonesDlg(GrDialog):
         return stone, bw
 
     def update_listbox(self):
+        """Populate the grid with stones"""
         self.tv.delete(*self.tv.get_children())
         for stone in self.stones:
-            im = self.stone_images[0] if stone[1] == "B" else self.stone_images[1]
+            im = self.stone_images[0] if stone[1] == STONE_BLACK else self.stone_images[1]
             self.tv.insert("", "end", image = im, values = (stone[0]), tags = (stone))
 
     def update_stone_dlg(self, stone = None, bw = None):
+        """ Update stone dialog to match current selection"""
         if self.stone_dlg is None:
             return
         if stone is None:
             stone, bw = self.selected_stone()
         self.stone_dlg.set_stone(stone, bw)
 
+    def update_stone(self, stone, bw):
+        """ Update stone props after been changed in stones dialog"""
+        # Update master window
+        if stone is not None:
+            self.root.board.stones.add([stone], bw = bw, set_forced = True)
+            self.root.show_stone(stone, bw)
+
+        # Update listbox
+        p = format_stone_pos(stone)
+        ids = self.tv.tag_has(p)
+        if ids is not None and len(ids) > 0:
+            self.is_selecting = True    # to prevent selection event handling
+            self.tv.see(ids[0])
+            self.tv.selection_set(ids[0])
+            im = self.stone_images[0] if bw == STONE_BLACK else self.stone_images[1]
+            self.tv.item(ids[0], image = im,
+                values = (p), tags = ((p, bw)))
+
 # GUI class
 class GbrGUI2(tk.Tk):
-
     # Constructor
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, "Go board")
@@ -992,7 +1083,9 @@ class GbrGUI2(tk.Tk):
 
     def mouse_click_callback(self, event):
         """Board image mouse click"""
-        if not self.board.is_gen_board:
+        if self.board.is_gen_board:
+            self.statusBar.set("No board image loaded")
+        else:
             x, y = self.imagePanel.frame2image((event.x, event.y))
             stone, bw = self.board.find_stone(c = (x, y))
             if not stone is None:

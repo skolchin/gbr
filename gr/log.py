@@ -40,16 +40,16 @@ class GrLogDlg(GrDialog):
         else:
             raise Exception("Log not provided")
 
-    def init_frame(self):
-        sbr = tk.Scrollbar(self.internalFrame)
+    def init_frame(self, internalFrame):
+        sbr = tk.Scrollbar(internalFrame)
         sbr.pack(side=tk.RIGHT, fill=tk.Y)
 
-        sbb = tk.Scrollbar(self.internalFrame, orient=tk.HORIZONTAL)
+        sbb = tk.Scrollbar(internalFrame, orient=tk.HORIZONTAL)
         sbb.pack(side=tk.BOTTOM, fill=tk.X)
 
         max_len = min(len(max(self.__log, key = lambda f: len(f))), 60)
 
-        lbox = tk.Listbox(self.internalFrame, yscrollcommand=sbr.set, xscrollcommand=sbb.set,
+        lbox = tk.Listbox(internalFrame, yscrollcommand=sbr.set, xscrollcommand=sbb.set,
             width=max_len)
         lbox.insert(tk.END, *self.__log)
         lbox.pack(fill = tk.BOTH, expand = True, padx = 5, pady = 5)
@@ -67,10 +67,10 @@ class GrLogDlg(GrDialog):
         self.focus_set()
         self.grab_set()
 
-    def init_buttons(self):
-        tk.Button(self.buttonFrame, text = "Close",
+    def init_buttons(self, buttonFrame):
+        tk.Button(buttonFrame, text = "Close",
             command = self.close_click_callback).pack(side = tk.TOP, padx = 5, pady = 5)
-        self.buttonFrame.configure(bd = 0, relief = tk.FLAT)
+        buttonFrame.configure(bd = 0, relief = tk.FLAT)
 
 class GrLogger(object):
     """GBR logging class.
