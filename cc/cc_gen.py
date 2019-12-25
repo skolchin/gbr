@@ -8,19 +8,22 @@
 # Copyright:   (c) kol 2019
 # Licence:     MIT
 #-------------------------------------------------------------------------------
-from gr.grdef import *
-from gr.board import GrBoard
-from gr.utils import get_image_area, resize
-
 import numpy as np
 import cv2
 import os
+import sys
+import glob
 from pathlib import Path
 from random import randrange
 from argparse import ArgumentParser
 from copy import deepcopy
 
-source_dir = None
+sys.path.append("../")
+from gr.grdef import *
+from gr.board import GrBoard
+from gr.utils import get_image_area, resize
+
+pattern = None
 positive_dir = "./cc/p/"
 negative_dir = "./cc/n/"
 is_gen = False
@@ -69,18 +72,16 @@ def one_file(file_name):
 
     # Generate positive samples (board stones)
     pd = Path(positive_dir)
-
     f_reg = open(str(pd.joinpath("positives.txt")), "a")
     ns = 0
-    stones = board.all_stones
-    for stone in stones:
+    for stone in board.all_stones:
         x, y, a, b, r, bw = stone
         area_img = None
         area = None
 
         if p_method == "s":
             # Save single staying stones only
-            nearby_stones = board.find_nearby(stone, 1)
+            nearby_stones = board.stones.find_nearby((stone[GR_A], stone[GR_B]), 1)
             area = [max(x-r-free_space,0),
                 max(y-r-free_space,0),
                 min(x+r+free_space, board.image.shape[CV_WIDTH]),
@@ -90,7 +91,7 @@ def one_file(file_name):
 
         elif p_method == "b":
             # Saving all stones with different area square
-            nearby_stones = board.find_nearby(stone, 1)
+            nearby_stones = board.stones.find_nearby((stone[GR_A], stone[GR_B]), 1)
             if len(nearby_stones) == 0:
                 area = [max(x-r-free_space,0),
                     max(y-r-free_space,0),
@@ -113,7 +114,7 @@ def one_file(file_name):
             covered.extend([area])
 
             # Get stones nearby
-            nearby_stones = board.find_nearby(stone, 2)
+            nearby_stones = board.stones.find_nearby((stone[GR_A], stone[GR_B]), 2)
 
             # Remove stones from the area
             nb_stone_areas = []
@@ -202,6 +203,8 @@ def one_file(file_name):
 
 
 def main():
+    global pattern
+
     pd = Path(positive_dir)
     pd.mkdir(exist_ok = True, parents = True)
     for x in pd.glob("*.*"):
@@ -219,20 +222,30 @@ def main():
     elif p_method == "a":
         print("Saving all stones with surrounding area free of other stones")
 
-    for x in Path(source_dir).glob("*.gpar"):
-        if x.is_file():
-            if x.with_suffix('.png').exists():
-                one_file(x.with_suffix('.png'))
-            elif x.with_suffix('.jpg').exists():
-                one_file(x.with_suffix('.jpg'))
+    if os.path.isdir(pattern):
+        pattern = os.path.join(pattern, "*.*")
+    else:
+        head, tail = os.path.split(pattern)
+        print(head, " = ", tail)
+        if tail == '': pattern = os.path.join(pattern, "*.*")
+
+    for x in glob.iglob(pattern):
+        if os.path.isfile(x):
+            y = Path(x)
+            if y.suffix != '.gpar':
+                one_file(y)
+            else:
+                if y.with_suffix('.png').exists():
+                    one_file(y.with_suffix('.png'))
+                elif y.with_suffix('.jpg').exists():
+                    one_file(y.with_suffix('.jpg'))
 
 def get_args():
-    global source_dir, positive_dir, negative_dir, is_gen, free_space, close_space, \
+    global pattern, positive_dir, negative_dir, is_gen, free_space, close_space, \
         neg_per_image, p_method, n_resize
 
     parser = ArgumentParser()
-    parser.add_argument('-s', "--source",
-        help = 'Source directory')
+    parser.add_argument('pattern', help = 'Selection pattern')
     parser.add_argument('-p', "--positive",
         default = "./p/",
         help = 'Directory to store positive images')
@@ -257,13 +270,13 @@ def get_args():
         help = 'Space to add around stones having any nearby stone')
     parser.add_argument('-i', "--neg_img", type = int,
         default = 0,
-        help = 'Number of negative images to generate from one image')
+        help = 'Number of negative images to generate from one image (0 - the same as positive)')
     parser.add_argument('-r', "--resize", type = int,
         default = 0,
         help = 'Resize positive image to specified size')
 
     args = parser.parse_args()
-    source_dir = args.source
+    pattern = args.pattern
     positive_dir = args.positive
     negative_dir = args.negative
     p_method = args.method
@@ -273,11 +286,8 @@ def get_args():
     neg_per_image = args.neg_img
     n_resize = args.resize
 
+
 if __name__ == '__main__':
     get_args()
-    if source_dir is None:
-        print("Source directory is not specified, exiting")
-    else:
-        main()
-
+    main()
     cv2.destroyAllWindows()
