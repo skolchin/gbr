@@ -62,10 +62,7 @@ class NBinder(object):
     of multiple event consumers. This class allows to handle such situations, and,
     in addition, to register custom events.
     """
-
-    # Tkinter bind/unbind seems not working
-    # This variable will keep all bindings set in all instances of NBinder
-    # TODO: add critical section handling
+    # All bindings set in all instances of NBinder
     __bindings = []
 
     def __init__(self):
@@ -119,7 +116,7 @@ class NBinder(object):
             NBinder.__unbind(self, event)
 
     def unbind_all(self):
-        """Unbind all registerations made by this instance"""
+        """Unbind all registrations made by this instance"""
         for key in self.bnd_ref.keys():
             bnd_id, widget, event, cb, _type = self.bnd_ref[key]
             if _type == "tk": widget.unbind(event, bnd_id)
@@ -137,21 +134,25 @@ class NBinder(object):
         """
         bnd_list = NBinder.__bindings
         for bnd in bnd_list:
-            if bnd[1] == widget and bnd[2] == event:
-                bnd[3](evt_data)
+            _owner, _widget, _event, _callback, _type = bnd
+            if _widget == widget and _event == event:
+                _callback(evt_data)
 
     @staticmethod
     def __unbind(owner, event):
         for i, bnd in enumerate(NBinder.__bindings):
-            if bnd[0] == owner and bnd[2] == event:
-                # This is my binding for given event
-                NBinder.__bindings.pop(i)
+            _owner, _widget, _event, _callback, _type = bnd
+            if _owner == owner and _event == event:
+                # This is my binding for given event, remove it
+                del NBinder.__bindings[i]
+                t = NBinder.__bindings
 
                 # If it is Tk event, rebind other callbacks to this event
-                if bnd[4] == "tk":
+                if _type == "tk":
                     for bnd2 in NBinder.__bindings:
-                        if bnd2[0] == owner and bnd2[2] == event:
-                            widget.bind(event, callback)
+                        _owner2, _widget2, _event2, _callback2, _type2 = bnd2
+                        if _widget2 == _widget and _event2 == event:
+                            _widget.bind(event, _callback2)
 
 
 # ImageButton
@@ -168,7 +169,7 @@ class ImgButton(tk.Label):
         def __init__(self, event, tag, state):
             self.event, self.tag, self.state, self.cancel = event, tag, state, False
 
-    ImgButtonDialogEvent = namedtuple('ImgButtonDialogEvent', ['tag', 'dlg'])
+    ImgButtonDialogEvent = namedtuple('ImgButtonDialogEvent', ['tag', 'dlg', 'ok'])
 
     def __init__(self, *args, **kwargs):
         """Creates new ImgButton.
@@ -288,14 +289,16 @@ class ImgButton(tk.Label):
         if not self.__dlg_class is None:
             if self.__dlg is not None:
                 self.__binder.unbind(self.__dlg, "<Close>")
-                self.__binder.trigger(self, '<Dialog-Close>', self.ImgButtonDialogEvent(self.__tag, self.__dlg))
+                self.__binder.trigger(self, '<Dialog-Close>',
+                    self.ImgButtonDialogEvent(self.__tag, self.__dlg, False))
                 self.__dlg.destroy()
                 self.__dlg = None
 
             if self.__state:
                 self.__dlg = self.__dlg_class(master = self.master)
                 self.__binder.register(self.__dlg, "<Close>", self.__dialog_close_callback)
-                self.__binder.trigger(self, '<Dialog-Open>', self.ImgButtonDialogEvent(self.__tag, self.__dlg))
+                self.__binder.trigger(self, '<Dialog-Open>',
+                    self.ImgButtonDialogEvent(self.__tag, self.__dlg, False))
 
     def __mouse_click(self, event):
         """Mouse click callback"""
@@ -305,7 +308,8 @@ class ImgButton(tk.Label):
         """Dialog close callback"""
         if self.__dlg is not None:
             self.__binder.unbind(self.__dlg, "<Close>")
-            self.__binder.trigger(self, '<Dialog-Close>', self.ImgButtonDialogEvent(self.__tag, self.__dlg))
+            self.__binder.trigger(self, '<Dialog-Close>',
+                self.ImgButtonDialogEvent(self.__tag, self.__dlg, event.ok))
             self.__dlg = None
         self.state = False
 
@@ -1383,9 +1387,12 @@ class GrDialog(tk.Toplevel):
 
     def __init__(self, *args, **kwargs):
         # Initialization
+        self.binder = NBinder()
+        self.ok_cancel = False
+        self.ok = False
+
         self.init_params(args, kwargs)
         tk.Toplevel.__init__(self, *args, **kwargs)
-        self.binder = NBinder()
         self.init_state()
 
         # Window mechanics
@@ -1460,8 +1467,14 @@ class GrDialog(tk.Toplevel):
 
     def init_buttons(self, buttonFrame):
         """Override to add buttons to button frame. Inherited method should be called."""
-        tk.Button(self.buttonFrame, text = "Close",
-            command = self.close_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+        if not self.ok_cancel:
+            tk.Button(self.buttonFrame, text = "Close",
+                command = self.close_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+        else:
+            tk.Button(self.buttonFrame, text = "OK",
+                command = self.ok_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+            tk.Button(self.buttonFrame, text = "Cancel",
+                command = self.close_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
     def update_controls(self):
         """Override to update controls on getting focus"""
@@ -1472,8 +1485,14 @@ class GrDialog(tk.Toplevel):
         self.focus_set()
         self.resizable(False, False)
 
+    def ok_click_callback(self):
+        """OK button click callback"""
+        self.ok = True
+        self.close()
+
     def close_click_callback(self):
         """Close button click callback"""
+        self.ok = False
         self.close()
 
     def escape_callback(self, event):
@@ -1491,14 +1510,30 @@ class GrDialog(tk.Toplevel):
     def close(self):
         """Graceful way to close the dialog.
         Override to add custom logic, inherited method should be called"""
-        self.binder.trigger(self, "<Close>", None)
+        Event = namedtuple('Event', ['dlg', 'ok'])
+        self.binder.trigger(self, "<Close>", Event(dlg = self, ok = self.ok))
         self.destroy()
 
     def update_position(self):
+        """Update window position"""
         m = self.get_minsize()
         p = self.get_position()
         self.minsize(m[0], m[1])
         self.geometry("%+d%+d" % (p[0], p[1]))
+
+    def enable_controls(self, state, cb_def_state = "normal"):
+        """Enables or disables controls hosted at internal frame"""
+        def f(frame):
+            for w in frame.winfo_children():
+                if isinstance(w, tk.Frame):
+                    f(w)
+                elif isinstance(w, ttk.Combobox):
+                    w.configure(state = cb_def_state if state else "disabled")
+                elif isinstance(w, ImgButton):
+                    w.disabled = not state
+                elif isinstance(w, ttk.Widget) or isinstance(w, tk.Widget):
+                    w.configure(state = tk.NORMAL if state else tk.DISABLED)
+        f(self.internalFrame)
 
 # A marker on an ImagePanel
 class ImageMarker(object):
