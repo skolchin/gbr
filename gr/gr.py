@@ -481,11 +481,14 @@ def get_board_from_params(img, params, res):
     return edges, size
 
 # Converts stone coordinates to stone positions
-# Takes an array of coordinates created by find_stones and results dictionary
-# Returns an array containg stones positions as well as board coordinates
-# Board coordinates are stores as first two array items, board position - as 3,4
 def convert_xy(coord, res):
-    """Convert stone coordinates to board positions"""
+    """Convert stone coordinates to board positions.
+    Parameters:
+        coord   Numpy array or list of stone coordinates (X, Y, R)
+        res     Results dictionary (edges, size and spacing must be set)
+    Returns:
+        numpy array (X, Y, A, B, R) or None
+    """
     if coord is None or not GR_EDGES in res:
         return None
 
