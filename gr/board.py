@@ -160,7 +160,7 @@ class GrBoard(object):
 
         def _add_stone(game, bw, stone):
             node = game.extend_main_sequence()
-            node.set_move(bw, (stone[GR_B], stone[GR_A]))
+            node.set_move(bw, (stone[GR_B]-1, stone[GR_A]-1))
 
         if self._res is None:
             raise Exception("Recognition results are not available")
