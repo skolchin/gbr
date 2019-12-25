@@ -126,6 +126,19 @@ def format_stone_pos(stone, axis = None):
     else:
         return int(round(stone[axis],0))
 
+def stone_pos_from_str(pos):
+    if pos is None:
+        return (None, None)
+    ps = str(pos).upper()
+    a = ord(ps[0]) - ord('A') + 1
+    if a < 0:
+        raise ValueError("Invalid stone position " + ps)
+    try:
+        b = int(ps[1:])
+    except:
+        raise ValueError("Invalid stone position " + ps)
+    return (a, b)
+
 def gres_to_jgf(res):
     """Converts board recognition results to JGF dictionary"""
     def sp(stones):
