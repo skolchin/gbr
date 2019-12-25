@@ -1,9 +1,15 @@
 
 ## Changelog
 
+25/12/2019
+
+* Stones creation/edition added (Add stone and Change stone buttons in Stones dialog). Added or modified stones are saved with parameters, restored after saving and not changed during detection.
+* New classes GrStone/GrStones to manage board stones
+
 12/12/2019
 
 * New option: automatic selection of recognition parameters available in Options dialog
+* New classes GrParam/GrParams to hold recognition parameters
 
 
 04/12/2019
