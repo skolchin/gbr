@@ -65,6 +65,7 @@ class GrBoard(object):
            logging.error('Image file not found {}'.format(filename))
            raise Exception('Image file not found {}'.format(filename))
 
+        self._stones.clear(with_forced = True)
         self._gen_board = False
         self._img_file = filename
         self._src_img_file = filename
