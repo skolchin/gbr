@@ -9,7 +9,7 @@
 # Licence:     MIT
 #-------------------------------------------------------------------------------
 from .grdef import *
-from .utils import format_stone_pos
+from .utils import format_stone_pos, stone_pos_from_str
 
 import numpy as np
 
@@ -352,12 +352,16 @@ class GrStones(object):
     def find_nearby(self, p, d = 1):
         """Finds all stones near specified position.
         Parameters:
-            p   board position coordinates as (A, B) tuple
+            p   stone position coordinates as (A, B) tuple or position string (A9)
             d   delta
         Return: a list of stones closing around given position
         """
         if p is None:
             return None
+        elif type(p) is not tuple and type(p) is not list and type(p) is not np.ndarray:
+            # Assume it is a string
+            p = stone_pos_from_str(str(p))
+
         r = []
         rg_a = range(max(p[0]-d,1), p[0]+d+1)
         rg_b = range(max(p[1]-d,1), p[1]+d+1)
