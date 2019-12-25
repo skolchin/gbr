@@ -57,10 +57,15 @@ class NButton(tk.Button):
 
 
 class NBinder(object):
-    """ Supplementary class to manage widget bindings (both TkInter and custom).
-    Tkinter management of event binding doesn't properly manage registration/deregistraion
-    of multiple event consumers. This class allows to handle such situations, and,
-    in addition, to register custom events.
+    """ Supplementary class to manage widget bindings.
+
+        Tkinter management of event binding doesn't properly manage registration/deregistraion
+        of multiple event consumers This class allows to handle such situations properly by
+        keeping all callbacks registered to particular event and re-binding them if one gets
+        revoked.
+        In addition, it allows to register and bind to a custom events the same way as Tkinter
+        does. For example, a dialog could raise <Close> event when it's been closed allowing
+        consumers to get user input provided in the dialog.
     """
     # All bindings set in all instances of NBinder
     __bindings = []
@@ -72,14 +77,14 @@ class NBinder(object):
         """Bind a callback to an event (tkInter or custom)
 
         Parameters:
-            widget  A Tkinter widget
-            event   A string specifying an event
-                    Tkinter events listed in documentaion
-                    Custom events could be found in object's decription below
+            widget      A Tkinter widget or custom object which has winfo_id() method
+            event       A string specifying an event.
+                        Tkinter events listed in documentaion. Custom events are specific to objects
+                        and should be described in corresponding documentation.
             callback    A callback function which is to be called when event is raised.
                         It should accept one parameter (event data). Returns are ignored.
-            _type   "tk" for Tkinter event, anything else for custom
-            add     Additional parameter for Tkinter bindings
+            _type       "tk" for Tkinter event, anything else for custom
+            add         Additional parameter for Tkinter bind() call
         """
         # Store binding in this instance
         key = str(widget.winfo_id()) + '__' + str(event)
@@ -158,11 +163,22 @@ class NBinder(object):
 # ImageButton
 class ImgButton(tk.Label):
     """Button with image face.
-    This class represents a button with image and (currently) no text.
-    The button can be toggled between states (normal/pressed).
-    Upon clicking, a '<Click>' custom event is raised with ImageButtonEvent instance passed in.
-    A callback bound to the event should set event .cancel attribute to prevent
-    button from become pressed.
+        This class represents a button with image and (currently) no text. A button has a
+        tag which distinguish it from others and define what image is used as a face.
+        The button can be toggled between states (normal/pressed).
+        Upon clicking, a '<Click>' custom event is raised. A callback bound to the event
+        could set event.cancel to True to prevent button from become pressed.
+        Event parameters:
+            event   TkInter event
+            tag     Button tag
+            state   New state (True if pressed, False otherwise).
+        A button can be set to automatically create or close of a dialog window according to
+        its state by providing a dlg_class parameter. In this case, <Dialog-Open> and
+        <Dialog-Close> events are raised upon dialog showing up and closing.
+        Event parameters:
+            tag     Button tag
+            dlg     Dialog been showing up or closed down
+            ok      True if dialog is been closed after OK button press
     """
     # ImageButton event support classes
     class ImgButtonClickEvent(object):
@@ -181,9 +197,10 @@ class ImgButton(tk.Label):
             disabled    True/False
             tooltip     A tooltip text
             command     A callback function. See NBinder.bind()
-            dlg_class   A dialog class. If provided, assumed that button is to be used to show/hide this dialog.
+            dlg_class   A dialog class descendant of GrDialog. If provided, it is assumed
+                        that button is to be used to show/hide this dialog.
                         Note that if a callback is provided, dialog is created after it respecting results of the call.
-                        A dialog should trigger <Close> event to allow button unpress upon clase.
+                        A dialog should trigger <Close> event to allow button unpress upon close.
         """
         # Init
         self.__dlg = None
@@ -195,7 +212,7 @@ class ImgButton(tk.Label):
         if self.__tag is None:
             raise Exception('tag not provided')
         if 'callback' in kwargs:
-            raise Exception("Using of 'callback' is deprecated, use 'command' or bind to <Click> event instead")
+            raise Exception("Using of 'callback' is deprecated, use 'command' or bind to <Click> event")
         self.__state = kwargs.pop('state', False)
         self.__disabled = kwargs.pop('disabled', False)
         tooltip = kwargs.pop('tooltip', None)
@@ -221,7 +238,7 @@ class ImgButton(tk.Label):
         self.configure(borderwidth = 1, relief = "groove", width = w, height = h)
         self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
 
-        self.bind("<Button-1>", self.__mouse_click)
+        self.__binder.bind(self, "<Button-1>", self.__mouse_click)
 
     @property
     def tag(self):
@@ -320,6 +337,150 @@ class ImgButton(tk.Label):
         ui_path = os.path.join(os.path.dirname(sys.argv[0]), UI_DIR)
         return ImageTk.PhotoImage(Image.open(os.path.join(ui_path, name)))
 
+
+# Button group types
+BG_INDEPENDENT = "independent"
+BG_DEPENDENT = "dependent"
+
+# Button group
+class ImgButtonGroup(object):
+    """Button group management class.
+
+        This class allows to define a button group can include several ImgButton tags
+        and manage them as a whole (for example, disabling or unpressing them at once).
+        Button groups can be dependent (where only one button could be down at one time)
+        or independent, which are handled by the caller.
+    """
+
+    # Enclosed group class
+    class __Group(object):
+        def __init__(self, parent, group, gtype, tags):
+            self.parent, self.group, self.gtype, self.tags = parent, group, gtype, tags
+
+        @property
+        def buttons(self):
+            return {b.tag: b for b in self.parent.get_buttons(self.group)}
+
+        def __getitem__(self, key):
+            return self.buttons[key]
+
+        @property
+        def state(self):
+            return False
+
+        @state.setter
+        def state(self, s):
+            self.parent.set_state(self.group, s)
+
+        @property
+        def disabled(self):
+            return False
+
+        @disabled.setter
+        def disabled(self, d):
+            self.parent.set_disabled(self.group, d)
+
+        def release(self, exclude = None):
+            self.parent.release(self.group, exclude)
+
+    def __init__(self, master, **kwargs):
+        """Create an instance.
+
+        Parameters:
+            master  A frame or ImagePanel containing ImgButtons
+        """
+        self.__master = master
+        self.__binder = NBinder()
+        self.__groups = dict()
+
+    @property
+    def buttons_list(self):
+        """All image buttons displayed on master panel"""
+        return self.get_buttons()
+
+    @property
+    def buttons(self):
+        """Image button dictionary with tag as a key and button as value"""
+        return {b.tag: b for b in self.get_buttons()}
+
+    @property
+    def groups(self):
+        """Groups list"""
+        return self.__groups
+
+    def __getitem__(self, key):
+        """Iterator for groups"""
+        return self.__groups[key]
+
+    @property
+    def dependent_groups(self):
+        """List of groups of type BG_DEPENDENT"""
+        return self.get_groups(BG_DEPENDENT)
+
+    def get_buttons(self, group = None, exclude = None):
+        """List of image buttons displayed on master panel and, optionally, belonging to a group"""
+        if group is not None and not group in self.groups:
+            raise ValueError("Group '" + group + "' is not defined")
+
+        frame = self.__master.headerPanel if (isinstance(self.__master, ImagePanel)) else self.__master
+        return [c for c in frame.winfo_children() \
+            if isinstance(c, ImgButton) and
+                (group is None or c.tag in self.__groups[group].tags) and \
+                (exclude is None or not c.tag in exclude) ]
+
+    def get_groups(self, gtype = None):
+        """Returns a list of groups, optionally, with specified type"""
+        return [g for g in self.__groups if (gtype is None or self.__groups[g].gtype == gtype)]
+
+    def add_group(self, group, tags, gtype = BG_INDEPENDENT):
+        """Creates new button group"""
+        if group in self.__groups:
+            raise ValueError("Group '" + group + "' already defined")
+
+        # Check group dependencies
+        if gtype == BG_DEPENDENT:
+            for g in self.dependent_groups:
+                for t in self.__groups[g]:
+                    if t in tags:
+                        raise ValueError("Tag '" + t + "' was already included into dependent group '" + g + "'")
+
+        # Register for ImgButton click event
+        frame = self.__master.headerPanel if (isinstance(self.__master, ImagePanel)) else self.__master
+        for c in frame.winfo_children():
+            if isinstance(c, ImgButton) and c.tag in tags:
+                self.__binder.register(c, "<Click>", self.__click_callback)
+
+        # Store info
+        self.__groups[group] = ImgButtonGroup.__Group(self, group, gtype, tags)
+
+    def set_state(self, group, state, exclude = None):
+        """Changes state of all buttons in a group"""
+        g = self.get_buttons(group, exclude)
+        for b in g: b.state = state
+
+    def set_disabled(self, group, disabled, exclude = None):
+        """Changes mode of all buttons in a group"""
+        g = self.get_buttons(group, exclude)
+        for b in g: b.disabled = disabled
+
+    def release(self, group, exclude = None):
+        """Releases all buttons in a group"""
+        g = self.get_buttons(group, exclude)
+        for b in g: b.release()
+
+    def __click_callback(self, event):
+        """Button click callback event"""
+        if not event.state:
+            # Unpressing, nothing to do
+            return
+
+        # Find dependent groups a clicked button belongs to
+        grp = [g for g in self.dependent_groups if event.tag in self.__groups[g].tags]
+
+        # Only one button in dependent group can be down at once
+        for g in grp:
+            for b in self.get_buttons(g):
+                if b.tag != event.tag: b.release()
 
 # Tooltip
 class ToolTip(object):
@@ -1383,7 +1544,41 @@ class ImageTransform(object):
 
 # Dialog window
 class GrDialog(tk.Toplevel):
-    """A base class for dialog and supplementary windows"""
+    """A base class for dialog and supplementary windows.
+    The class creates a window positioned next to root,
+    either as modal or non modal dialog. The window will have an internal
+    frame where controls should be placed and a button bar at the bottom.
+    By default, the button bar will have either Close or OK and Cancel buttons
+    depending on ok_cancel internal flag.
+    Upon closing, the window raises a <Close> custom event with 'dlg' (self)
+    and 'ok' (whether OK button was pressed) parameters.
+    Subclasses could override the following methods:
+        get_minsize()   Returns (min_x, min_y) tuple specifying minimum window size
+                        Note that TkInter fits a window to children's bounding box,
+                        so actual windows size could be large
+        get_title()     Returns a title string
+        get_position()  Returns a (x, y) tuple where to display a window in
+                        screen coordinates. By default uses get_offset() results to
+                        position the window relative to root
+        get_offset()    Return a (off_x, off_y) tuple for offsetting to root window
+        init_params()   Called before TkInter initialization to retrieve additional
+                        parameters from args or kwargs
+        init_state()    Called after TkInter initialization to init initernal vars
+        init_frame()    Should be overridden to add controls to internal frame
+        init_buttons()  Should be overridden to add controls to button frame.
+                        Default method adds Close or OK+Cancel buttons depending on
+                        ok_cancel internal flag value (False by default)
+        grab_focus()    Should make window modal or just take focus:
+                            If self.focus_set() is called, focus is assigned to window
+                            If self.grab_set() is called, window becomes modal
+                        Default method calls focus_set() and also self.resizable(False, False)
+        update_controls()   Called when focus is assigned to window after loss,
+                            should be overriden to update internal state
+        close()         Called upon window destruction. By default, triggers
+                        <Close> custom event passing reference to self (as dlg)
+                        and OK pressing flag (as ok). Default method should be called
+                        if overriden
+        """
 
     def __init__(self, *args, **kwargs):
         # Initialization
@@ -1423,8 +1618,8 @@ class GrDialog(tk.Toplevel):
         # Focus
         self.grab_focus()
 
-
     def get_root(self):
+        """Returns reference to root application window of tk.Tk class"""
         m = self.master
         while m is not None:
             if isinstance(m, tk.Tk): return m
@@ -1433,6 +1628,7 @@ class GrDialog(tk.Toplevel):
 
     @property
     def root(self):
+        """A root application window of tk.Tk class"""
         return self.get_root()
 
     def get_minsize(self):
@@ -1690,145 +1886,3 @@ class ImageMarker(object):
             self.canvas.delete(m)
             self.canvas.after(100, lambda: self.__flash_marker(stone,bw,cnt-1,True))
 
-# Button group types
-BG_INDEPENDENT = "independent"
-BG_DEPENDENT = "dependent"
-
-# Button group
-class ImgButtonGroup(object):
-    """Button group management class.
-    This class allows to define a button group can include several ImgButton tags
-    and manage them as a whole (for example, disabling or unpressing them at once).
-    Button groups can be dependent (where only one button could be down at one time)
-    or independent, which are handled by the caller.
-    """
-
-    # Enclosed group class
-    class __Group(object):
-        def __init__(self, parent, group, gtype, tags):
-            self.parent, self.group, self.gtype, self.tags = parent, group, gtype, tags
-
-        @property
-        def buttons(self):
-            return {b.tag: b for b in self.parent.get_buttons(self.group)}
-
-        def __getitem__(self, key):
-            return self.buttons[key]
-
-        @property
-        def state(self):
-            return False
-
-        @state.setter
-        def state(self, s):
-            self.parent.set_state(self.group, s)
-
-        @property
-        def disabled(self):
-            return False
-
-        @disabled.setter
-        def disabled(self, d):
-            self.parent.set_disabled(self.group, d)
-
-        def release(self, exclude = None):
-            self.parent.release(self.group, exclude)
-
-    def __init__(self, master, **kwargs):
-        """Create an instance.
-
-        Parameters:
-            master  A frame or ImagePanel containing ImgButtons
-        """
-        self.__master = master
-        self.__binder = NBinder()
-        self.__groups = dict()
-
-    @property
-    def buttons_list(self):
-        """All image buttons displayed on master panel"""
-        return self.get_buttons()
-
-    @property
-    def buttons(self):
-        """Image button dictionary with tag as a key and button as value"""
-        return {b.tag: b for b in self.get_buttons()}
-
-    @property
-    def groups(self):
-        """Groups list"""
-        return self.__groups
-
-    def __getitem__(self, key):
-        """Iterator for groups"""
-        return self.__groups[key]
-
-    @property
-    def dependent_groups(self):
-        """List of groups of type BG_DEPENDENT"""
-        return self.get_groups(BG_DEPENDENT)
-
-    def get_buttons(self, group = None, exclude = None):
-        """List of image buttons displayed on master panel and, optionally, belonging to a group"""
-        if group is not None and not group in self.groups:
-            raise ValueError("Group '" + group + "' is not defined")
-
-        frame = self.__master.headerPanel if (isinstance(self.__master, ImagePanel)) else self.__master
-        return [c for c in frame.winfo_children() \
-            if isinstance(c, ImgButton) and
-                (group is None or c.tag in self.__groups[group].tags) and \
-                (exclude is None or not c.tag in exclude) ]
-
-    def get_groups(self, gtype = None):
-        """Returns a list of groups, optionally, with specified type"""
-        return [g for g in self.__groups if (gtype is None or self.__groups[g].gtype == gtype)]
-
-    def add_group(self, group, tags, gtype = BG_INDEPENDENT):
-        """Creates new button group"""
-        if group in self.__groups:
-            raise ValueError("Group '" + group + "' already defined")
-
-        # Check group dependencies
-        if gtype == BG_DEPENDENT:
-            for g in self.dependent_groups:
-                for t in self.__groups[g]:
-                    if t in tags:
-                        raise ValueError("Tag '" + t + "' was already included into dependent group '" + g + "'")
-
-        # Register for ImgButton click event
-        frame = self.__master.headerPanel if (isinstance(self.__master, ImagePanel)) else self.__master
-        for c in frame.winfo_children():
-            if isinstance(c, ImgButton) and c.tag in tags:
-                self.__binder.register(c, "<Click>", self.__click_callback)
-
-        # Store info
-        self.__groups[group] = ImgButtonGroup.__Group(self, group, gtype, tags)
-
-    def set_state(self, group, state, exclude = None):
-        """Changes state of all buttons in a group"""
-        g = self.get_buttons(group, exclude)
-        for b in g: b.state = state
-
-    def set_disabled(self, group, disabled, exclude = None):
-        """Changes mode of all buttons in a group"""
-        g = self.get_buttons(group, exclude)
-        for b in g: b.disabled = disabled
-
-    def release(self, group, exclude = None):
-        """Releases all buttons in a group"""
-        g = self.get_buttons(group, exclude)
-        for b in g: b.release()
-
-    def __click_callback(self, event):
-        """Button click callback event"""
-        if not event.state:
-            # Unpressing, nothing to do
-            return
-
-        # Find dependent groups a clicked button belongs to
-        grp = [g for g in self.dependent_groups if event.tag in self.__groups[g].tags]
-
-        # Only one button in dependent group can be down at once
-        for g in grp:
-            for b in self.get_buttons(g):
-                if b.tag != event.tag: b.release()
