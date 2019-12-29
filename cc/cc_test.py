@@ -12,13 +12,12 @@
 import numpy as np
 import cv2
 
-img = cv2.imread("../img/go_board_2.png")
+img = cv2.imread("../img/go_board_1.png")
 if img is None:
     raise Exception("Not found")
 
 cascade = cv2.CascadeClassifier("m/cascade.xml")
-results = cascade.detectMultiScale(img, scaleFactor=1.3, minNeighbors=4,
-maxSize=(30, 30))
+results = cascade.detectMultiScale(img, scaleFactor=1.3, maxSize=(40, 40))
 results[:,2:] += results[:,:2]
 print(results)
 for r in results:
