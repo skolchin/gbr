@@ -2,17 +2,8 @@
     "AREA_MASK": null,
     "BLUR_MASK_B": 0,
     "BLUR_MASK_W": 0,
-    "BOARD_EDGES": [
-        [
-            12,
-            11
-        ],
-        [
-            473,
-            472
-        ]
-    ],
-    "BOARD_SIZE": 21,
+    "BOARD_EDGES": null,
+    "BOARD_SIZE": 18,
     "CANNY_APERTURE": 3,
     "CANNY_MAXVAL": 100,
     "CANNY_MINVAL": 50,
@@ -30,7 +21,7 @@
     "HL_THETA2": 6,
     "HL_THRESHOLD": 0,
     "HL_THRESHOLD2": 40,
-    "LUM_EQ": 0,
+    "LUM_EQ": 1,
     "PYRAMID_B": 0,
     "PYRAMID_W": 0,
     "STONES_DILATE_B": 1,
@@ -41,7 +32,24 @@
     "STONES_MAXVAL_W": 255,
     "STONES_THRESHOLD_B": 84,
     "STONES_THRESHOLD_W": 173,
-    "TRANSFORM": null,
+    "TRANSFORM": [
+        [
+            276,
+            106
+        ],
+        [
+            12,
+            264
+        ],
+        [
+            331,
+            549
+        ],
+        [
+            580,
+            265
+        ]
+    ],
     "WATERSHED_B": 85,
     "WATERSHED_W": 131,
     "WS_MORPH_B": 0,

@@ -16,26 +16,7 @@
     "CANNY_APERTURE": 3,
     "CANNY_MAXVAL": 100,
     "CANNY_MINVAL": 50,
-    "FORCED_STONES": [
-        [
-            [
-                81,
-                428,
-                4,
-                3,
-                10
-            ],
-            "W",
-            [
-                81,
-                428,
-                4,
-                3,
-                10
-            ],
-            "W"
-        ]
-    ],
+    "FORCED_STONES": [],
     "HC_MASK_B": 3,
     "HC_MASK_W": 3,
     "HC_MAXRADIUS": 20,

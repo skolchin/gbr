@@ -4,15 +4,15 @@
     "BLUR_MASK_W": 0,
     "BOARD_EDGES": [
         [
-            12,
-            11
+            54,
+            50
         ],
         [
-            473,
-            472
+            592,
+            592
         ]
     ],
-    "BOARD_SIZE": 21,
+    "BOARD_SIZE": 19,
     "CANNY_APERTURE": 3,
     "CANNY_MAXVAL": 100,
     "CANNY_MINVAL": 50,
@@ -40,7 +40,7 @@
     "STONES_MAXVAL_B": 255,
     "STONES_MAXVAL_W": 255,
     "STONES_THRESHOLD_B": 84,
-    "STONES_THRESHOLD_W": 173,
+    "STONES_THRESHOLD_W": 240,
     "TRANSFORM": null,
     "WATERSHED_B": 85,
     "WATERSHED_W": 131,
