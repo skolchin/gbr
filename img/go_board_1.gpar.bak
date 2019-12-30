@@ -1,7 +1,7 @@
 {
     "AREA_MASK": null,
     "BLUR_MASK_B": 0,
-    "BLUR_MASK_W": 0,
+    "BLUR_MASK_W": 2,
     "BOARD_EDGES": [
         [
             12,
@@ -20,7 +20,7 @@
         [
             [
                 81,
-                428,
+                425,
                 4,
                 3,
                 10
@@ -28,12 +28,13 @@
             "W",
             [
                 81,
-                428,
+                425,
                 4,
                 3,
                 10
             ],
-            "W"
+            "W",
+            true
         ]
     ],
     "HC_MASK_B": 3,
@@ -64,5 +65,5 @@
     "WATERSHED_B": 85,
     "WATERSHED_W": 131,
     "WS_MORPH_B": 0,
-    "WS_MORPH_W": 0
+    "WS_MORPH_W": 1
 }
