@@ -17,7 +17,8 @@ if img is None:
     raise Exception("Not found")
 
 cascade = cv2.CascadeClassifier("m/cascade.xml")
-results = cascade.detectMultiScale(img, 1.1, 1)
+results = cascade.detectMultiScale(img, scaleFactor=1.3, maxSize=(40, 40))
+results[:,2:] += results[:,:2]
 print(results)
 for r in results:
     cv2.rectangle(img, (r[0], r[1]), (r[2], r[3]), color = (0, 0, 255))
