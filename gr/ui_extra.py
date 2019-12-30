@@ -1752,6 +1752,7 @@ class ImageMarker(object):
         self.__type = kwargs.pop('marker', 0)
         self.__radius = kwargs.pop('radius', 0)
         self.__flash = kwargs.pop('flash', 0)
+        self.last_stone = None
 
         self.__markers = []
         if show: self.show()
@@ -1779,18 +1780,36 @@ class ImageMarker(object):
     def stones(sef):
         return self.__stones.copy()
 
-    def add_stone(self, stone, bw = None, f_show = True):
+    def add_stone(self, stone, bw = None, f_show = True, f_replace = False):
         """Add stone"""
-        self.__stones.extend([(stone, bw)])
+        if f_replace and len(self.__stones) > 0: self.clear()
+        st = stone.copy()
+        if len(stone) <= GR_BW:
+            if bw is None:
+                raise Exception('Stone color is not specified')
+            st.extend(bw)
+        self.__stones.extend([stone])
+
         if f_show:
             if self.__flash == 0:
-                self.__draw_marker(stone, bw)
+                self.__draw_marker(stone)
             else:
-                self.__flash_marker(stone, bw, self.__flash, True)
+                self.__flash_marker(stone, self.__flash, True)
 
-    def add_stones(self, stones, bw = None, f_show = True):
+    def add_stones(self, stones, bw = None, f_show = True, f_replace = False):
         """Add stone from list"""
-        self.__stones.extend([(x, bw) for x in stones])
+        if f_replace and len(self.__stones) > 0: self.clear()
+        if stones is None or len(stones) == 0: return
+
+        if len(stones[0]) > GR_BW:
+            # Stones has bw property
+            self.__stones.extend(list(stones))
+        elif bw is not None:
+            # Color provided provided
+            self.__stones.extend([list(x).extend(bw) for x in stones])
+        else:
+            raise Exception('Stone color is not specified')
+
         if f_show:
             self.__draw_markers()
 
@@ -1822,13 +1841,9 @@ class ImageMarker(object):
         """ True if markers are currently shown"""
         return self.__markers is not None and len(self.__markers) > 0
 
-    def __draw_marker(self, stone, bw):
+    def __draw_marker(self, stone):
         """Internal function. Draws a marker for a stone"""
-        p = self.panel.image2frame((stone[GR_X], stone[GR_Y]))
-        r = stone[GR_R] if self.__radius == 0 else self.__radius
-        r = int(r * self.__panel.scale[0])
-
-        def circle(x, y, r):
+        def circle(x, y, r, bw):
             return self.canvas.create_oval(
                 x - r, y - r, x + r, y + r,
                 outline = self.line_color[bw],
@@ -1836,7 +1851,7 @@ class ImageMarker(object):
                 width = self.line_width[bw]
             )
 
-        def circle_poly(x,y,r):
+        def circle_poly(x, y, r, bw):
             nr_points = 32
             angles = np.linspace(0, 2*np.pi, nr_points+1)[0:-1]
             points = []
@@ -1851,11 +1866,15 @@ class ImageMarker(object):
                   fill = self.fill_color[bw],
                   stipple = self.fill_stipple[bw])
 
-        if bw is None: bw = '_'
+        p = self.panel.image2frame((stone[GR_X], stone[GR_Y]))
+        r = stone[GR_R] if self.__radius == 0 else self.__radius
+        r = int(r * self.__panel.scale[0])
+        bw = stone[GR_BW] if len(stone) > GR_BW and stone[GR_BW] is not None else '_'
+
         if self.fill_stipple[bw] == "":
-            m = circle(p[0], p[1], r)
+            m = circle(p[0], p[1], r, bw)
         else:
-            m = circle_poly(p[0], p[1], r)
+            m = circle_poly(p[0], p[1], r, bw)
         self.__markers.extend([m])
 
     def __draw_markers(self):
@@ -1868,21 +1887,21 @@ class ImageMarker(object):
 
         # Draw
         for stone in self.__stones:
-            self.__draw_marker(stone[0], stone[1])
+            self.__draw_marker(stone)
 
     def __on_panel_resize(self, e):
         """Callback for panel resize (internal function)"""
         self.__draw_markers()
 
-    def __flash_marker(self, stone, bw, cnt, on_off):
+    def __flash_marker(self, stone, cnt, on_off):
         if on_off:
             # Marker is ON
-            self.__draw_marker(stone, bw)
+            self.__draw_marker(stone)
             if cnt > 0:
-                self.canvas.after(100, lambda: self.__flash_marker(stone,bw,cnt,False))
+                self.canvas.after(100, lambda: self.__flash_marker(stone, cnt, False))
         elif len(self.__markers) > 0:
             # Marker is OFF
             m = self.__markers.pop(-1)
             self.canvas.delete(m)
-            self.canvas.after(100, lambda: self.__flash_marker(stone,bw,cnt-1,True))
+            self.canvas.after(100, lambda: self.__flash_marker(stone, cnt-1, True))
 

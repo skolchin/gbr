@@ -33,6 +33,7 @@ GR_FROM = 0                       # index of line start in lines array
 GR_TO = 1                         # index of line end in lines array
 STONE_BLACK = 'B'                 # key for black stones
 STONE_WHITE = 'W'                 # key for white stones
+STONE_COLORS = {STONE_BLACK: "Black", STONE_WHITE: "White"} # stone color names
 
 # Parameters moved to gr.params
 

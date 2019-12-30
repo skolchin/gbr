@@ -204,8 +204,10 @@ class GrBoard(object):
         else:
             self._res = process_img(self._img, self._params)
             self._stones.clear(with_forced = False)
-            self._stones.add(self._res[GR_STONES_B], STONE_BLACK, with_forced = False)
-            self._stones.add(self._res[GR_STONES_W], STONE_WHITE, with_forced = False)
+            self._stones.add_ext(self._res[GR_STONES_B], STONE_BLACK, with_forced = False,
+                mark_forced = False, mark_added = False)
+            self._stones.add_ext(self._res[GR_STONES_W], STONE_WHITE, with_forced = False,
+                mark_forced = False, mark_added = False)
 
     def show_board(self, f_black = True, f_white = True, f_det = False, show_state = None):
         """Generates a new board image of given shape and returns it.

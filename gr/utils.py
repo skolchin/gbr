@@ -115,6 +115,8 @@ def img1_to_img3(img):
     return img3
 
 def format_stone_pos(stone, axis = None):
+    if stone is None:
+        return ''
     if stone[GR_A] > 30 or stone[GR_B] > 30 or stone[GR_A] <= 0 or stone[GR_B] <= 0:
         return 'XX'
     elif axis is None:
@@ -335,6 +337,7 @@ def is_on_w(a,b,c,delta=1):
 
 
 def random_colors(n):
+    """Returns n random colors"""
     ret = []
     for i in range(n):
         r = randint(0,255)
@@ -342,4 +345,16 @@ def random_colors(n):
         b = randint(0,255)
         ret.extend([(r,g,b)])
     return ret
+
+# Find value in a dictionary
+# Based on https://stackoverflow.com/questions/8023306/get-key-by-value-in-dictionary
+def dict_value2key(mydict, value):
+    """Returns a key for given value or None"""
+    if mydict is None:
+        return None
+    else:
+        try:
+            return list(mydict.keys())[list(mydict.values()).index(value)]
+        except ValueError:
+            return None
 

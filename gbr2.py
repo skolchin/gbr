@@ -1,3 +1,4 @@
+
 #-------------------------------------------------------------------------------
 # Name:        Go board recognition project
 # Purpose:     New GBR UI
@@ -14,7 +15,7 @@ from gr.params import GrParams
 from gr.grdef import *
 from gr.ui_extra import *
 from gr.log import GrLogger
-from gr.utils import format_stone_pos, resize, img_to_imgtk
+from gr.utils import format_stone_pos, resize, img_to_imgtk, dict_value2key
 from gr.grq import BoardOptimizer
 from gr.gr import convert_xy
 
@@ -523,7 +524,6 @@ class GbrOptionsDlg(GrDialog):
 class GbrChangeStoneDlg(GrDialog):
     def init_params(self, args, kwargs):
         self.stone = None
-        self.bw = None
         self.vars = None
         self.frame = None
         self.is_new = False
@@ -555,7 +555,7 @@ class GbrChangeStoneDlg(GrDialog):
         self.stone[GR_X] = self.vars['x'].get()
         self.stone[GR_Y] = self.vars['y'].get()
         self.stone[GR_R] = self.vars['r'].get()
-        self.bw = STONE_BLACK if self.vars['bw'].get() == "Black" else STONE_WHITE
+        self.stone[GR_BW] = dict_value2key(STONE_COLORS, self.vars['bw'].get())
         GrDialog.ok_click_callback(self)
 
     def select_pos_callback(self, event):
@@ -578,7 +578,7 @@ class GbrChangeStoneDlg(GrDialog):
             self.vars['x'].set(self.stone[GR_X])
             self.vars['y'].set(self.stone[GR_Y])
             self.vars['r'].set(self.stone[GR_R])
-            self.vars['bw'].set("Black" if self.bw == STONE_BLACK else "White")
+            self.vars['bw'].set(STONE_COLORS[self.stone[GR_BW]])
 
     def set_controls(self, internalFrame):
         if self.frame is None:
@@ -655,9 +655,8 @@ class GbrChangeStoneDlg(GrDialog):
         self.posBtn.disabled = not self.is_new
 
 
-    def set_stone(self, stone, bw):
-        self.stone = stone
-        self.bw = bw
+    def set_stone(self, stone):
+        self.stone = stone.copy()
         self.set_vars()
         self.set_controls(self.internalFrame)
         self.update_position()
@@ -682,9 +681,9 @@ class GbrAddStoneDlg(GbrChangeStoneDlg):
 
     def mouse_click_callback(self, event):
         x, y = self.root.imagePanel.frame2image((event.x, event.y))
-        stone, bw = self.root.board.find_stone(c = (x, y))
+        stone = self.root.board.find_stone(c = (x, y))
         if stone is not None:
-            self.root.statusBar.set("Stone already present at this position")
+            self.root.statusBar.set("Stone already exists at this position")
         else:
             # Find average radius of board stones
             mean_r = int(np.mean([x[GR_R] for x in self.root.board.all_stones]))
@@ -692,15 +691,15 @@ class GbrAddStoneDlg(GbrChangeStoneDlg):
             # Convert x,y to board position
             p = convert_xy([[x, y, mean_r]], self.root.board.results)
             if p is not None and len(p) > 0:
-                self.stone = p[0]
-                self.bw = STONE_BLACK
+                self.stone = list(p[0])
+                self.stone.extend([STONE_BLACK])
 
             # Update visuals
             self.posBtn.release()
             self.set_vars()
             self.set_controls(self.internalFrame)
             if self.stone is not None:
-                self.root.show_stone(self.stone, self.bw)
+                self.root.show_stone(self.stone)
 
 
     def close(self):
@@ -716,8 +715,6 @@ class GbrStonesDlg(GrDialog):
         self.stones = None
         self.stone_dlg = None
         self.is_selecting = False
-
-        self.get_stones()
         self.binder.register(self.root, '<Stone-Selected>', self.board_stone_selected_callback)
 
     def get_minsize(self):
@@ -768,8 +765,8 @@ class GbrStonesDlg(GrDialog):
         self.tv.pack(side = tk.TOP, fill=tk.BOTH, expand = True)
         self.binder.bind(self.tv, "<<TreeviewSelect>>", self.select_callback)
 
-        self.stone_images = [ImgButton.get_ui_image("black_small.png"),
-                           ImgButton.get_ui_image("white_small.png")]
+        self.stone_images = { STONE_BLACK: ImgButton.get_ui_image("black_small.png"),
+                              STONE_WHITE: ImgButton.get_ui_image("white_small.png")}
         self.update_listbox()
 
         sbr.config(command = self.tv.yview)
@@ -803,16 +800,14 @@ class GbrStonesDlg(GrDialog):
 
     def edit_click_callback(self, event):
         """Change stone button click callback"""
-        stone, bw = self.selected_stone()
-        event.cancel = stone is None
+        event.cancel = self.selected_stone()[0] is None
 
     def reset_stones_click_callback(self, event):
         """Reset stones button click callback"""
         self.editBtn.release()
-        self.root.imageMarker.clear()
-
         self.root.board.stones.reset()
-        self.get_stones()
+        self.root.imageMarker.clear()
+        self.root.addedMarker.clear()
         self.update_listbox()
 
         event.cancel = True
@@ -831,25 +826,27 @@ class GbrStonesDlg(GrDialog):
 
         # Update master window
         stone = self.stone_dlg.stone
-        bw = self.stone_dlg.bw
         if stone is not None:
-            self.root.board.stones.add([stone], bw = bw, set_forced = True)
-            self.root.show_stone(stone, bw)
+            self.root.board.stones.add([stone])
+            self.root.show_stone(stone)
+            self.root.addedMarker.add_stones(
+                self.root.board.stones.get_stone_list(self.root.board.stones.forced_stones()),
+                f_replace = True)
 
-        # Update listbox
         if type(self.stone_dlg) is GbrAddStoneDlg:
-            self.get_stones()
+            # Update all stones if a new stone was added
             self.update_listbox()
 
-        # Ensure stone selected
+        # Find a stone in a treeview
         p = format_stone_pos(stone)
+        bw = stone[GR_BW]
         ids = self.tv.tag_has(p)
         if ids is not None and len(ids) > 0:
+            # Update image and ensure stone is selected
             self.is_selecting = True    # to prevent selection event handling
             self.tv.see(ids[0])
             self.tv.selection_set(ids[0])
-            im = self.stone_images[0] if bw == STONE_BLACK else self.stone_images[1]
-            self.tv.item(ids[0], image = im, values = (p), tags = ((p, bw)))
+            self.tv.item(ids[0], image = self.stone_images[bw], values = (p), tags = ((p,bw)))
 
         self.stone_dlg = None
 
@@ -864,10 +861,10 @@ class GbrStonesDlg(GrDialog):
             self.is_selecting = False
             return
 
-        stone, bw = self.selected_stone()
+        stone = self.selected_stone()
         if stone is not None:
-            self.root.show_stone(stone, bw)
-            self.update_stone_dlg(stone, bw)
+            self.root.show_stone(stone)
+            self.update_stone_dlg(stone)
 
     def select_all_callback(self):
         """Select all checkbox callback"""
@@ -885,7 +882,7 @@ class GbrStonesDlg(GrDialog):
             self.tv.selection_set(ids[0])
 
         if self.stone_dlg is not None:
-            self.update_stone_dlg(event.stone, event.bw)
+            self.update_stone_dlg(event.stone)
 
     def close(self):
         """Graceful way to close the dialog"""
@@ -897,35 +894,36 @@ class GbrStonesDlg(GrDialog):
         self.root.imageMarker.clear()
         GrDialog.close(self)
 
-    def get_stones(self):
-        """Gets a list of stones and formats it for display"""
-        t = self.root.board.all_stones
-        ts = sorted(t, key = lambda x: np.sqrt(x[GR_A]**2 + x[GR_B]**2))
-        self.stones = [(format_stone_pos(x), x[GR_BW]) for x in ts]
-
     def selected_stone(self):
         """A stone currently selected in treeview"""
         stone, bw = None, None
         sel = self.tv.selection()
         if sel is not None and len(sel) > 0:
             item = self.tv.item(sel[0])
-            stone, bw = self.root.board.find_stone(s = item['tags'][0], bw = item['tags'][1])
-        return stone, bw
+            stone = self.root.board.find_stone(s = item['tags'][0], bw = item['tags'][1])
+        return stone
 
     def update_listbox(self):
         """Populate the grid with stones"""
+
+        # Save tuples of stone position and color
+        t = self.root.board.all_stones
+        ts = sorted(t, key = lambda x: np.sqrt(x[GR_A]**2 + x[GR_B]**2))
+        self.stones = [(format_stone_pos(x), x[GR_BW]) for x in ts]
+
+        # Populate the treview
         self.tv.delete(*self.tv.get_children())
         for stone in self.stones:
-            im = self.stone_images[0] if stone[1] == STONE_BLACK else self.stone_images[1]
-            self.tv.insert("", "end", image = im, values = (stone[0]), tags = (stone))
+            self.tv.insert("", "end", image = self.stone_images[stone[1]],
+                values = (stone[0]), tags = (stone))
 
-    def update_stone_dlg(self, stone = None, bw = None):
+    def update_stone_dlg(self, stone = None):
         """ Update stone dialog to match current selection"""
         if self.stone_dlg is None:
             return
         if stone is None:
-            stone, bw = self.selected_stone()
-        self.stone_dlg.set_stone(stone, bw)
+            stone = self.selected_stone()
+        self.stone_dlg.set_stone(stone)
 
 # GUI class
 class GbrGUI2(tk.Tk):
@@ -938,7 +936,6 @@ class GbrGUI2(tk.Tk):
         self.log = GrLogger(self)
         self.board = GrBoard()
         self.binder = NBinder()
-        self.last_stone = None
 
         self.internalFrame = tk.Frame(self)
         self.internalFrame.pack(fill = tk.BOTH, expand = True)
@@ -1030,8 +1027,15 @@ class GbrGUI2(tk.Tk):
         self.imageTransform = ImageTransform(self.imagePanel,
             callback = self.end_transform_callback)
 
-        # Image marker(s)
+        # Stone marker
         self.imageMarker = ImageMarker(self.imagePanel, flash = 2)
+
+        # Forced stone marker
+        self.addedMarker = ImageMarker(self.imagePanel, flash = 0)
+        self.addedMarker.line_color = { "_": "red", "B": "black", "W": "black" }
+        self.addedMarker.fill_color = { "_": "", "B": "black", "W": "white" }
+        self.addedMarker.line_width = { "_": 2, "B": 1, "W": 1 }
+        self.addedMarker.fill_stipple = { "_": "", "B": "gray50", "W": "gray50" }
 
         ## Mouse move
         ##self.bind('<Motion>', self.mouse_move_callback)
@@ -1147,12 +1151,12 @@ class GbrGUI2(tk.Tk):
             self.statusBar.set("No board image loaded")
         else:
             x, y = self.imagePanel.frame2image((event.x, event.y))
-            stone, bw = self.board.find_stone(c = (x, y))
+            stone = self.board.find_stone(c = (x, y))
             if not stone is None:
-                self.show_stone(stone, bw)
-                BoardClickEvent = namedtuple('ClickEvent', ['stone', 'bw', 'x', 'y'])
+                self.show_stone(stone)
+                BoardClickEvent = namedtuple('ClickEvent', ['stone', 'x', 'y'])
                 self.binder.trigger(self, '<Stone-Selected>',
-                    BoardClickEvent(stone, bw, x, y))
+                    BoardClickEvent(stone, x, y))
             else:
                 self.statusBar.set("")
 
@@ -1185,12 +1189,16 @@ class GbrGUI2(tk.Tk):
         # Load image
         self.board.load_image(filename, f_process = False, f_with_params = True)
 
-        # Display loaded image and mask
+        # Display loaded image, mask and forced stones
         self.imagePanel.set_image(self.board.image)
         self.boardArea.scaled_mask = self.board.param_area_mask
         self.boardGrid.scaled_mask = self.board.param_board_edges
         self.boardGrid.size = self.board.param_board_size \
             if self.board.param_board_size is not None else DEF_BOARD_SIZE
+
+        self.addedMarker.add_stones(
+            self.board.stones.get_stone_list(self.board.stones.added_stones()),
+            f_replace = True)
 
         # Update status
         if self.log.errors > 0:
@@ -1251,26 +1259,16 @@ class GbrGUI2(tk.Tk):
             self.board.save_sgf(fn)
             self.statusBar.set_file("Board saved to ", str(fn))
 
-    def show_stone(self, stone, bw, p = None):
+    def show_stone(self, stone):
         """Highlight one stone"""
-        self.imageMarker.clear()
-        if stone is None:
-            return
-
-        msg = "{} {}".format("Black" if bw == STONE_BLACK else "White",
-            format_stone_pos(stone))
-        if p is not None:
-            msg += " at ({}, {})".format(p[0], p[1])
-
-        self.statusBar.set(msg)
-        self.last_stone = stone
-        self.imageMarker.add_stone(stone, bw)
+        self.statusBar.set("{} {}".format(STONE_COLORS[stone[GR_BW]], format_stone_pos(stone)))
+        self.imageMarker.add_stone(stone, f_replace = True)
 
     def show_all_stones(self):
         """Highlight all stones"""
         self.imageMarker.clear()
-        self.imageMarker.add_stones(np.array(self.board.black_stones), STONE_BLACK)
-        self.imageMarker.add_stones(np.array(self.board.white_stones), STONE_WHITE)
+        self.imageMarker.add_stones(self.board.black_stones, STONE_BLACK)
+        self.imageMarker.add_stones(self.board.white_stones, STONE_WHITE)
         self.imageMarker.show()
 
     def hide_stones(self):
