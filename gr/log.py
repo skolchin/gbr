@@ -111,7 +111,6 @@ class GrLogger(object):
         self.__logger = logging.getLogger(name)
         self.__log_stream = StringIO()
         self.__log_filter = self.GrLogFilter()
-        self.__log_dlg = None
         self.t = 0
 
         self.__logger.setLevel(level)
@@ -153,11 +152,7 @@ class GrLogger(object):
         """Show Log info dialog. Returns either a dialog object or None if log is empty"""
         log = self.__log_stream.getvalue()
         if not log is None and len(log) > 0:
-            if self.__log_dlg is not None:
-                self.__log_dlg.close()
-                self.__log_dlg = None
-            self.__log_dlg = GrLogDlg(master = self.master, log_string = log)
-        return self.__log_dlg
+            return GrLogDlg(master = self.master, log_string = log)
 
     def clear(self):
         """Clear log"""

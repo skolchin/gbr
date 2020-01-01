@@ -175,6 +175,7 @@ class GbrOptionsDlg(GrDialog):
         self.lock = Lock()
         self.qc_thread = None
         self.qc = None
+        self.qc_log = None
         self.optimize_cancel = False
 
     def init_frame(self, internalFrame):
@@ -271,8 +272,8 @@ class GbrOptionsDlg(GrDialog):
 
     def log_click_callback(self):
         """Log button click callback"""
-        if self.nb.index(self.nb.select()) == 3 and self.qc is not None:
-            self.qc.log.show()
+        if self.nb.index(self.nb.select()) == 3 and self.qc_log is not None:
+            self.qc_log.show()
         else:
             self.root.log.show()
 
@@ -318,13 +319,14 @@ class GbrOptionsDlg(GrDialog):
                 self.qc.board.params = self.root.board.params
                 self.last_params = self.root.board.params.todict()
                 self.resetButton.configure(state = tk.NORMAL)
+                self.qc_log = None
 
                 # Launch a separate thread and return
                 self.qc_thread = Thread(target = self.optimizer_function)
                 self.qc_thread.start()
 
     def optimizer_function(self):
-        """Optimization function (run in separate thread)"""
+        """Optimization function (runs in separate thread)"""
         if self.qc is None:
             return
 
@@ -351,8 +353,9 @@ class GbrOptionsDlg(GrDialog):
             self.progressLabel.set("Completed {}".format("successfully"
                 if success else "unsuccessfully"))
             self.set_controls_state(tk.ACTIVE)
+            self.qc_log = self.qc.log
             self.qc_thread = None
-            self.qc.res = None  # to free up memory
+            self.qc = None
 
     def optimize_callback(self, params):
         """Optimize callback"""
@@ -541,7 +544,8 @@ class GbrChangeStoneDlg(GrDialog):
         else:
             x = self.root.winfo_x()
             y = self.root.winfo_y()
-            return (x + self.stone[GR_X] + 60, y + self.stone[GR_Y])
+            p = self.root.imagePanel.image2frame((self.stone[GR_X], self.stone[GR_Y]))
+            return (x + p[0] + 40, y + p[1] + 40)
 
     def get_offset(self):
         """Override to define offset from to parent window"""
@@ -800,7 +804,7 @@ class GbrStonesDlg(GrDialog):
 
     def edit_click_callback(self, event):
         """Change stone button click callback"""
-        event.cancel = self.selected_stone()[0] is None
+        event.cancel = self.selected_stone() is None
 
     def reset_stones_click_callback(self, event):
         """Reset stones button click callback"""
@@ -829,13 +833,13 @@ class GbrStonesDlg(GrDialog):
         if stone is not None:
             self.root.board.stones.add([stone])
             self.root.show_stone(stone)
-            self.root.addedMarker.add_stones(
-                self.root.board.stones.get_stone_list(self.root.board.stones.forced_stones()),
-                f_replace = True)
 
         if type(self.stone_dlg) is GbrAddStoneDlg:
             # Update all stones if a new stone was added
             self.update_listbox()
+            self.root.addedMarker.add_stones(
+                self.root.board.stones.get_stone_list(self.root.board.stones.forced_stones()),
+                f_replace = True)
 
         # Find a stone in a treeview
         p = format_stone_pos(stone)
@@ -890,13 +894,12 @@ class GbrStonesDlg(GrDialog):
             self.stone_dlg.close()
             self.stone_dlg = None
 
-        self.binder.unbind_all()
         self.root.imageMarker.clear()
         GrDialog.close(self)
 
     def selected_stone(self):
         """A stone currently selected in treeview"""
-        stone, bw = None, None
+        stone = None
         sel = self.tv.selection()
         if sel is not None and len(sel) > 0:
             item = self.tv.item(sel[0])

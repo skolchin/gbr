@@ -16,6 +16,7 @@ import numpy as np
 import cv2
 from imutils.perspective import four_point_transform
 from collections import namedtuple
+from weakref import WeakValueDictionary
 
 from .grdef import *
 from .utils import img_to_imgtk, resize3, is_on_w
@@ -67,8 +68,11 @@ class NBinder(object):
         does. For example, a dialog could raise <Close> event when it's been closed allowing
         consumers to get user input provided in the dialog.
     """
-    # All bindings set in all instances of NBinder
+    # Bindings registered in all instances of NBinder
     __bindings = []
+
+    # Widgets used to subscribe to (winfo_id() is key)
+    __widgets = WeakValueDictionary()
 
     def __init__(self):
         self.bnd_ref = dict()
@@ -86,7 +90,7 @@ class NBinder(object):
             _type       "tk" for Tkinter event, anything else for custom
             add         Additional parameter for Tkinter bind() call
         """
-        # Store binding in this instance
+        # Make a binding
         key = str(widget.winfo_id()) + '__' + str(event)
         if _type == "tk":
             # tkinter event
@@ -94,10 +98,15 @@ class NBinder(object):
         else:
             # custom event
             bnd_id = len(self.bnd_ref) + 1
+
+        # Save binding using widget id in this instance
+        # Widgets saved as hard references
         self.bnd_ref[key] = [bnd_id, widget, event, callback, _type]
 
         # Store binding globally
-        NBinder.__bindings.extend([[self, widget, event, callback, _type]])
+        # Widget saved as weak references
+        NBinder.__widgets[widget.winfo_id()] = widget
+        NBinder.__bindings.extend([[self, widget.winfo_id(), event, callback, _type]])
         return bnd_id
 
     def register(self, widget, event, callback):
@@ -137,26 +146,25 @@ class NBinder(object):
             event       An event string
             evt_data    Any event data (usually of Event class)
         """
-        bnd_list = NBinder.__bindings
-        for bnd in bnd_list:
-            _owner, _widget, _event, _callback, _type = bnd
-            if _widget == widget and _event == event:
+        for bnd in NBinder.__bindings:
+            _owner, _wid, _event, _callback, _type = bnd
+            if _wid == widget.winfo_id() and _event == event:
                 _callback(evt_data)
 
     @staticmethod
     def __unbind(owner, event):
         for i, bnd in enumerate(NBinder.__bindings):
-            _owner, _widget, _event, _callback, _type = bnd
-            if _owner == owner and _event == event:
-                # This is my binding for given event, remove it
+            _owner, _wid, _event, _callback, _type = bnd
+            if _wid in NBinder.__widgets and _owner == owner and _event == event:
+                # This is binding of given owner for given event, remove it
                 del NBinder.__bindings[i]
-                t = NBinder.__bindings
 
                 # If it is Tk event, rebind other callbacks to this event
                 if _type == "tk":
+                    _widget = NBinder.__widgets[_wid]
                     for bnd2 in NBinder.__bindings:
-                        _owner2, _widget2, _event2, _callback2, _type2 = bnd2
-                        if _widget2 == _widget and _event2 == event:
+                        _owner2, _wid2, _event2, _callback2, _type2 = bnd2
+                        if _wid2 == _wid and _event2 == event:
                             _widget.bind(event, _callback2)
 
 
@@ -308,8 +316,9 @@ class ImgButton(tk.Label):
                 self.__binder.unbind(self.__dlg, "<Close>")
                 self.__binder.trigger(self, '<Dialog-Close>',
                     self.ImgButtonDialogEvent(self.__tag, self.__dlg, False))
-                self.__dlg.destroy()
+                dlg = self.__dlg
                 self.__dlg = None
+                dlg.close()
 
             if self.__state:
                 self.__dlg = self.__dlg_class(master = self.master)
@@ -1235,13 +1244,13 @@ class ImageMask(object):
         b = self.canvas.coords(self.__mask_rect)
 
         side = None
-        if is_on_w((b[0], b[1]), (b[0], b[3]), p):
+        if is_on_w((b[0], b[1]), (b[0], b[3]), p, 2):
             side = 0
-        elif is_on_w((b[0], b[1]), (b[2], b[1]), p):
+        elif is_on_w((b[0], b[1]), (b[2], b[1]), p, 2):
             side = 1
-        elif is_on_w((b[2], b[1]), (b[2], b[3]), p):
+        elif is_on_w((b[2], b[1]), (b[2], b[3]), p, 2):
             side = 2
-        elif is_on_w((b[0], b[3]), (b[2], b[3]), p):
+        elif is_on_w((b[0], b[3]), (b[2], b[3]), p, 2):
             side = 3
 
         return side
@@ -1708,6 +1717,7 @@ class GrDialog(tk.Toplevel):
         Override to add custom logic, inherited method should be called"""
         Event = namedtuple('Event', ['dlg', 'ok'])
         self.binder.trigger(self, "<Close>", Event(dlg = self, ok = self.ok))
+        self.binder.unbind_all()
         self.destroy()
 
     def update_position(self):

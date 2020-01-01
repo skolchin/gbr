@@ -189,7 +189,7 @@ class GrStones(object):
                     self.__stones[p.pos] = p
                     if mark_added: p.added = True
                     if mark_forced: p.forced = True
-                else:
+                elif with_forced or not p.forced:
                     p.set(new_stones.stones[k])
                     if mark_forced: p.forced = True
 
@@ -201,7 +201,7 @@ class GrStones(object):
                     self.__stones[n.pos] = n
                     if mark_added: p.added = True
                     if mark_forced: p.forced = True
-                else:
+                elif with_forced or not p.forced:
                     p.set(new_stones[k], bw)
                     if mark_forced: p.forced = True
 
@@ -216,7 +216,7 @@ class GrStones(object):
                     self.__stones[p.pos] = p
                     if mark_added: p.added = True
                     if mark_forced: p.forced = True
-                else:
+                elif with_forced or not t.forced:
                     t.set(p)
                     if mark_forced: t.forced = True
         else:
