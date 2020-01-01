@@ -33,7 +33,7 @@
     "STONES_THRESHOLD_B": 104,
     "STONES_THRESHOLD_W": 144,
     "TRANSFORM": null,
-    "WATERSHED_B": 77,
+    "WATERSHED_B": 78,
     "WATERSHED_W": 251,
     "WS_MORPH_B": 2,
     "WS_MORPH_W": 1

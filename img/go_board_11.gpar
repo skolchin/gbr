@@ -16,7 +16,27 @@
     "CANNY_APERTURE": 3,
     "CANNY_MAXVAL": 100,
     "CANNY_MINVAL": 50,
-    "FORCED_STONES": [],
+    "FORCED_STONES": [
+        [
+            [
+                230,
+                230,
+                13,
+                7,
+                9
+            ],
+            "W",
+            [
+                232,
+                232,
+                13,
+                7,
+                11
+            ],
+            "W",
+            false
+        ]
+    ],
     "HC_MASK_B": 3,
     "HC_MASK_W": 2,
     "HC_MAXRADIUS": 20,
@@ -43,7 +63,7 @@
     "STONES_THRESHOLD_W": 154,
     "TRANSFORM": null,
     "WATERSHED_B": 131,
-    "WATERSHED_W": 193,
+    "WATERSHED_W": 195,
     "WS_MORPH_B": 2,
     "WS_MORPH_W": 0
 }

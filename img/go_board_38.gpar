@@ -1,5 +1,14 @@
 {
-    "AREA_MASK": null,
+    "AREA_MASK": [
+        [
+            35,
+            32
+        ],
+        [
+            613,
+            612
+        ]
+    ],
     "BLUR_MASK_B": 0,
     "BLUR_MASK_W": 0,
     "BOARD_EDGES": [
@@ -16,7 +25,46 @@
     "CANNY_APERTURE": 3,
     "CANNY_MAXVAL": 100,
     "CANNY_MINVAL": 50,
-    "FORCED_STONES": [],
+    "FORCED_STONES": [
+        [
+            [
+                114,
+                83,
+                3,
+                18,
+                13
+            ],
+            "B",
+            [
+                117,
+                86,
+                3,
+                18,
+                13
+            ],
+            "B",
+            false
+        ],
+        [
+            [
+                232,
+                351,
+                7,
+                9,
+                13
+            ],
+            "B",
+            [
+                232,
+                351,
+                7,
+                9,
+                13
+            ],
+            "B",
+            true
+        ]
+    ],
     "HC_MASK_B": 3,
     "HC_MASK_W": 3,
     "HC_MAXRADIUS": 20,
@@ -40,7 +88,7 @@
     "STONES_MAXVAL_B": 255,
     "STONES_MAXVAL_W": 255,
     "STONES_THRESHOLD_B": 84,
-    "STONES_THRESHOLD_W": 240,
+    "STONES_THRESHOLD_W": 150,
     "TRANSFORM": null,
     "WATERSHED_B": 85,
     "WATERSHED_W": 131,

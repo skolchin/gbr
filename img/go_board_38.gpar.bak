@@ -1,8 +1,26 @@
 {
-    "AREA_MASK": null,
+    "AREA_MASK": [
+        [
+            35,
+            32
+        ],
+        [
+            613,
+            612
+        ]
+    ],
     "BLUR_MASK_B": 0,
     "BLUR_MASK_W": 0,
-    "BOARD_EDGES": null,
+    "BOARD_EDGES": [
+        [
+            54,
+            50
+        ],
+        [
+            592,
+            592
+        ]
+    ],
     "BOARD_SIZE": 19,
     "CANNY_APERTURE": 3,
     "CANNY_MAXVAL": 100,
@@ -31,7 +49,7 @@
     "STONES_MAXVAL_B": 255,
     "STONES_MAXVAL_W": 255,
     "STONES_THRESHOLD_B": 84,
-    "STONES_THRESHOLD_W": 173,
+    "STONES_THRESHOLD_W": 150,
     "TRANSFORM": null,
     "WATERSHED_B": 85,
     "WATERSHED_W": 131,
