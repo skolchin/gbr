@@ -1,8 +1,3 @@
-from gr.board import GrBoard
-from gr.grq import BoardOptimizer
-from gr.params import GrParams
-from gr.log import GrLogger
-
 import numpy as np
 import cv2
 import logging
@@ -11,6 +6,14 @@ from skopt.plots import plot_evaluations, plot_convergence
 
 from pathlib import Path
 from matplotlib import pyplot as plt
+
+import sys
+sys.path.append('../')
+from gr.board import GrBoard
+from gr.grq import BoardOptimizer
+from gr.params import GrParams
+from gr.log import GrLogger
+
 
 plt.set_cmap("viridis")
 
