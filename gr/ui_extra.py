@@ -16,11 +16,11 @@ import numpy as np
 import cv2
 from imutils.perspective import four_point_transform
 from collections import namedtuple
-from weakref import WeakValueDictionary
 
 from .grdef import *
 from .utils import img_to_imgtk, resize3, is_on_w
 from .gr import board_spacing
+from .binder import NBinder
 
 import sys
 if sys.version_info[0] < 3:
@@ -55,117 +55,6 @@ class NButton(tk.Button):
                 kwargs['compound'] = 'left'
 
         tk.Button.__init__(self, master, *args, **kwargs)
-
-
-class NBinder(object):
-    """ Supplementary class to manage widget bindings.
-
-        Tkinter management of event binding doesn't properly manage registration/deregistraion
-        of multiple event consumers This class allows to handle such situations properly by
-        keeping all callbacks registered to particular event and re-binding them if one gets
-        revoked.
-        In addition, it allows to register and bind to a custom events the same way as Tkinter
-        does. For example, a dialog could raise <Close> event when it's been closed allowing
-        consumers to get user input provided in the dialog.
-    """
-    # Bindings registered in all instances of NBinder
-    __bindings = []
-
-    # Widgets used to subscribe to (winfo_id() is key)
-    __widgets = WeakValueDictionary()
-
-    def __init__(self):
-        self.bnd_ref = dict()
-
-    def bind(self, widget, event, callback, _type = "tk", add = ''):
-        """Bind a callback to an event (tkInter or custom)
-
-        Parameters:
-            widget      A Tkinter widget or custom object which has winfo_id() method
-            event       A string specifying an event.
-                        Tkinter events listed in documentaion. Custom events are specific to objects
-                        and should be described in corresponding documentation.
-            callback    A callback function which is to be called when event is raised.
-                        It should accept one parameter (event data). Returns are ignored.
-            _type       "tk" for Tkinter event, anything else for custom
-            add         Additional parameter for Tkinter bind() call
-        """
-        # Make a binding
-        key = str(widget.winfo_id()) + '__' + str(event)
-        if _type == "tk":
-            # tkinter event
-            bnd_id = widget.bind(event, callback, add)
-        else:
-            # custom event
-            bnd_id = len(self.bnd_ref) + 1
-
-        # Save binding using widget id in this instance
-        # Widgets saved as hard references
-        self.bnd_ref[key] = [bnd_id, widget, event, callback, _type]
-
-        # Store binding globally
-        # Widget saved as weak references
-        NBinder.__widgets[widget.winfo_id()] = widget
-        NBinder.__bindings.extend([[self, widget.winfo_id(), event, callback, _type]])
-        return bnd_id
-
-    def register(self, widget, event, callback):
-        """Bind a callback to a custom event. See bind() for parameters"""
-        self.bind(widget, event, callback, "custom")
-
-    def unbind(self, widget, event):
-        """Unbind from widget's event.
-        If several event consumers were bound to Tkinter widget using different
-        NBinder instances, they are rebound to the event.
-        """
-        key = str(widget.winfo_id()) + '__' + str(event)
-        if key in self.bnd_ref:
-            # Unbind from this instance
-            bnd_id = self.bnd_ref[key][0]
-            _type = self.bnd_ref[key][4]
-            if _type == "tk": widget.unbind(event, bnd_id)
-            del self.bnd_ref[key]
-
-            # Unbind/rebind globally
-            NBinder.__unbind(self, event)
-
-    def unbind_all(self):
-        """Unbind all registrations made by this instance"""
-        for key in self.bnd_ref.keys():
-            bnd_id, widget, event, cb, _type = self.bnd_ref[key]
-            if _type == "tk": widget.unbind(event, bnd_id)
-            NBinder.__unbind(self, event)
-
-        self.bnd_ref = dict()
-
-    def trigger(self, widget, event, evt_data):
-        """Triggers a custom event by calling all registered callbacks
-
-        Parameters:
-            widget      A Tkinter widget
-            event       An event string
-            evt_data    Any event data (usually of Event class)
-        """
-        for bnd in NBinder.__bindings:
-            _owner, _wid, _event, _callback, _type = bnd
-            if _wid == widget.winfo_id() and _event == event:
-                _callback(evt_data)
-
-    @staticmethod
-    def __unbind(owner, event):
-        for i, bnd in enumerate(NBinder.__bindings):
-            _owner, _wid, _event, _callback, _type = bnd
-            if _wid in NBinder.__widgets and _owner == owner and _event == event:
-                # This is binding of given owner for given event, remove it
-                del NBinder.__bindings[i]
-
-                # If it is Tk event, rebind other callbacks to this event
-                if _type == "tk":
-                    _widget = NBinder.__widgets[_wid]
-                    for bnd2 in NBinder.__bindings:
-                        _owner2, _wid2, _event2, _callback2, _type2 = bnd2
-                        if _wid2 == _wid and _event2 == event:
-                            _widget.bind(event, _callback2)
 
 
 # ImageButton
@@ -747,7 +636,7 @@ class ImagePanel(tk.Frame):
 
         # Resize handler
         if self.__mode == "fit":
-           self.__binder.bind(self.canvas, "<Configure>", self.__on_configure)
+           self.canvas.bind("<Configure>", self.__on_configure)
 
     @property
     def image(self):

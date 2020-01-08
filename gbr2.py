@@ -6,7 +6,7 @@
 # Author:      kol
 #
 # Created:     04.07.2019
-# Copyright:   (c) kol 2019
+# Copyright:   (c) kol 2019-2020
 # Licence:     MIT
 #-------------------------------------------------------------------------------
 
@@ -14,6 +14,7 @@ from gr.board import GrBoard
 from gr.params import GrParams
 from gr.grdef import *
 from gr.ui_extra import *
+from gr.binder import NBinder
 from gr.log import GrLogger
 from gr.utils import format_stone_pos, resize, img_to_imgtk, dict_value2key
 from gr.grq import BoardOptimizer
@@ -750,11 +751,12 @@ class GbrStonesDlg(GrDialog):
         self.binder.register(self.editBtn, '<Dialog-Open>', self.dlg_open_callback)
         self.binder.register(self.editBtn, '<Dialog-Close>', self.dlg_close_callback)
 
-        ImgButtonGroup(f_top).add_group("stone", ["plus_small", "edit_small"], BG_DEPENDENT)
-
         ImgButton(f_top,
             tag = "clear_small", tooltip = "Reset stones properties to default",
             command = self.reset_stones_click_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
+
+        self.bg = ImgButtonGroup(f_top)
+        self.bg.add_group("stone", ["plus_small", "edit_small"], BG_DEPENDENT)
 
         sbr = tk.Scrollbar(f_bottom)
         sbr.pack(side=tk.RIGHT, fill=tk.Y)
@@ -1152,6 +1154,8 @@ class GbrGUI2(tk.Tk):
         """Board image mouse click"""
         if self.board.is_gen_board:
             self.statusBar.set("No board image loaded")
+        elif len(self.board.stones.unforced_stones()) == 0:
+            self.statusBar.set("Board image has to be processed, click Detect button")
         else:
             x, y = self.imagePanel.frame2image((event.x, event.y))
             stone = self.board.find_stone(c = (x, y))
@@ -1285,9 +1289,7 @@ class GbrGUI2(tk.Tk):
 # Main function
 def main():
     window = GbrGUI2()
-
     window.mainloop()
-
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':
