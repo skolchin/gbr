@@ -24,11 +24,14 @@ from gr.board import GrBoard
 from gr.utils import get_image_area, resize
 
 pattern = None
-positive_dir = "./cc/p/"
-negative_dir = "./cc/n/"
+positive_dir = None
+negative_dir = None
+positive_dir_prefix = "p/"
+negative_dir_prefix = "n/"
+bw_sep = False
 is_gen = False
-free_space = 10
-close_space = 1
+n_free_space = 10
+n_close_space = 1
 neg_per_image = 0
 p_method = "a"
 n_resize = 0
@@ -61,55 +64,84 @@ def remove_areas(img, areas, bg_c):
         img[c[1]:c[3], c[0]:c[2]] = patch[:]
     return img
 
+def get_space(r, space_str):
+    n = str(space_str).find('%')
+    if n == -1:
+        return int(space_str)
+    else:
+        f = int(str(space_str)[0:n])
+        return int(r * f / 100.0)
+
+def get_free_space(r):
+    return get_space(r, n_free_space)
+
+def get_close_space(r):
+    return get_space(r, n_close_space)
+
+
 def one_file(file_name):
     # Open board
     print("Processing file " + str(file_name))
-    board = GrBoard(str(file_name))
-    prefix = Path(file_name).stem + "_" + Path(file_name).suffix[1:]
+    try:
+        board = GrBoard(str(file_name))
+    except:
+        print(sys.exc_info()[1])
+        return
+
+    # Init
+    file_prefix = Path(file_name).stem + "_" + Path(file_name).suffix[1:]
     covered = []
     bg_c = get_bg_color(board.image)
     max_size = 0
 
     # Generate positive samples (board stones)
     pd = Path(positive_dir)
-    f_reg = open(str(pd.joinpath("positives.txt")), "a")
+    if not bw_sep:
+        f_reg = open(str(pd.joinpath("positives.txt")), "a")
+    else:
+        f_reg = {'B': open(str(pd.joinpath("b/positives.txt")), "a"),
+                 'W': open(str(pd.joinpath("w/positives.txt")), "a")}
+
     ns = 0
     for stone in board.all_stones:
         x, y, a, b, r, bw = stone
+        fs = get_free_space(r)
+        cs = get_close_space(r)
         area_img = None
         area = None
 
-        if p_method == "s":
+        if p_method == "single" or p_method == 's':
             # Save single staying stones only
             nearby_stones = board.stones.find_nearby((stone[GR_A], stone[GR_B]), 1)
-            area = [max(x-r-free_space,0),
-                max(y-r-free_space,0),
-                min(x+r+free_space, board.image.shape[CV_WIDTH]),
-                min(y+r+free_space, board.image.shape[CV_HEIGTH])]
+            area = [max(x-r-fs,0),
+                max(y-r-fs,0),
+                min(x+r+fs, board.image.shape[CV_WIDTH]),
+                min(y+r+fs, board.image.shape[CV_HEIGTH])]
             covered.extend([area])
             if len(nearby_stones) > 0: area = None
 
-        elif p_method == "b":
-            # Saving all stones with different area square
+        elif p_method == "both" or p_method == 'b':
+            # Saving all stones with different area square depending on
+            # whether it has other stones nearby
             nearby_stones = board.stones.find_nearby((stone[GR_A], stone[GR_B]), 1)
             if len(nearby_stones) == 0:
-                area = [max(x-r-free_space,0),
-                    max(y-r-free_space,0),
-                    min(x+r+free_space, board.image.shape[CV_WIDTH]),
-                    min(y+r+free_space, board.image.shape[CV_HEIGTH])]
+                area = [max(x-r-fs,0),
+                    max(y-r-fs,0),
+                    min(x+r+fs, board.image.shape[CV_WIDTH]),
+                    min(y+r+fs, board.image.shape[CV_HEIGTH])]
             else:
-                area = [max(x-r-close_space,0),
-                    max(y-r-close_space,0),
-                    min(x+r+close_space, board.image.shape[CV_WIDTH]),
-                    min(y+r+close_space, board.image.shape[CV_HEIGTH])]
+                area = [max(x-r-cs,0),
+                    max(y-r-cs,0),
+                    min(x+r+cs, board.image.shape[CV_WIDTH]),
+                    min(y+r+cs, board.image.shape[CV_HEIGTH])]
             covered.extend([area])
 
-        elif p_method == "a":
+        elif p_method == "all" or p_method == 'a':
             # Save large areas with all stones except current one removed
-            area = [max(x-r-free_space,0),
-                max(y-r-free_space,0),
-                min(x+r+free_space, board.image.shape[CV_WIDTH]),
-                min(y+r+free_space, board.image.shape[CV_HEIGTH])]
+            area = [max(x-r-fs,0),
+                max(y-r-fs,0),
+                min(x+r+fs, board.image.shape[CV_WIDTH]),
+                min(y+r+fs, board.image.shape[CV_HEIGTH])]
             area_img = get_image_area(board.image, area)
             covered.extend([area])
 
@@ -133,30 +165,43 @@ def one_file(file_name):
             if area_img is None: area_img = get_image_area(board.image, area)
             covered.extend([area])
 
-            fn = pd.joinpath(prefix + "_" + str(ns).zfill(3) + ".png")
-            print("\tPositive {} to {}".format(area, str(fn)))
+            fn = file_prefix + "_" + str(ns).zfill(3) + ".png"
+            file_dir = pd.joinpath(bw.lower()) if bw_sep else pd
+            save_fn = str(file_dir.joinpath(fn))
+            print("\tPositive {} to {}".format(area, save_fn))
 
             if n_resize > 0:
                 area_img = resize(area_img, n_resize, f_upsize = True, pad_color = bg_c)
-            cv2.imwrite(str(fn), area_img)
+            cv2.imwrite(save_fn, area_img)
 
-            p = "p/" if is_gen else ""
-            f_reg.write("{} 1 {} {} {} {} \n".format(p + str(fn.name),
+            # Current sample creation implementation require relative path
+            # from parent directory to be specified
+            if not bw_sep:
+                reg_fn = "{}{}".format(positive_dir_prefix, fn) if is_gen else fn
+                f = f_reg
+            else:
+                reg_fn = "{}{}/{}".format(positive_dir_prefix, bw.lower(), fn) if is_gen else fn
+                f = f_reg[bw]
+
+            f.write("{} 1 {} {} {} {} \n".format(reg_fn,
                 0, 0, area_img.shape[1]-1, area_img.shape[0]-1))
             ns += 1
             max_size = max([max_size, area_img.shape[1], area_img.shape[0]])
 
-    f_reg.close()
+    if not bw_sep:
+        f_reg.close()
+    else:
+        for k in f_reg: f_reg[k].close()
 
     # Generate negative samples (board areas without stones)
     pn = Path(negative_dir)
 
-    # Prepare board image with stones removed
+    # Prepare image with all found stones removed
     neg_img = remove_areas(board.image.copy(), covered, bg_c)
-    fn = pn.joinpath(prefix + "_neg.png")
+    fn = pn.joinpath(file_prefix + "_neg.png")
     cv2.imwrite(str(fn), neg_img)
 
-    # Slice the no-stones image by random pieces generating number of
+    # Slice prepared image by random pieces generating number of
     # images not less than number of positive images
     w = min(max_size*2, int(round(neg_img.shape[CV_WIDTH] / 4,0)))
     h = min(max_size*2, int(round(neg_img.shape[CV_HEIGTH] / 4,0)))
@@ -171,11 +216,11 @@ def one_file(file_name):
         if area[0] < area[2] and area[1] < area[3]:
             im = get_image_area(neg_img, area)
 
-            fn = pn.joinpath(prefix + "_" + str(nn).zfill(3) + ".png")
+            fn = pn.joinpath(file_prefix + "_" + str(nn).zfill(3) + ".png")
             print("\tNegative {} to {}".format(area, fn))
 
             cv2.imwrite(str(fn), im)
-            f_reg.write("{}\n".format("n/" + str(fn.name)))
+            f_reg.write("{}\n".format(negative_dir_prefix + str(fn.name)))
 
     f_reg.close()
 
@@ -203,25 +248,35 @@ def one_file(file_name):
 
 
 def main():
-    global pattern
+    global pattern, positive_dir_prefix, negative_dir_prefix
 
-    pd = Path(positive_dir)
-    pd.mkdir(exist_ok = True, parents = True)
-    for x in pd.glob("*.*"):
-        if x.is_file: os.remove(str(x))
+    # Ensure target directories exist and clean them up
+    dir_list = [negative_dir, positive_dir]
+    if bw_sep:
+        dir_list.extend([Path(positive_dir).joinpath('b')])
+        dir_list.extend([Path(positive_dir).joinpath('w')])
 
-    pn = Path(negative_dir)
-    pn.mkdir(exist_ok = True, parents = True)
-    for x in pn.glob("*.*"):
-        if x.is_file: os.remove(str(x))
+    for d in dir_list:
+        pd = Path(d)
+        pd.mkdir(exist_ok = True, parents = True)
+        for x in pd.glob("*.*"):
+            if x.is_file: os.remove(str(x))
 
+    # Generate directory prefixes
+    positive_dir_prefix = Path(positive_dir).stem + '/'
+    negative_dir_prefix = Path(negative_dir).stem + '/'
+
+    # Some info
     if p_method == "s":
         print("Saving single-staying stones only")
     elif p_method == "b":
-        print("Saving all stones with different area for single/closed ones")
+        print("Saving all stones with different area size for single-staying/enclosed ones")
     elif p_method == "a":
         print("Saving all stones with surrounding area free of other stones")
 
+    # Make pattern ready for glob:
+    # Check it is a directory and if yes, add wildcards
+    # If not, check for file wildcards, if none - add them
     if os.path.isdir(pattern):
         pattern = os.path.join(pattern, "*.*")
     else:
@@ -229,60 +284,72 @@ def main():
         print(head, " = ", tail)
         if tail == '': pattern = os.path.join(pattern, "*.*")
 
+    # Iterate
     for x in glob.iglob(pattern):
         if os.path.isfile(x):
             y = Path(x)
             if y.suffix != '.gpar':
+                # Image files processed as is
                 one_file(y)
             else:
+                # For .gpar files, try to find an image
                 if y.with_suffix('.png').exists():
                     one_file(y.with_suffix('.png'))
                 elif y.with_suffix('.jpg').exists():
                     one_file(y.with_suffix('.jpg'))
+                else:
+                    print("==> Cannot find an image which corresponds to {} param file".format(str(y)))
 
 def get_args():
-    global pattern, positive_dir, negative_dir, is_gen, free_space, close_space, \
-        neg_per_image, p_method, n_resize
+    global pattern, positive_dir, negative_dir, is_gen, n_free_space, n_close_space
+    global bw_sep, neg_per_image, p_method, n_resize
 
     parser = ArgumentParser()
     parser.add_argument('pattern', help = 'Selection pattern')
     parser.add_argument('-p', "--positive",
         default = "./p/",
-        help = 'Directory to store positive images')
+        help = 'Directory to store positive images (see also -b switch)')
     parser.add_argument('-n', "--negative",
         default = "./n/",
         help = 'Directory to store negative images')
+    parser.add_argument('-b', "--bw",
+        action = 'store_true',
+        default = False,
+        help = "If specified, black and white stone positive images ares stored separatelly in " +\
+         "'b' and 'w' directories under specified positive directory")
     parser.add_argument('-m', "--method",
-        choices = ["a", "b", "s"], default = "a",
+        choices = ["all", "both", "single"], default = "both",
         help = 'Image generation method, one of: ' + \
-            "s - keep areas of free-staying stones only, " + \
-            "b - keep areas of all stones but with different size for free-staying/closed ones, " + \
-            "a - keep areas of all stones with nearby stones removed"
+            "single - keep area of single-staying stones only, " + \
+            "both - keep area of all stones but with different size for single or enclosed, " + \
+            "all - keep areas of all stones with nearby stones removed"
         )
-    parser.add_argument('-g', "--for_gen", type = int,
-        choices = [0, 1], default = 0,
-        help = 'Set to 1 if images will be used for samples generation, 0 otherwise')
-    parser.add_argument('-f', "--space_free", type = int,
+    parser.add_argument('-g', "--for_gen",
+        action = "store_true",
+        default = False,
+        help = 'If specified, it is assumed that images will be used for samples generation')
+    parser.add_argument('-f', "--space_free",
         default = 10,
-        help = 'Space to add around free-staying stones')
-    parser.add_argument('-c', "--space_close", type = int,
+        help = 'Space to add around single-staying stones, absolute number or percentage of stone radius followed by %')
+    parser.add_argument('-c', "--space_close",
         default = 1,
-        help = 'Space to add around stones having any nearby stone')
+        help = 'Space to add around stones having any nearby stone, absolute number or percentage of stone radius followed by %')
     parser.add_argument('-i', "--neg_img", type = int,
         default = 0,
         help = 'Number of negative images to generate from one image (0 - the same as positive)')
     parser.add_argument('-r', "--resize", type = int,
         default = 0,
-        help = 'Resize positive image to specified size')
+        help = 'Resize positive images to specified size')
 
     args = parser.parse_args()
     pattern = args.pattern
     positive_dir = args.positive
     negative_dir = args.negative
-    p_method = args.method
-    is_gen = args.for_gen > 0
-    free_space = args.space_free
-    close_space = args.space_close
+    bw_sep = args.bw
+    p_method = args.method.lower()
+    is_gen = args.for_gen
+    n_free_space = args.space_free
+    n_close_space = args.space_close
     neg_per_image = args.neg_img
     n_resize = args.resize
 

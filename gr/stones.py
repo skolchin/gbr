@@ -366,12 +366,14 @@ class GrStones(object):
         s = self.__stones.get(key)
         return s.v if s is not None else None
 
-    def find_nearby(self, p, d = 1):
+    def find_nearby(self, p, d = 1, straight = True):
         """Finds all stones near specified position.
         Parameters:
-            p   stone position coordinates as (A, B) tuple or position string (A9)
-            d   delta
-        Return: a list of stones closing around given position
+            p           stone position coordinates as (A, B) tuple or position string (A9)
+            d           numer of positions to look for
+            straight    if True, only straight (horizontal/vertical) positions gets taken into account
+                        Otherwise, diagonal positions also counted
+        Return: a list of stones enclosing given position
         """
         if p is None:
             return None
@@ -383,9 +385,17 @@ class GrStones(object):
         rg_a = range(max(p[0]-d,1), p[0]+d+1)
         rg_b = range(max(p[1]-d,1), p[1]+d+1)
         stones = self.tolist()
+
         for s in stones:
-            if not(s[GR_A] == p[0] and s[GR_B] == p[1]) and \
-            s[GR_A] in rg_a and s[GR_B] in rg_b:
+            if s[GR_A] == p[0] and s[GR_B] == p[1]:
+                # This very stone, ignore
+                continue
+            elif not straight and s[GR_A] in rg_a and s[GR_B] in rg_b:
+                # A stone at any direction
+                r.extend([s])
+            elif straight and ((s[GR_A] in rg_a and s[GR_B] == p[1]) or \
+                (s[GR_B] in rg_b and s[GR_A] == p[0])):
+                # A stone at horizontal/vertical directions
                 r.extend([s])
         return r
 

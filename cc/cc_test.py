@@ -50,21 +50,25 @@ class App(tk.Tk):
                 max_y = int((img.shape[0] - 20) / 19) * 2
                 print("Maximum rect size {}".format((max_x, max_y)))
 
-                results = cascade.detectMultiScale(img, scaleFactor = 1.1, maxSize = (max_x, max_y))
-                results[:,2:] += results[:,:2]
-                print(results)
+                results = cascade.detectMultiScale(img, scaleFactor = 1.05, maxSize = (max_x, max_y))
+                if len(results) == 0:
+                    print('No stones found')
+                    cv2.imshow('Results (not found)', img)
+                else:
+                    results[:,2:] += results[:,:2]
+                    print(results)
 
-                stones = []
-                for r in results:
-                    cv2.rectangle(img, (r[0], r[1]), (r[2], r[3]), color = (0, 0, 255))
-                    mx = int((r[0] + r[2])/2)
-                    my = int((r[1] + r[3])/2)
-                    stones.extend([[mx, my]])
+                    stones = []
+                    for r in results:
+                        cv2.rectangle(img, (r[0], r[1]), (r[2], r[3]), color = (0, 0, 255))
+                        mx = int((r[0] + r[2])/2)
+                        my = int((r[1] + r[3])/2)
+                        stones.extend([[mx, my]])
 
-                cv2.imshow('Results', img)
+                    cv2.imshow('Results', img)
 
-                #gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                #stones_ws, debug = apply_watershed(gray, np.array(stones), 150, 'W', f_debug = True)
+                    #gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                    #stones_ws, debug = apply_watershed(gray, np.array(stones), 150, 'W', f_debug = True)
 
                 cv2.waitKey()
 
