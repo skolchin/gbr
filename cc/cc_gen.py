@@ -49,13 +49,14 @@ def get_bg_color(img):
     u, c =  np.unique(img.reshape(-1, img.shape[-1]), axis=0, return_counts=True)
     bg_c = u[c.argmax()]
 
-    # Check black or white color selected
-    if sum(bg_c) < 40 or sum(bg_c) >= 750:
+    # Avoid selection of black-ish or white-ish colors
+    if sum(bg_c) < 110 or sum(bg_c) >= 750:
         cc = c.argsort()
         n = -2
-        while sum(bg_c) < 40 or sum(bg_c) >= 750:
+        while sum(bg_c) < 110 or sum(bg_c) >= 750:
             bg_c = u[cc[n]]
             n -= 1
+    print('Background color is {}'.format(bg_c))
     return bg_c
 
 def remove_areas(img, areas, bg_c):
@@ -137,7 +138,7 @@ def one_file(file_name):
             covered.extend([area])
 
         elif p_method == "all" or p_method == 'a':
-            # Save large areas with all stones except current one removed
+            # Save stone area with all stones except current one removed
             area = [max(x-r-fs,0),
                 max(y-r-fs,0),
                 min(x+r+fs, board.image.shape[CV_WIDTH]),
@@ -336,7 +337,7 @@ def get_args():
         help = 'Space to add around stones having any nearby stone, absolute number or percentage of stone radius followed by %')
     parser.add_argument('-i', "--neg_img", type = int,
         default = 0,
-        help = 'Number of negative images to generate from one image (0 - the same as positive)')
+        help = 'Number of negative images to generate from one image (0 - the same as positive, -1 - no negatives)')
     parser.add_argument('-r', "--resize", type = int,
         default = 0,
         help = 'Resize positive images to specified size')
