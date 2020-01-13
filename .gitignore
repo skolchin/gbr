@@ -123,4 +123,6 @@ t.py
 /cc/stones/*
 /cc/edges/*
 /cc/crosses/*
-/tf/*
+/tf/_logs/*
+/tf/mnist/*
+/tf/stone_classifier/*
