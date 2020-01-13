@@ -115,11 +115,11 @@ This will downlowd all code and database of images (img/ folder) along with para
 
 - [ ] Make a web interface with (probably) cloud deployment (postponded)
 
-- [ ] Make DLN dataset creation and review interfaces (currently - in PASCAL VOC format) (postponded)
+- [ ] Make DLN dataset creation and review interfaces
 
-- [ ] Train DLN model to recognize stones on computer boards (postponded)
+- [ ] Train DLN model to recognize stones on computer boards
 
-- [ ] Train DLN model to recognize stones on real boards (postponded)
+- [ ] Train DLN model to recognize stones on real boards
 
 - [ ] Create a mobile app (postponded)
 

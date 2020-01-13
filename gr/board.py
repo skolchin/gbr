@@ -386,7 +386,7 @@ class GrBoard:
 
     @property
     def stones(self):
-        """Dictionary with all stones (keys are B, W)"""
+        """Stones object"""
         return self._stones
 
     @property
@@ -395,10 +395,10 @@ class GrBoard:
         Returns list of stones, where every stone is [x, y, a, b, r, bw]"""
         return self._stones.tolist()
 
-    def find_stone(self, c = None, p = None, s = None):
+    def find_stone(self, c = None, p = None, s = None, bw = None):
         """Finds a stone at given coordinates or position
         Parameters:
-            c       screen coordinates as tuple(x,y) or None
+            c       image coordinates as tuple(x,y) or None
             p       stone position as tuple(a,b) or None
             s       stone position as letter and index (A10)
         Returns;
