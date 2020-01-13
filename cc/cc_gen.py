@@ -195,6 +195,9 @@ def one_file(file_name):
         for k in f_reg: f_reg[k].close()
 
     # Generate negative samples (board areas without stones)
+    if neg_per_image < 0:
+        return
+
     pn = Path(negative_dir)
 
     # Prepare image with all found stones removed
@@ -337,7 +340,7 @@ def get_args():
         help = 'Space to add around stones having any nearby stone, absolute number or percentage of stone radius followed by %')
     parser.add_argument('-i', "--neg_img", type = int,
         default = 0,
-        help = 'Number of negative images to generate from one image (0 - the same as positive, -1 - no negatives)')
+        help = 'Number of negative images to generate from one image (0 - same as positive, 99 - no negatives)')
     parser.add_argument('-r', "--resize", type = int,
         default = 0,
         help = 'Resize positive images to specified size')
@@ -352,6 +355,7 @@ def get_args():
     n_free_space = args.space_free
     n_close_space = args.space_close
     neg_per_image = args.neg_img
+    if neg_per_image == 99: neg_per_image = -1
     n_resize = args.resize
 
 
