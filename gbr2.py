@@ -11,7 +11,6 @@
 #-------------------------------------------------------------------------------
 
 from gr.board import GrBoard
-from gr.params import GrParams
 from gr.grdef import *
 from gr.ui_extra import *
 from gr.binder import NBinder
@@ -24,7 +23,6 @@ import numpy as np
 import cv2
 import os
 from PIL import Image, ImageTk
-import logging
 from threading import Thread, Lock
 from collections import namedtuple
 
@@ -57,14 +55,14 @@ class GbrDebugDlg(GrDialog):
         sbr.config(command = self.canvas.yview)
 
         self.debugFrame = tk.Frame(self.canvas)
-        self.canvas.create_window((0,0), window = self.debugFrame, anchor='nw')
+        self.canvas.create_window((0, 0), window = self.debugFrame, anchor='nw')
         self.add_debug_info(self.debugFrame)
 
         self.canvas.bind('<Configure>', self.on_scroll_configure)
 
     def init_buttons(self, buttonFrame):
         tk.Button(buttonFrame, text = "Save images",
-            command = self.save_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
+                  command = self.save_click_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
         GrDialog.init_buttons(self, buttonFrame)
 
     def close(self):
@@ -180,7 +178,7 @@ class GbrOptionsDlg(GrDialog):
         self.optimize_cancel = False
 
     def init_frame(self, internalFrame):
-        self.tkVars = self.add_switches(internalFrame, self.root.board.params)
+        self.tkVars = self.add_switches(internalFrame)
         self.add_optimization()
 
     def init_buttons(self, buttonFrame):
@@ -384,7 +382,7 @@ class GbrOptionsDlg(GrDialog):
                 self.update_controls()
 
 
-    def add_switches(self, parent, params, max_in_row = 6):
+    def add_switches(self, parent, max_in_row = 6):
         """Add Scale widgets for changing board parameters"""
         n = 1
         ncol = 0
@@ -799,10 +797,6 @@ class GbrStonesDlg(GrDialog):
 
     def grab_focus(self):
         self.focus_set()
-
-    def update_controls(self):
-        """Focus set"""
-        pass
 
     def edit_click_callback(self, event):
         """Change stone button click callback"""
@@ -1230,8 +1224,7 @@ class GbrGUI2(tk.Tk):
         if self.log.errors > 0:
            self.statusBar.set("Automatic board detection failed, click here for the log")
         else:
-            self.statusBar.set("{s}x{s} board detected".format(
-                                    s = self.board.board_size))
+            self.statusBar.set("{s}x{s} board detected".format(s = self.board.board_size))
             self.boardGrid.scaled_mask = self.board.param_board_edges
             self.boardGrid.size = self.board.board_size
 
