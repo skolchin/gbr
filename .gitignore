@@ -113,8 +113,8 @@ t.py
 *.caffemodel
 /archive/*
 /cc/d/*
-/cc/m/*
 /cc/n/*
 /cc/p/*
 /cc/s/*
 /cc/*.vec
+/tf/*
