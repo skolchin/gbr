@@ -11,50 +11,54 @@ ClassName=TProjectFilesNode
 
 [Project\ChildNodes\Node0\ChildNodes\Node0]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gr\board.py
+FileName=$[Project-Path]gr\binder.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node1]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gr\cv2_watershed.py
+FileName=$[Project-Path]gr\board.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node2]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gbr2.py
+FileName=$[Project-Path]gr\cv2_watershed.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node3]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gr\gr.py
+FileName=$[Project-Path]gbr2.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node4]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gr\grdef.py
+FileName=$[Project-Path]gr\gr.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node5]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gr\grq.py
+FileName=$[Project-Path]gr\grdef.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node6]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gr\log.py
+FileName=$[Project-Path]gr\grq.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node7]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gr\params.py
+FileName=$[Project-Path]gr\log.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node8]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gr\stones.py
+FileName=$[Project-Path]gr\params.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node9]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]gr\ui_extra.py
+FileName=$[Project-Path]gr\stones.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node10]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]gr\ui_extra.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node11]
 ClassName=TProjectFileNode
 FileName=$[Project-Path]gr\utils.py
 
 [Project\ChildNodes\Node0\ChildNodes]
-Count=11
+Count=12
 
 [Project\ChildNodes\Node1]
 ClassName=TProjectRunConfiguationsNode
