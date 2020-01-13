@@ -9,16 +9,15 @@
 # Licence:     MIT
 #-------------------------------------------------------------------------------
 
-from .grdef import *
-from .utils import *
-from .cv2_watershed import apply_watershed
-#from .py_accumulate import accumulate  # uncomment for Python 2.7
-from itertools import accumulate
-from copy import deepcopy
-
 import cv2
 import numpy as np
 import logging
+from itertools import accumulate
+from copy import deepcopy
+
+from .grdef import *
+from .utils import *
+from .cv2_watershed import apply_watershed
 
 # Internal function: calculate board spacing
 def board_spacing(edges, size):
@@ -586,7 +585,7 @@ def process_img(img, params):
 
     res = dict()
     res[GR_IMAGE_SIZE] = img.shape[:2]
-    logging.info("Image size is {}".format(res[GR_IMAGE_SIZE]))
+    logging.info("Image size is ({},{})".format(img.shape[CV_WIDTH], img.shape[CV_HEIGTH]))
 
     try:
         # Apply area mask
