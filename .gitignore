@@ -103,13 +103,16 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# Board params
-#.json
-
 # Test file
 t.py
 
-# Net dataset and out
+# PyScripter project
+*.psproj
+
+# Parameters backup
+/img/*.bak
+
+# Experiments with CC and DNN
 *.caffemodel
 /archive/*
 /cc/d/*
@@ -117,4 +120,7 @@ t.py
 /cc/p/*
 /cc/s/*
 /cc/*.vec
+/cc/stones/*
+/cc/edges/*
+/cc/crosses/*
 /tf/*
