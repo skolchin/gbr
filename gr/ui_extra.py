@@ -13,7 +13,6 @@ from PIL import Image, ImageTk
 from pathlib import Path
 import random
 import numpy as np
-import cv2
 from imutils.perspective import four_point_transform
 from collections import namedtuple
 import sys
@@ -119,7 +118,6 @@ class ImgButton(tk.Label):
             self.__binder.register(self, '<Click>', cmd)
 
         # Load button images
-        ui_path = os.path.join(os.path.dirname(sys.argv[0]), UI_DIR)
         self.__images = [ImgButton.get_ui_image(self.__tag + '_up.png'),
                          ImgButton.get_ui_image(self.__tag + '_down.png')]
 
@@ -226,13 +224,9 @@ class ImgButton(tk.Label):
     @staticmethod
     def get_ui_image(name):
         """Static method to get an image from UI directory"""
-        ui_path = os.path.join(os.path.dirname(sys.argv[0]), UI_DIR)
-        return ImageTk.PhotoImage(Image.open(os.path.join(ui_path, name)))
+        ui_path = Path.cwd().joinpath(UI_DIR, name)
+        return ImageTk.PhotoImage(Image.open(str(ui_path)))
 
-
-# Button group types
-BG_INDEPENDENT = "independent"
-BG_DEPENDENT = "dependent"
 
 # Button group
 class ImgButtonGroup:
@@ -243,6 +237,10 @@ class ImgButtonGroup:
         Button groups can be dependent (where only one button could be down at one time)
         or independent, which are handled by the caller.
     """
+    # Button group types
+    BG_INDEPENDENT = "independent"
+    BG_DEPENDENT = "dependent"
+
 
     # Enclosed group class
     class __Group:
@@ -307,7 +305,7 @@ class ImgButtonGroup:
     @property
     def dependent_groups(self):
         """List of groups of type BG_DEPENDENT"""
-        return self.get_groups(BG_DEPENDENT)
+        return self.get_groups(self.BG_DEPENDENT)
 
     def get_buttons(self, group = None, exclude = None):
         """List of image buttons displayed on master panel and, optionally, belonging to a group"""
@@ -330,7 +328,7 @@ class ImgButtonGroup:
             raise ValueError("Group '" + group + "' already defined")
 
         # Check group dependencies
-        if gtype == BG_DEPENDENT:
+        if gtype == self.BG_DEPENDENT:
             for g in self.dependent_groups:
                 for t in self.__groups[g]:
                     if t in tags:
