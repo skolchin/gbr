@@ -12,7 +12,8 @@
 
 from gr.board import GrBoard
 from gr.grdef import *
-from gr.ui_extra import *
+from gr.ui_extra import NLabel, ImagePanel, ImgButton, ImgButtonGroup, StatusPanel
+from gr.ui_extra import ImageMask, ImageMarker, ImageTransform, GrDialog
 from gr.binder import NBinder
 from gr.log import GrLogger
 from gr.utils import format_stone_pos, resize, img_to_imgtk, dict_value2key
@@ -22,7 +23,6 @@ from gr.gr import convert_xy
 import numpy as np
 import cv2
 import os
-from PIL import Image, ImageTk
 from threading import Thread, Lock
 from collections import namedtuple
 
@@ -990,7 +990,7 @@ class GbrGUI2(tk.Tk):
 
         self.bg = ImgButtonGroup(self.toolbarPanel)
         self.bg.add_group("has_file", ["edge", "area", "grid", "detect", "params"])
-        self.bg.add_group("edges", ["edge", "area", "grid"], BG_DEPENDENT)
+        self.bg.add_group("edges", ["edge", "area", "grid"], ImgButtonGroup.BG_DEPENDENT)
         self.bg.add_group("detected", ["stones", "save"])
         self.bg.add_group("transformed", ["reset"])
 
