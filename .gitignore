@@ -109,6 +109,10 @@ t.py
 # PyScripter project
 *.psproj
 
+PyCharm project
+/gbr/.idea/*
+
+
 # Parameters backup
 /img/*.bak
 
