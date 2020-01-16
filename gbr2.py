@@ -1072,11 +1072,11 @@ class GbrGUI2(tk.Tk):
             self.imageMarker.clear()
             self.imageTransform.start()
 
-    def end_transform_callback(self, t, state):
+    def end_transform_callback(self, t, img):
         """Image transformation complete/cancelled"""
         self.bg.buttons['edge'].state = False
-        self.bg.buttons['reset'].disabled = not state
-        if state:
+        self.bg.buttons['reset'].disabled = img is not None
+        if img is not None:
             self.board.image = self.imagePanel.image
             self.board.param_transform_rect = t.scaled_rect
             self.board.param_board_edges = None

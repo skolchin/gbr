@@ -603,10 +603,9 @@ class ImagePanel(tk.Frame):
         canvasPanel = tk.Frame(self.internalPanel)
         canvasPanel.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
 
-        sz = self.max_canvas_size
         self.canvas = tk.Canvas(canvasPanel,
-              width = sz[0],
-              height = sz[1])
+              width = self.max_canvas_size[0],
+              height = self.max_canvas_size[1])
         self.canvas.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
         # Image on canvas
@@ -655,7 +654,7 @@ class ImagePanel(tk.Frame):
     @property
     def imagetk(self):
         """PhotoImage image"""
-        return self.__imagetk
+        return self.__imgtk
 
     @property
     def mode(self):
@@ -721,12 +720,11 @@ class ImagePanel(tk.Frame):
 
     @property
     def max_canvas_size(self):
-        """Maximum actual canvas size"""
-        sz = self.max_size
-        if sz > 0:
-            return (sz, sz)
-        elif not self.__image is None:
+        """Maximum canvas size"""
+        if not self.__image is None:
             return (self.__image.shape[CV_WIDTH], self.__image.shape[CV_HEIGTH])
+        elif self.max_size > 0:
+            return (self.max_size, self.max_size)
         else:
             return DEF_IMG_SIZE
 
@@ -792,6 +790,10 @@ class ImagePanel(tk.Frame):
             self.__image_shape = image.shape
             self.__resize()
             self.__imgtk = img_to_imgtk(self.__image)
+            if hasattr(self, 'canvas'):
+                self.canvas.config(
+                    width=self.max_canvas_size[0],
+                    height=self.max_canvas_size[1])
 
     def __resize(self, size = None, scale = None):
         """Internal function to resize image"""
@@ -812,12 +814,12 @@ class ImagePanel(tk.Frame):
                           f_center = True,
                           pad_color = (r, g, b))
             self.__imgtk = img_to_imgtk(self.__image)
-            #print('{} -> {} x {} + {}'.format(orig_shape, self.__image.shape, self.__scale, self.__offset))
+            print('{} -> {} x {} + {}'.format(orig_shape, self.__image.shape, self.__scale, self.__offset))
 
     def __update_image(self):
         """Internal function to update image"""
         if self.__imgtk is None and self.__image_id is not None:
-            self.canvas.destroy(self.__image_id)
+            self.canvas.delete(self.__image_id)
         elif not self.__imgtk is None and self.__image_id is None:
             self.__image_id = self.canvas.create_image(0, 0, anchor = tk.NW, image = self.__imgtk)
         else:
@@ -825,10 +827,12 @@ class ImagePanel(tk.Frame):
 
     def __on_configure(self, event):
         """ Event handler for resize events"""
-        m = min(event.width, event.height)
-        if self.__mode == "fit" and m < self.__max_size and m > self.__min_size:
+        min_sz = min(event.width, event.height)
+        max_sz = max(event.width, event.height)
+
+        if self.__mode == "fit" and max_sz < self.__max_size and min_sz > self.__min_size:
             old_scale = self.__scale
-            self.__resize(size = m)
+            self.__resize(size = max_sz)
             self.__update_image()
             new_scale = self.__scale
             self.__binder.trigger(self, "<Resize>", ResizeEvent(self, old_scale, new_scale))
@@ -883,6 +887,16 @@ def addField(parent, type_, caption, nrow, ncol, def_val):
 class ImageMask(object):
     """Support class for drawing and changing mask on an image drawn on canvas"""
 
+    # Constants
+    MODE_AREA = 'area'
+    MODE_GRID = 'grid'
+    MODE_SPLIT = 'split'
+    SIDE_LEFT = 0
+    SIDE_TOP = 1
+    SIDE_RIGHT = 2
+    SIDE_BOTTOM = 3
+
+
     def __init__(self, panel, **kwargs):
         """Creates a mask object.
 
@@ -901,16 +915,13 @@ class ImageMask(object):
         # Parameters
         self.__panel = panel
         self.__mode = kwargs.pop('mode', 'area').lower()
-        if self.__mode != 'area' and self.__mode != 'grid':
+        if self.__mode not in [self.MODE_AREA, self.MODE_GRID, self.MODE_SPLIT]:
            raise ValueError('Invalid mode', self.__mode)
         self.__size = kwargs.pop('size', DEF_BOARD_SIZE)
         self.__mask = kwargs.pop('mask', None)
         self.__allow_change = kwargs.pop('allow_change', True)
         f_show = kwargs.pop('show_mask', False)
         self.__callback = kwargs.pop('mask_callback', None)
-
-        if self.__mask is None:
-            self.default_mask()
 
         # Public parameters
         self.shade_fill = "gray"
@@ -925,6 +936,8 @@ class ImageMask(object):
         self.__drag_side = None
 
         # Draw initial mask
+        if self.__mask is None:
+            self.default_mask()
         if f_show: self.show()
 
         # Set handlers
@@ -962,10 +975,10 @@ class ImageMask(object):
         if self.__mask is None:
            return None
         m = self.__mask.copy()
-        m[0] = int(m[0] / self.__panel.scale[0])
-        m[1] = int(m[1] / self.__panel.scale[1])
-        m[2] = int(m[2] / self.__panel.scale[0])
-        m[3] = int(m[3] / self.__panel.scale[1])
+        m[0] = int(np.ceil(m[0] / self.__panel.scale[0]))
+        m[1] = int(np.ceil(m[1] / self.__panel.scale[1]))
+        m[2] = int(np.ceil(m[2] / self.__panel.scale[0]))
+        m[3] = int(np.ceil(m[3] / self.__panel.scale[1]))
         return m
 
     @scaled_mask.setter
@@ -977,6 +990,8 @@ class ImageMask(object):
            # GrBoard() uses [[x1,y1],[x2,y2]] format, flattening required
            # mask is stored as double to prevent loss due to roudning
            m = np.array(mask).flatten().tolist()
+           if len(m) < 4:
+            raise ValueError('Insufficient length ', str(len(m)))
            m[0] = m[0] * self.__panel.scale[0]
            m[1] = m[1] * self.__panel.scale[1]
            m[2] = m[2] * self.__panel.scale[0]
@@ -999,14 +1014,14 @@ class ImageMask(object):
 
     @property
     def mode(self):
-        """ImageMask mode ('area', 'grid')"""
+        """ImageMask mode ('area', 'grid', 'split')"""
         return self.__mode
 
     @mode.setter
     def mode(self, m):
-        """ImageMask mode ('area', 'grid')"""
+        """ImageMask mode ('area', 'grid', 'split')"""
         m_ = m.lower()
-        if m_ != 'area' and m_ != 'grid':
+        if m_ not in [self.MODE_AREA, self.MODE_GRID, self.MODE_SPLIT]:
            raise ValueError('Invalid mode', m_)
         self.hide()
         self.__mode = m_
@@ -1052,13 +1067,15 @@ class ImageMask(object):
             # Calculate new coordinates
             p = (self.canvas.canvasx(event.x) - self.__panel.offset[0],
                  self.canvas.canvasy(event.y) - self.__panel.offset[1])
-            if self.__drag_side == 0:
+            if self.__drag_side == self.SIDE_LEFT:
                 self.__mask[0] = max(p[0], 0)
-            elif self.__drag_side == 1:
+                if self.__mode == self.MODE_SPLIT:
+                    self.__mask[2] = self.mask[0]
+            elif self.__drag_side == self.SIDE_TOP:
                 self.__mask[1] = max(p[1], 0)
-            elif self.__drag_side == 2:
+            elif self.__drag_side == self.SIDE_RIGHT:
                 self.__mask[2] = min(p[0], self.__panel.scaled_shape[1])
-            elif self.__drag_side == 3:
+            elif self.__drag_side == self.SIDE_BOTTOM:
                 self.__mask[3] = min(p[1], self.__panel.scaled_shape[0])
 
             # Reposition mask rect
@@ -1070,9 +1087,9 @@ class ImageMask(object):
                  m[3] + self.__panel.offset[1])
 
             # Draw shading or grid
-            if self.__mode == 'area':
+            if self.__mode == self.MODE_AREA:
                 self.__draw_mask_shading()
-            else:
+            elif self.__mode == self.MODE_GRID:
                 self.__draw_mask_grid()
 
     def end_drag_callback(self, event):
@@ -1084,11 +1101,14 @@ class ImageMask(object):
     def show(self):
         """Draw a mask or grid on canvas"""
         if self.__mask is None: self.default_mask()
-        if self.__mode == 'area':
+
+        if self.__mode == self.MODE_AREA:
             self.__draw_mask_shading()
-        else:
+            self.__draw_mask_rect()
+        elif self.__mode == self.MODE_GRID:
             self.__draw_mask_grid()
-        self.__draw_mask_rect()
+        elif self.__mode == self.MODE_SPLIT:
+            self.__draw_mask_split()
 
     def hide(self):
         """Hide a previously shown mask or grid"""
@@ -1116,13 +1136,15 @@ class ImageMask(object):
 
     def default_mask(self):
         """Generates default mask"""
-        dx = 1
-        dy = 1
+        dx = self.mask_width // 2
+        dy = self.mask_width // 2
         self.__mask = [
                 dx,
                 dy,
                 self.__panel.scaled_shape[CV_WIDTH] - 2*dx,
                 self.__panel.scaled_shape[CV_HEIGTH] - 2*dy]
+        if self.__mode == self.MODE_SPLIT:
+            self.__mask[2] = self.__mask[2] // 2
 
     def __get_mask_rect_side(self, x, y):
         """Internal function. Returns a side where the cursor is on or None"""
@@ -1134,13 +1156,13 @@ class ImageMask(object):
 
         side = None
         if is_on_w((b[0], b[1]), (b[0], b[3]), p, 2):
-            side = 0
+            side = self.SIDE_LEFT
         elif is_on_w((b[0], b[1]), (b[2], b[1]), p, 2):
-            side = 1
+            side = self.SIDE_TOP
         elif is_on_w((b[2], b[1]), (b[2], b[3]), p, 2):
-            side = 2
+            side = self.SIDE_RIGHT if self.__mode != self.MODE_SPLIT else self.SIDE_LEFT
         elif is_on_w((b[0], b[3]), (b[2], b[3]), p, 2):
-            side = 3
+            side = self.SIDE_BOTTOM
 
         return side
 
@@ -1180,7 +1202,7 @@ class ImageMask(object):
         ]
 
     def __draw_mask_rect(self):
-        """Internal function. Draws a mask rectangle"""
+        """Internal function. Draws a mask as an area"""
         # Clean up
         if not self.__mask_rect is None:
             self.canvas.delete(self.__mask_rect)
@@ -1203,7 +1225,7 @@ class ImageMask(object):
         )
 
     def __draw_mask_grid(self):
-        """Internal function. Draws a grid"""
+        """Internal function. Draws a mask as a grid"""
 
         # Clean up
         if not self.__mask_area is None:
@@ -1242,6 +1264,29 @@ class ImageMask(object):
             m = self.canvas.create_line(x1, y1, x2, y2, fill = self.mask_color, width = self.mask_width)
             self.__mask_area.append(m)
 
+    def __draw_mask_split(self):
+        """Internal function. Draws a mask as a splitter"""
+        # Clean up
+        if not self.__mask_rect is None:
+            self.canvas.delete(self.__mask_rect)
+            self.__mask_rect = None
+
+        # Draw rect
+        m = self.mask
+        sx = self.__panel.offset[0]
+        sy = self.__panel.offset[1]
+        mx = sx + m[2]
+        my = sy + m[1] + self.mask_width
+        wx = sx + m[2]
+        wy = sy + m[3]
+
+        self.__mask_rect = self.canvas.create_rectangle(
+          mx, my,
+          wx, wy,
+          outline = self.mask_color,
+          width = self.mask_width
+        )
+
     def __on_panel_resize(self, e):
         """Callback for panel resize (internal function)"""
         #print("{} -> {}".format(old_scale, new_scale))
@@ -1261,19 +1306,21 @@ class ImageMask(object):
 class ImageTransform(object):
     """4-points image transformation helper class"""
 
-    def __init__(self, panel, callback = None):
+    def __init__(self, panel, inplace = True, callback = None):
         """Create ImageTransorm instance
 
             Parameters:
                 panel     An ImagePanel object with Image displayed on
+                inplace   If True (default), transformed image will be shown in image panel
                 callback  A callback function to be called upon transform completed or cancelled
                           Function signature: f(transformer, state) where
-                            tranformer ImageTranform object
-                            state      True if transformation completed or False if cancelled
+                            tranformer  ImageTranform object
+                            image       Transformed image or None if transformation cancelled
         """
         self.__panel = panel
+        self.__inplace = inplace
         self.__transform_state = False
-        self.__tranform_rect = None
+        self.__transform_rect = None
         self.__transform_help = None
         self.__transform_scale = None
         self.__transform_offset = None
@@ -1283,6 +1330,10 @@ class ImageTransform(object):
 
         # Public properties
         self.show_coord = False
+
+    @property
+    def panel(self):
+        return self.__panel
 
     @property
     def started(self):
@@ -1300,27 +1351,72 @@ class ImageTransform(object):
         return self.__src_image
 
     @property
+    def transform_image(self):
+        """An image after transformation"""
+        return self.__get_transform_image()
+
+    @property
     def transform_rect(self):
         """Transformation rectangle (TL, TR, BL, BR) as it is displayed on screen"""
-        if self.__tranform_rect is None:
+        if self.__transform_rect is None:
            return None
         else:
-           t = [t[:2].view(int).tolist() for t in self.__tranform_rect]
+           t = [t[:2].view(int).tolist() for t in self.__transform_rect]
            return t
+
+    @transform_rect.setter
+    def transform_rect(self, tr):
+        """Transformation rectangle (TL, TR, BL, BR) as it is displayed on screen"""
+        if tr is None:
+            self.__transform_rect = None
+        else:
+            self.__transform_rect = np.array(tr)
 
     @property
     def scaled_rect(self):
         """Transformation rectangle (TL, TR, BL, BR) scaled to actual image size"""
-        t = self.transform_rect
-        if t is None:
-           return None
+        if self.transform_rect is None:
+            return None
         else:
-           t2 = []
-           for i in t:
-               t2.append([
-                    int(i[0] / self.__transform_scale[0]) - self.__transform_offset[0],
-                    int(i[1] / self.__transform_scale[1]) - self.__transform_offset[1] ])
-           return t2
+            t = []
+            scale = self.__transform_scale if self.__transform_scale is not None \
+                                           else self.__panel.scale
+            offset = self.__transform_offset if self.__transform_offset is not None \
+                                           else self.__panel.offset
+
+            for r in self.transform_rect:
+                t.append([
+                    int(np.ceil(r[0] / scale[0])) - offset[0],
+                    int(np.ceil(r[1] / scale[1])) - offset[1] ])
+            return t
+
+    @scaled_rect.setter
+    def scaled_rect(self, tr):
+        """Transformation rectangle (TL, TR, BL, BR) scaled to actual image size"""
+        if tr is None:
+            self.__transform_rect = None
+        else:
+            t = []
+            for r in tr:
+                t.append([
+                    int(np.ceil(r[0] * self.__panel.scale[0])) + self.__panel.offset[0],
+                    int(np.ceil(r[1] * self.__panel.scale[1])) + self.__panel.offset[1]])
+            self.__transform_rect = np.array(t)
+            self.__transform_scale = None
+            self.__transform_offset = None
+
+    @property
+    def bounding_rect(self):
+        """Bounding transformation rectangle (scaled)"""
+        t = self.scaled_rect
+        if t is None:
+            return None
+        else:
+            min_x = min([x[0] for x in t])
+            max_x = max([x[0] for x in t])
+            min_y = min([x[1] for x in t])
+            max_y = max([x[1] for x in t])
+            return [[min_x, min_y], [min_x, max_y], [max_x, min_y], [max_x, max_y]]
 
     @property
     def callback(self):
@@ -1331,6 +1427,16 @@ class ImageTransform(object):
     def callback(self, c):
         """A callback function"""
         self.__callback = callback
+
+    @property
+    def inplace(self):
+        """Replace image in image panel after transformation"""
+        return self.__inplace
+
+    @inplace.setter
+    def inplace(self, inplace):
+        """Replace image in image panel after transformation"""
+        self.__inplace = inplace
 
     def start(self):
         """Initiates a transform operation"""
@@ -1360,7 +1466,7 @@ class ImageTransform(object):
         """Cancel transformation which was already started"""
         self.__clean_up()
         if not self.__callback is None:
-           self.__callback(self, False)
+            self.__callback(self, None)
 
     def reset(self):
         """Reset to source image"""
@@ -1377,24 +1483,24 @@ class ImageTransform(object):
             if self.show_coord:
                text_id = self.__panel.canvas.create_text(event.x, event.y+10,
                             text = "({},{})".format(event.x, event.y), fill = "red")
-            self.__tranform_rect[n,0] = event.x
-            self.__tranform_rect[n,1] = event.y
-            self.__tranform_rect[n,2] = circle_id
-            self.__tranform_rect[n,3] = text_id
+            self.__transform_rect[n,0] = event.x
+            self.__transform_rect[n,1] = event.y
+            self.__transform_rect[n,2] = circle_id
+            self.__transform_rect[n,3] = text_id
 
         if not self.__transform_state: return
 
-        if self.__tranform_rect is None:
-           self.__tranform_rect = np.zeros((4,4), dtype = np.uint32)
+        if self.__transform_rect is None:
+           self.__transform_rect = np.zeros((4,4), dtype = np.uint32)
            show_click(0)
         else:
            # Count 4 clicks
-           for n in range(len(self.__tranform_rect)):
-               if self.__tranform_rect[n][2] == 0:
-                  show_click(n)
-                  self.__transform_state = (n < len(self.__tranform_rect)-1)
-                  return
-           self.__transform_state = False
+            for n in range(len(self.__transform_rect)):
+                if self.__transform_rect[n][2] == 0:
+                    show_click(n)
+                    self.__transform_state = (n < len(self.__transform_rect)-1)
+                    return
+            self.__transform_state = False
 
     def key_callback(self, event):
         """ESC key press callback"""
@@ -1403,39 +1509,46 @@ class ImageTransform(object):
     def check_transform_state(self):
         """Timer callback"""
         if self.__transform_state:
-           # Still running, repeat check
-           self.__panel.canvas.after(100, self.check_transform_state)
+            # Still running, repeat check
+            self.__panel.canvas.after(100, self.check_transform_state)
         else:
-           if not self.__tranform_rect is None:
-              # Save current scale and offset since they will change with image change
-              self.__transform_scale = self.__panel.scale
-              self.__transform_offset = self.__panel.offset
+            if not self.__transform_rect is None:
+                # Save current scale and offset since they will change with image change
+                self.__transform_scale = self.__panel.scale
+                self.__transform_offset = self.__panel.offset
 
-              # Do 4-points transform
-              t = np.array([t[:2] for t in self.__tranform_rect])
-              im = four_point_transform(self.__panel.image, t)
-              self.__panel.set_image(im)
+                # Do 4-points transform
+                img = self.__get_transform_image()
+                if self.__inplace:
+                    self.__panel.set_image(img)
+                if not self.__callback is None:
+                    self.__callback(self, img)
 
-              if not self.__callback is None:
-                 self.__callback(self, True)
+            # Clean up
+            self.__clean_up()
 
-           # Clean up
-           self.__clean_up()
+    def __get_transform_image(self):
+        if self.__transform_rect is None or len(self.__transform_rect) < 4:
+            raise ValueError('Transformation rectangle not defined')
+
+        t = np.array([t[:2] for t in self.__transform_rect])
+        return four_point_transform(self.image, t)
 
     def __clean_up(self):
         """Internal function to clear after transformation cancelling"""
         # Remove selection points
         self.__transform_state = False
-        if self.__tranform_rect is not None:
-           for i in self.__tranform_rect:
-               self.__panel.canvas.delete(i[2])
-               if i[3] > 0: self.__panel.canvas.delete(i[3])
-           self.__tranform_rect = None
+        if self.__transform_rect is not None:
+            for i in self.__transform_rect:
+                if len(i) > 2:
+                    if i[2] > 0: self.__panel.canvas.delete(i[2])
+                    if i[3] > 0: self.__panel.canvas.delete(i[3])
+            self.__transform_rect = None
 
         # Remove tooltip
         if not self.__transform_help is None:
-           removeToolTip(self.__transform_help)
-           self.__transform_help = None
+            removeToolTip(self.__transform_help)
+            self.__transform_help = None
 
         # Cancel bindings
         self.__bindings.unbind_all()
