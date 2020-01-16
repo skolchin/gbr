@@ -8,25 +8,26 @@
 # Copyright:   (c) kol 2019
 # Licence:     MIT
 #-------------------------------------------------------------------------------
+import sys
+from pathlib import Path
+import json
+import logging
+import numpy as np
+from imutils.perspective import four_point_transform
+from sgfmill import sgf
+import cv2
+
 from .grdef import *
 from .gr import process_img, detect_board, generate_board
-from .utils import resize2
+from .utils import resize, resize2
 from .params import GrParams
 from .stones import GrStones
 
-from pathlib import Path
-import cv2
-from imutils.perspective import four_point_transform
-import numpy as np
-import json
-import logging
-from sgfmill import sgf
-
 BOARD_PARAM_EXT = '.gpar'  # extension for board parameters file
 
-class GrBoard(object):
+class GrBoard:
     """ Go board """
-    def __init__(self, image_file = None, board_shape = None):
+    def __init__(self, image_file=None, board_shape=None):
         """ Create new instance either for image file or by generation
 
         Parameters:
@@ -45,13 +46,14 @@ class GrBoard(object):
 
         if image_file is None or image_file == '':
             # Generate default board
-            if board_shape is None: board_shape = DEF_IMG_SIZE
-            self.generate(shape = board_shape)
+            if board_shape is None:
+                board_shape = DEF_IMG_SIZE
+            self.generate(shape=board_shape)
         else:
             # Load board from file
             self.load_image(image_file)
 
-    def load_image(self, filename, f_with_params = True, f_process = True):
+    def load_image(self, filename, f_with_params=True, f_process=True):
         """Loads a new image to board
 
         Parameters:
@@ -62,10 +64,10 @@ class GrBoard(object):
         logging.info('Loading {}'.format(filename))
         img = cv2.imread(str(filename))
         if img is None:
-           logging.error('Image file not found {}'.format(filename))
-           raise Exception('Image file not found {}'.format(filename))
+            logging.error('Image file not found {}'.format(filename))
+            raise Exception('Image file not found {}'.format(filename))
 
-        self._stones.clear(with_forced = True)
+        self._stones.clear(with_forced=True)
         self._gen_board = False
         self._img_file = filename
         self._src_img_file = filename
@@ -83,13 +85,14 @@ class GrBoard(object):
 
         # Do a transformation, if specified
         if 'TRANSFORM' in self._params:
-           self.transform_image(self._params['TRANSFORM'])
+            self.transform_image(self._params['TRANSFORM'])
 
         # Analyze board
-        if f_process: self.process()
+        if f_process:
+            self.process()
         return f_params_loaded
 
-    def generate(self, shape = DEF_IMG_SIZE):
+    def generate(self, shape=DEF_IMG_SIZE):
         """Generates a new board image of given shape and stores it in this instance.
         If stones were recognized, displays them on the image. Sets is_gen_board flag to True.
 
@@ -99,18 +102,19 @@ class GrBoard(object):
         Returns:
             img         OpenCV image generated
         """
-        self._img = generate_board(shape, res = self._res)
+        self._img = generate_board(shape, res=self._res)
         self._img_file = None
         self._gen_board = True
 
-    def save_image(self, filename = None, max_size = None):
+    def save_image(self, filename=None, max_size=None):
         """Saves image under new name. If max_size provided, resizes image before"""
         if self._img is None:
-           raise Exception('Image was not loaded')
+            raise Exception('Image was not loaded')
 
         if filename is None: filename = self._img_file
         im = self._img
-        if not max_size is None: im = resize(im, max_size)
+        if not max_size is None:
+            im = resize(im, max_size)
 
         logging.info('Saving image to {}'.format(filename))
         try:
@@ -131,12 +135,13 @@ class GrBoard(object):
             f.close()
 
         # Populate parameters
-        self._params.assign(p, copy_all = True)
+        self._params.assign(p, copy_all=True)
 
         # Retrieve forced stones
-        if 'FORCED_STONES' in p: self._stones.forced_fromlist(p['FORCED_STONES'])
+        if 'FORCED_STONES' in p:
+            self._stones.forced_fromlist(p['FORCED_STONES'])
 
-    def save_params(self, filename = None, f_bak = True):
+    def save_params(self, filename=None, f_bak=True):
         """Saves recognition parameters to specified file (JSON)"""
 
         # Get filename and backup previous file
@@ -156,7 +161,7 @@ class GrBoard(object):
 
         return filename
 
-    def save_sgf(self, filename = None):
+    def save_sgf(self, filename=None):
         """Saves recognition results to specified file (SGF)"""
 
         def _add_stone(game, bw, stone):
@@ -169,7 +174,7 @@ class GrBoard(object):
         if filename is None:
             filename = str(Path(self._img_file).with_suffix('.sgf'))
 
-        game = sgf.Sgf_game(size = self.board_size)
+        game = sgf.Sgf_game(size=self.board_size)
         bs = self.black_stones.tolist()
         ws = self.white_stones.tolist()
 
@@ -189,12 +194,12 @@ class GrBoard(object):
         """Runs edges and size detection and stores result in params overriding
         BOARD_SIZE and BOARD_EDGES keys. Returns detection results."""
         if self._img is None or self._gen_board:
-           return None, None
-        else:
-           edges, size = detect_board(self._img, self._params)
-           self._params['BOARD_EDGES'] = edges
-           self._params['BOARD_SIZE'] = size
-           return edges, size
+            return None, None
+
+        edges, size = detect_board(self._img, self._params)
+        self._params['BOARD_EDGES'] = edges
+        self._params['BOARD_SIZE'] = size
+        return edges, size
 
     def process(self):
         """Perform recognition of board image"""
@@ -205,12 +210,12 @@ class GrBoard(object):
             self._res = process_img(self._img, self._params)
             self._stones.clear(with_forced = False)
             if self._res is not None:
-                self._stones.add_ext(self._res[GR_STONES_B], STONE_BLACK, with_forced = False,
-                    mark_forced = False, mark_added = False)
-                self._stones.add_ext(self._res[GR_STONES_W], STONE_WHITE, with_forced = False,
-                    mark_forced = False, mark_added = False)
+                self._stones.add_ext(self._res[GR_STONES_B], STONE_BLACK, with_forced=False,
+                                     mark_forced=False, mark_added=False)
+                self._stones.add_ext(self._res[GR_STONES_W], STONE_WHITE, with_forced=False,
+                                     mark_forced=False, mark_added=False)
 
-    def show_board(self, f_black = True, f_white = True, f_det = False, show_state = None):
+    def show_board(self, f_black=True, f_white=True, f_det=False, show_state=None):
         """Generates a new board image of given shape and returns it.
         If stones were found on the source image, displays them on the image.
         Does not change internal image or is_gen_board flag.
@@ -219,15 +224,15 @@ class GrBoard(object):
             f_black     If True, black stones are displayed. Not used if show_state is provided
             f_white     If True, white stones are displayed. Not used if show_state is provided
             f_det       If True, stone circles are displayed. Not used if show_state is provided
-            show_state  A dictionary of display parameters. If provided, overrides all f_xxx parameters
-
+            show_state  A dictionary of display parameters.
+                        If provided, overrides all f_xxx parameters.
         Returns:
             img         OpenCV image generated
         """
         if not show_state is None:
-           f_black = show_state['black']
-           f_white = show_state['white']
-           f_det = show_state['box']
+            f_black = show_state['black']
+            f_white = show_state['white']
+            f_det = show_state['box']
 
         r = None
         if not self._res is None:
@@ -249,7 +254,7 @@ class GrBoard(object):
             for st in stones:
                 st[GR_X] = int(st[GR_X] * scale[0])
                 st[GR_Y] = int(st[GR_Y] * scale[1])
-                st[GR_R] = int(st[GR_R] * max(scale[0],scale[1]))
+                st[GR_R] = int(st[GR_R] * max(scale[0], scale[1]))
                 ret_stones.append(st)
             return np.array(ret_stones)
 
@@ -291,7 +296,7 @@ class GrBoard(object):
             self._params['AREA_MASK'] = None
         else:
             # ImageMask uses flattened list, conversion required
-            m = np.array(mask).reshape((2,2)).tolist()
+            m = np.array(mask).reshape((2, 2)).tolist()
             self._params['AREA_MASK'] = m
 
     @property
@@ -311,7 +316,7 @@ class GrBoard(object):
         if edges is None:
             self._params['BOARD_EDGES'] = None
         else:
-            m = np.array(edges).reshape((2,2)).tolist()
+            m = np.array(edges).reshape((2, 2)).tolist()
             self._params['BOARD_EDGES'] = m
 
     @property
@@ -396,19 +401,18 @@ class GrBoard(object):
             c       image coordinates as tuple(x,y) or None
             p       stone position as tuple(a,b) or None
             s       stone position as letter and index (A10)
-            bw      stone type (B/W to look for specified color or None) - ignored
         Returns;
             stone list of stone properties
             type  B/W stone type
         """
         if c is not None:
             return self._stones.find_coord(c[0], c[1])
-        elif p is not None:
+        if p is not None:
             return self._stones.find_position(p[0], p[1])
-        elif s is not None:
+        if s is not None:
             return self._stones.find(s)
-        else:
-            return None, None
+
+        return None, None
 
     @property
     def debug_images(self):
@@ -417,7 +421,7 @@ class GrBoard(object):
             return None
         else:
             r = dict()
-            for key in self._res.keys():
+            for key in self._res:
                 if key.find("IMG_") >= 0: r[key] = self._res[key]
             return r
 
@@ -426,16 +430,16 @@ class GrBoard(object):
         """Collection of textual information generated during image recognition"""
         if self._res is None:
             return None
-        else:
-            r = dict()
-            r[GR_EDGES] = self._res[GR_EDGES]
-            r[GR_SPACING] = (round(self._res[GR_SPACING][0],2), \
-                             round(self._res[GR_SPACING][1],2))
-            r[GR_NUM_CROSS_H] = self._res[GR_NUM_CROSS_H]
-            r[GR_NUM_CROSS_W] = self._res[GR_NUM_CROSS_W]
-            r[GR_BOARD_SIZE] = self._res[GR_BOARD_SIZE]
-            r[GR_IMAGE_SIZE] = self._res[GR_IMAGE_SIZE]
-            return r
+
+        r = dict()
+        r[GR_EDGES] = self._res[GR_EDGES]
+        r[GR_SPACING] = (round(self._res[GR_SPACING][0], 2), \
+                         round(self._res[GR_SPACING][1], 2))
+        r[GR_NUM_CROSS_H] = self._res[GR_NUM_CROSS_H]
+        r[GR_NUM_CROSS_W] = self._res[GR_NUM_CROSS_W]
+        r[GR_BOARD_SIZE] = self._res[GR_BOARD_SIZE]
+        r[GR_IMAGE_SIZE] = self._res[GR_IMAGE_SIZE]
+        return r
 
     @property
     def board_size(self):
@@ -457,9 +461,9 @@ class GrBoard(object):
     def transform_image(self, transform_rect):
         """Performs a perspective transformation"""
         if not transform_rect is None and len(transform_rect) == 4:
-           logging.info('Transforming: {}'.format(transform_rect))
-           self._img = four_point_transform(self._img, np.array(transform_rect))
-           self._params['TRANSFORM'] = transform_rect
+            logging.info('Transforming: {}'.format(transform_rect))
+            self._img = four_point_transform(self._img, np.array(transform_rect))
+            self._params['TRANSFORM'] = transform_rect
 
     def reset_image(self):
         """Revert image to original after a transformation"""

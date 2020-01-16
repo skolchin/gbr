@@ -126,5 +126,7 @@ PyCharm project
 /cc/*.vec
 /cc/stones/*
 /cc/edges/*
-/cc/crosses/*
-/tf/*
+/cc/crossings/*
+/tf/_logs/*
+/tf/mnist/*
+/tf/*classifier/*

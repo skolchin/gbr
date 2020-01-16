@@ -13,23 +13,16 @@ from PIL import Image, ImageTk
 from pathlib import Path
 import random
 import numpy as np
-import cv2
 from imutils.perspective import four_point_transform
 from collections import namedtuple
+import sys
+import tkinter as tk
+from tkinter import ttk, font
 
 from .grdef import *
 from .utils import img_to_imgtk, resize3, is_on_w
 from .gr import board_spacing
 from .binder import NBinder
-
-import sys
-if sys.version_info[0] < 3:
-    import Tkinter as tk
-    import ttk
-    import tkFont as font
-else:
-    import tkinter as tk
-    from tkinter import ttk, font
 
 UI_DIR = 'ui'    # directory containing ImgButton images
 PADX = 5
@@ -78,7 +71,7 @@ class ImgButton(tk.Label):
             ok      True if dialog is been closed after OK button press
     """
     # ImageButton event support classes
-    class ImgButtonClickEvent(object):
+    class ImgButtonClickEvent:
         def __init__(self, event, tag, state):
             self.event, self.tag, self.state, self.cancel = event, tag, state, False
 
@@ -125,7 +118,6 @@ class ImgButton(tk.Label):
             self.__binder.register(self, '<Click>', cmd)
 
         # Load button images
-        ui_path = os.path.join(os.path.dirname(sys.argv[0]), UI_DIR)
         self.__images = [ImgButton.get_ui_image(self.__tag + '_up.png'),
                          ImgButton.get_ui_image(self.__tag + '_down.png')]
 
@@ -204,7 +196,7 @@ class ImgButton(tk.Label):
             if self.__dlg is not None:
                 self.__binder.unbind(self.__dlg, "<Close>")
                 self.__binder.trigger(self, '<Dialog-Close>',
-                    self.ImgButtonDialogEvent(self.__tag, self.__dlg, False))
+                                      self.ImgButtonDialogEvent(self.__tag, self.__dlg, False))
                 dlg = self.__dlg
                 self.__dlg = None
                 dlg.close()
@@ -213,7 +205,7 @@ class ImgButton(tk.Label):
                 self.__dlg = self.__dlg_class(master = self.master)
                 self.__binder.register(self.__dlg, "<Close>", self.__dialog_close_callback)
                 self.__binder.trigger(self, '<Dialog-Open>',
-                    self.ImgButtonDialogEvent(self.__tag, self.__dlg, False))
+                                      self.ImgButtonDialogEvent(self.__tag, self.__dlg, False))
 
     def __mouse_click(self, event):
         """Mouse click callback"""
@@ -224,7 +216,7 @@ class ImgButton(tk.Label):
         if self.__dlg is not None:
             self.__binder.unbind(self.__dlg, "<Close>")
             self.__binder.trigger(self, '<Dialog-Close>',
-                self.ImgButtonDialogEvent(self.__tag, self.__dlg, event.ok))
+                                  self.ImgButtonDialogEvent(self.__tag, self.__dlg, event.ok))
             self.__dlg = None
         self.state = False
 
@@ -232,16 +224,12 @@ class ImgButton(tk.Label):
     @staticmethod
     def get_ui_image(name):
         """Static method to get an image from UI directory"""
-        ui_path = os.path.join(os.path.dirname(sys.argv[0]), UI_DIR)
-        return ImageTk.PhotoImage(Image.open(os.path.join(ui_path, name)))
+        ui_path = Path.cwd().joinpath(UI_DIR, name)
+        return ImageTk.PhotoImage(Image.open(str(ui_path)))
 
-
-# Button group types
-BG_INDEPENDENT = "independent"
-BG_DEPENDENT = "dependent"
 
 # Button group
-class ImgButtonGroup(object):
+class ImgButtonGroup:
     """Button group management class.
 
         This class allows to define a button group can include several ImgButton tags
@@ -249,9 +237,13 @@ class ImgButtonGroup(object):
         Button groups can be dependent (where only one button could be down at one time)
         or independent, which are handled by the caller.
     """
+    # Button group types
+    BG_INDEPENDENT = "independent"
+    BG_DEPENDENT = "dependent"
+
 
     # Enclosed group class
-    class __Group(object):
+    class __Group:
         def __init__(self, parent, group, gtype, tags):
             self.parent, self.group, self.gtype, self.tags = parent, group, gtype, tags
 
@@ -313,7 +305,7 @@ class ImgButtonGroup(object):
     @property
     def dependent_groups(self):
         """List of groups of type BG_DEPENDENT"""
-        return self.get_groups(BG_DEPENDENT)
+        return self.get_groups(self.BG_DEPENDENT)
 
     def get_buttons(self, group = None, exclude = None):
         """List of image buttons displayed on master panel and, optionally, belonging to a group"""
@@ -336,7 +328,7 @@ class ImgButtonGroup(object):
             raise ValueError("Group '" + group + "' already defined")
 
         # Check group dependencies
-        if gtype == BG_DEPENDENT:
+        if gtype == self.BG_DEPENDENT:
             for g in self.dependent_groups:
                 for t in self.__groups[g]:
                     if t in tags:
@@ -381,7 +373,7 @@ class ImgButtonGroup(object):
                 if b.tag != event.tag: b.release()
 
 # Tooltip
-class ToolTip(object):
+class ToolTip:
     """ToolTip class (see https://stackoverflow.com/questions/3221956/how-do-i-display-tooltips-in-tkinter)"""
 
     def __init__(self, widget):
@@ -401,13 +393,13 @@ class ToolTip(object):
         x = x + self.widget.winfo_rootx() + 27
         y = y + cy + self.widget.winfo_rooty() + 27
         if not c is None:
-           x, y = c
+            x, y = c
         self.tipwindow = tw = tk.Toplevel(self.widget)
         tw.wm_overrideredirect(1)
         tw.wm_geometry("+%d+%d" % (x, y))
         label = tk.Label(tw, text=self.text, justify=tk.LEFT,
-                      background="#ffffe0", relief=tk.SOLID, borderwidth=1,
-                      font=("tahoma", "8", "normal"))
+                         background="#ffffe0", relief=tk.SOLID, borderwidth=1,
+                         font=("tahoma", "8", "normal"))
         label.pack(ipadx=1)
 
     def hidetip(self):
@@ -523,18 +515,12 @@ class StatusPanel(tk.Frame):
 
         self.__var.set(text + " " + file)
 
-# Resize event support class
-class ResizeEvent(object):
-    """Resize event support class"""
-    def __init__(self, panel, old_scale, new_scale):
-        self.panel = panel
-        self.old_scale = old_scale
-        self.new_scale = new_scale
-
-
 # Image panel class
 class ImagePanel(tk.Frame):
     """A base class for displaying images"""
+
+    # Resize event support class
+    ResizeEvent = namedtuple('ResizeEvent', ['panel', 'old_scale', 'new_scale'])
 
     def __init__(self, master, **kwargs):
         """Creates ImagePanel instance.
@@ -572,8 +558,8 @@ class ImagePanel(tk.Frame):
         f_sb = kwargs.pop('scrollbars', (False, False))
         if not type(f_sb) is tuple: f_sb = (f_sb, f_sb)
         self.__mode = kwargs.pop('mode',"clip")
-        self.__max_size = kwargs.pop('max_size', 0)
-        self.__min_size = kwargs.pop('min_size',0)
+        self.__max_size = kwargs.pop('max_size',  0)
+        self.__min_size = kwargs.pop('min_size', 0)
         resize_callback = kwargs.pop('resize_callback', None)
         if self.__mode != "clip" and self.__mode != "fit":
             raise ValueError("Invalid mode ", self.__mode)
@@ -628,10 +614,10 @@ class ImagePanel(tk.Frame):
         # Frame click callback
         self.__binder = NBinder()
         if not frame_callback is None:
-           self.__binder.bind(self.canvas, '<Button-1>', frame_callback)
+            self.__binder.bind(self.canvas, '<Button-1>', frame_callback)
 
         if not resize_callback is None:
-           self.__binder.register(self, '<Resize>', resize_callback)
+            self.__binder.register(self, '<Resize>', resize_callback)
 
         # Resize handler
         if self.__mode == "fit":
@@ -782,7 +768,7 @@ class ImagePanel(tk.Frame):
         """Internal function to assign image"""
         if image is None:
             self.__image = None
-            self.__image_shape = [0,0]
+            self.__image_shape = [0, 0]
             self.__offset = [0, 0]
             self.__imgtk = None
         else:
@@ -1303,7 +1289,7 @@ class ImageMask(object):
 
 
 # Image transformer
-class ImageTransform(object):
+class ImageTransform:
     """4-points image transformation helper class"""
 
     def __init__(self, panel, inplace = True, callback = None):
@@ -1424,7 +1410,7 @@ class ImageTransform(object):
         return self.__callback
 
     @callback.setter
-    def callback(self, c):
+    def callback(self, callback):
         """A callback function"""
         self.__callback = callback
 
@@ -1739,12 +1725,12 @@ class GrDialog(tk.Toplevel):
                     w.configure(state = cb_def_state if state else "disabled")
                 elif isinstance(w, ImgButton):
                     w.disabled = not state
-                elif isinstance(w, ttk.Widget) or isinstance(w, tk.Widget):
+                elif isinstance(w, (ttk.Widget, tk.Widget)):
                     w.configure(state = tk.NORMAL if state else tk.DISABLED)
         f(self.internalFrame)
 
 # A marker on an ImagePanel
-class ImageMarker(object):
+class ImageMarker:
     """A marker on a panel"""
 
     def __init__(self, panel, **kwargs):
@@ -1773,10 +1759,10 @@ class ImageMarker(object):
         self.__bindings.register(self.__panel, "<Resize>", self.__on_panel_resize)
 
         # Public properies
-        self.line_color = { "_": "red", "B": "deep sky blue", "W": "purple2" }
-        self.fill_color = { "_": "", "B": "deep sky blue", "W": "purple2" }
-        self.line_width = { "_": 2, "B": 1, "W": 1 }
-        self.fill_stipple = { "_": "", "B": "gray50", "W": "gray50" }
+        self.line_color = { "_": "red", "B": "deep sky blue", "W": "purple2"}
+        self.fill_color = { "_": "", "B": "deep sky blue", "W": "purple2"}
+        self.line_width = { "_": 2, "B": 1, "W": 1}
+        self.fill_stipple = { "_": "", "B": "gray50", "W": "gray50"}
 
     @property
     def panel(self):
@@ -1789,7 +1775,7 @@ class ImageMarker(object):
         return self.__panel.canvas
 
     @property
-    def stones(sef):
+    def stones(self):
         return self.__stones.copy()
 
     def add_stone(self, stone, bw = None, f_show = True, f_replace = False):
@@ -1844,7 +1830,7 @@ class ImageMarker(object):
     def hide(self):
         """Hide previously shown markers"""
         if not self.__markers is None:
-            for m in self.__markers :
+            for m in self.__markers:
                 self.canvas.delete(m)
             self.__markers = []
 
