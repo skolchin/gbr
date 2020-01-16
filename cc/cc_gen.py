@@ -26,12 +26,12 @@ from gr.utils import get_image_area, resize
 
 class DatasetGenerator:
     def __init__(self):
-        # Datasets to generate: positives, negatives, stones, crosses, edges
-        self.datasets = ["positive"]
+        # Datasets to generate: positives, negatives, stones, crossings
+        self.datasets = ["positive", "negatives", "stones", "crossings"]
 
         # Directories where to place datasets
         self.dirs = OrderedDict({"positive": None, "stones": None,
-            "negative": None, "crosses": None, "edges": None})
+            "negative": None, "crossings": None})
 
         # Selection pattern
         self.pattern = None
@@ -40,7 +40,7 @@ class DatasetGenerator:
         self.method = "single"
 
         # Spacing of area to be extracted with particular method
-        self.spacing = {"single": 10, "enclosed": 1, "cross": 5, "edge": 5}
+        self.spacing = {"single": 10, "enclosed": 1, "crossing": 5}
 
         # Positive dataset is for samples generation
         self.is_gen = False
@@ -246,73 +246,106 @@ class DatasetGenerator:
         extract_stones_bw('B', 'black')
         extract_stones_bw('W', 'white')
 
-    def extract_crosses(self, file_name):
-        pd = Path(self.dirs['crosses'])
+    def extract_crossings(self, file_name):
+        self.extract_edges(file_name)
+        self.extract_border_crossings(file_name)
+        self.extract_inboard_crossings(file_name)
+
+    def extract_crossing_range(self, file_name, label, ranges):
+        pd = Path(self.dirs['crossings']).joinpath(label)
         f_reg = open(str(pd.joinpath("description.txt")), "a")
 
+        cs = self.get_space(4, self.spacing['crossing'])
+        index = 0
+        for r in ranges:
+            for y in r[0]:
+                for x in r[1]:
+                    stone = self.board.find_stone(c=(x,y))
+                    if stone is None:
+                        area = [max(x-cs-2,0),
+                            max(y-cs-2,0),
+                            min(x+cs+2, self.board.image.shape[CV_WIDTH]),
+                            min(y+cs+2, self.board.image.shape[CV_HEIGTH])]
+
+                        area_img = get_image_area(self.board.image, area)
+
+                        fn = self.get_image_file_name(file_name, index)
+                        save_fn = str(pd.joinpath(fn))
+                        #print("\tCrossing {} to {}".format(area, save_fn))
+
+                        cv2.imwrite(save_fn, area_img)
+
+                        f_reg.write("{} 1 {} {} {} {} \n".format(fn,
+                            0, 0, area_img.shape[1]-1, area_img.shape[0]-1))
+
+                        index += 1
+                        self.counts['crossings'] += 1
+
+        f_reg.close()
+
+
+    def extract_border_crossings(self, file_name):
         edges = self.board.results[GR_EDGES]
         space = self.board.results[GR_SPACING]
-        cs = self.get_space(4, self.spacing['cross'])
 
-        index = 0
-        for y in range(int(edges[0][1]+space[1]), int(edges[1][1]-space[1]), int(space[1])):
-            for x in range(int(edges[0][0]+space[0]), int(edges[1][0]-space[0]), int(space[0])):
-                stone = self.board.find_stone(c=(x,y))
-                if stone is None:
-                    area = [max(x-cs-2,0),
-                        max(y-cs-2,0),
-                        min(x+cs+2, self.board.image.shape[CV_WIDTH]),
-                        min(y+cs+2, self.board.image.shape[CV_HEIGTH])]
+        ranges = [
+            # left border
+            (
+                range(int(edges[0][1]+space[1]), int(edges[1][1]-space[1]), int(space[1])),
+                range(int(edges[0][0]), int(edges[0][0])+1, int(space[0]))
+            ),
+            # right border
+            (
+                range(int(edges[0][1]+space[1]), int(edges[1][1]-space[1]), int(space[1])),
+                range(int(edges[1][0]), int(edges[1][0])+1, int(space[0]))
+            ),
+            # top border
+            (
+                range(int(edges[0][1]), int(edges[0][1])+1, int(space[1])),
+                range(int(edges[0][0]+space[0]), int(edges[1][0]-space[0]), int(space[0]))
+            ),
+            # bottom border
+            (
+                range(int(edges[1][1]), int(edges[1][1])+1, int(space[1])),
+                range(int(edges[0][0]+space[0]), int(edges[1][0]-space[0]), int(space[0]))
+            )
+        ]
+        self.extract_crossing_range(file_name, 'border', ranges)
 
-                    area_img = get_image_area(self.board.image, area)
 
-                    fn = self.get_image_file_name(file_name, index)
-                    save_fn = str(pd.joinpath(fn))
-                    #print("\tCrossing {} to {}".format(area, save_fn))
+    def extract_inboard_crossings(self, file_name):
+        edges = self.board.results[GR_EDGES]
+        space = self.board.results[GR_SPACING]
 
-                    cv2.imwrite(save_fn, area_img)
-
-                    f_reg.write("{} 1 {} {} {} {} \n".format(fn,
-                        0, 0, area_img.shape[1]-1, area_img.shape[0]-1))
-
-                    index += 1
-                    self.counts['crosses'] += 1
-
-        f_reg.close()
+        ranges = [
+            (
+                range(int(edges[0][1]+space[1]), int(edges[1][1]-space[1]), int(space[1])),
+                range(int(edges[0][0]+space[0]), int(edges[1][0]-space[0]), int(space[0]))
+            )
+        ]
+        self.extract_crossing_range(file_name, "cross", ranges)
 
     def extract_edges(self, file_name):
-        pd = Path(self.dirs['edges'])
-        f_reg = open(str(pd.joinpath("description.txt")), "a")
-
         edges = self.board.results[GR_EDGES]
-        cs = self.get_space(4, self.spacing['edge'])
-        edges = [edges[0], edges[1], (edges[0][0], edges[1][1]), (edges[1][0], edges[0][1]) ]
-
-        index = 0
-        for e in edges:
-            x, y = e
-            stone = self.board.find_stone(c=(x,y))
-            if stone is None:
-                area = [max(x-cs-2, 0),
-                    max(y-cs-2, 0),
-                    min(x+cs+2, self.board.image.shape[CV_WIDTH]),
-                    min(y+cs+2, self.board.image.shape[CV_HEIGTH])]
-
-                area_img = get_image_area(self.board.image, area)
-
-                fn = self.get_image_file_name(file_name, index)
-                save_fn = str(pd.joinpath(fn))
-                #print("\tEdge {} to {}".format(area, save_fn))
-
-                cv2.imwrite(save_fn, area_img)
-
-                f_reg.write("{} 1 {} {} {} {} \n".format(fn,
-                    0, 0, area_img.shape[1]-1, area_img.shape[0]-1))
-
-                index += 1
-                self.counts['edges'] += 1
-
-        f_reg.close()
+        ranges = [
+            (
+                [edges[0][1]],
+                [edges[0][0]]
+            ),
+            (
+                [edges[1][1]],
+                [edges[0][0]]
+            ),
+            (
+                [edges[0][1]],
+                [edges[1][0]]
+            ),
+            (
+                [edges[1][1]],
+                [edges[1][0]]
+            ),
+        ]
+        self.extract_crossing_range(file_name, 'edge', ranges)
 
 
     def one_file(self, file_name):
@@ -346,11 +379,10 @@ class DatasetGenerator:
         parser.add_argument('-n', "--negative",
             help = 'Directory to store negatives dataset (images without stones)')
         parser.add_argument('-b', "--stones",
-            help = "Directory to store stones dataset (stone images, separatly for black and white)")
-        parser.add_argument('-c', "--crosses",
-            help = "Directory to store crosses dataset (images of board grid crossings)")
-        parser.add_argument('-e', "--edges",
-            help = "Directory to store edges dataset (images of board edges)")
+            help = "Directory to store stones dataset (stone images, separately for black and white)")
+        parser.add_argument('-c', "--crossings",
+            help = "Directory to store line crossings and edges dataset (images of board grid lines crossings, " + \
+                    "separately for edges, borders crossings and grid lines crossings)")
         parser.add_argument('-m', "--method",
             choices = ["single", "enclosed", "both"], default = "both",
             help = "Stone image extration method, one of: " + \
@@ -363,9 +395,9 @@ class DatasetGenerator:
             help = 'If specified, it is assumed that positive images will be used for samples generation')
         parser.add_argument('-s', "--space",
             nargs = '*',
-            default = [10, 3, 5, 5],
+            default = [10, 3, 5],
             help = "Space to add when extracting area for: single stones, " + \
-                    "enclosed stones, crosses and edges " + \
+                    "enclosed stones, edges/crossings " + \
                     "(numbers or perecentage of stone size followed by %)")
         parser.add_argument('-i', "--neg_img", type = int,
             default = 0,
@@ -378,8 +410,7 @@ class DatasetGenerator:
         self.dirs['positive'] = args.positive
         self.dirs['stones'] = args.stones
         self.dirs['negative'] = args.negative
-        self.dirs['crosses'] = args.crosses
-        self.dirs['edges'] = args.edges
+        self.dirs['crossings'] = args.crossings
 
         self.datasets = [x for x in self.dirs if self.dirs[x] is not None]
         if len(self.datasets) == 0:
@@ -391,8 +422,7 @@ class DatasetGenerator:
 
         self.spacing['single'] = args.space[0]
         self.spacing['enclosed'] = args.space[1] if len(args.space) > 1 else 1
-        self.spacing['cross'] = args.space[2] if len(args.space) > 2 else 5
-        self.spacing['edge'] = args.space[3] if len(args.space) > 3 else 5
+        self.spacing['crossing'] = args.space[2] if len(args.space) > 2 else 5
 
         self.neg_per_image = args.neg_img
         self.n_resize = args.resize
@@ -406,6 +436,11 @@ class DatasetGenerator:
         if self.dirs.get('stones') is not None:
             dir_list.extend([Path(self.dirs['stones']).joinpath('black')])
             dir_list.extend([Path(self.dirs['stones']).joinpath('white')])
+
+        if self.dirs.get('crossings') is not None:
+            dir_list.extend([Path(self.dirs['crossings']).joinpath('edge')])
+            dir_list.extend([Path(self.dirs['crossings']).joinpath('border')])
+            dir_list.extend([Path(self.dirs['crossings']).joinpath('cross')])
 
         for d in dir_list:
             pd = Path(d)
