@@ -22,7 +22,7 @@ from collections import OrderedDict
 sys.path.append("../")
 from gr.grdef import *
 from gr.board import GrBoard
-from gr.utils import get_image_area, resize
+from gr.utils import get_image_area, resize, rotate
 
 class DatasetGenerator:
     def __init__(self):
@@ -48,8 +48,14 @@ class DatasetGenerator:
         # Number of negative areas to be extracted per image
         self.neg_per_image = 0
 
-        # Resize
+        # Resize maximum size
         self.n_resize = 0
+
+        # Flag to exclude grid line crossings
+        self.no_grid = False
+
+        # Rotation vector
+        self.n_rotate = [0, 0]
 
         # GrBoard currently processed
         self.board = None
@@ -103,6 +109,25 @@ class DatasetGenerator:
         else:
             f = int(str(space_str)[0:n])
             return int(r * f / 100.0)
+
+    def save_area(self, file_name, area_img, start_index, dir_obj, prefix, f_reg):
+        stop_index = start_index + 1 if self.n_rotate[0] == 0 \
+                                     else start_index + self.n_rotate[0] + 1
+
+        bg_c = [int(x) for x in self.bg_c]
+        for index in range(start_index, stop_index):
+            fn = self.get_image_file_name(file_name, index)
+            save_fn = str(Path(dir_obj).joinpath(fn))
+
+            cv2.imwrite(save_fn, area_img)
+
+            reg_fn = prefix + fn
+            f_reg.write("{} 1 {} {} {} {} \n".format(reg_fn,
+                0, 0, area_img.shape[1]-1, area_img.shape[0]-1))
+
+            area_img = rotate(area_img, self.n_rotate[1], bg_c, keep_image=False)
+
+        return stop_index - start_index
 
     def extract_stone_area(self, stone):
         x, y, a, b, r, bw = stone
@@ -158,24 +183,11 @@ class DatasetGenerator:
             area = self.extract_stone_area(stone)
             if area is not None:
                 area_img = get_image_area(self.board.image, area)
+                n = self.save_area(file_name, area_img, index, pd,
+                    "{}{}".format(dir_prefix, fn) if self.is_gen else "", f_reg)
 
-                fn = self.get_image_file_name(file_name, index)
-                save_fn = str(pd.joinpath(fn))
-                #print("\tPositive {} to {}".format(area, save_fn))
-
-                if self.n_resize > 0:
-                    area_img = resize(area_img, self.n_resize, f_upsize = True, pad_color = self.bg_c)
-                cv2.imwrite(save_fn, area_img)
-
-                # Current sample creation implementation require relative path
-                # from parent directory to be specified
-                reg_fn = "{}{}".format(dir_prefix, fn) if self.is_gen else fn
-
-                f_reg.write("{} 1 {} {} {} {} \n".format(reg_fn,
-                    0, 0, area_img.shape[1]-1, area_img.shape[0]-1))
-
-                index += 1
-                self.counts['positive'] += 1
+                index += n
+                self.counts['positive'] += n
 
         f_reg.close()
 
@@ -249,7 +261,8 @@ class DatasetGenerator:
     def extract_crossings(self, file_name):
         self.extract_edges(file_name)
         self.extract_border_crossings(file_name)
-        self.extract_inboard_crossings(file_name)
+        if not self.no_grid:
+            self.extract_inboard_crossings(file_name)
 
     def extract_crossing_range(self, file_name, label, ranges):
         pd = Path(self.dirs['crossings']).joinpath(label)
@@ -269,17 +282,11 @@ class DatasetGenerator:
 
                         area_img = get_image_area(self.board.image, area)
 
-                        fn = self.get_image_file_name(file_name, index)
-                        save_fn = str(pd.joinpath(fn))
-                        #print("\tCrossing {} to {}".format(area, save_fn))
+                        n = self.save_area(file_name, area_img, index,
+                            pd, "", f_reg)
 
-                        cv2.imwrite(save_fn, area_img)
-
-                        f_reg.write("{} 1 {} {} {} {} \n".format(fn,
-                            0, 0, area_img.shape[1]-1, area_img.shape[0]-1))
-
-                        index += 1
-                        self.counts['crossings'] += 1
+                        index += n
+                        self.counts['crossings'] += n
 
         f_reg.close()
 
@@ -405,6 +412,14 @@ class DatasetGenerator:
         parser.add_argument('-r', "--resize", type = int,
             default = 0,
             help = 'Resize stone images to specified size (0 - no resizing)')
+        parser.add_argument("--no_grid",
+            action="store_true",
+            default = False,
+            help = 'Do not generate grid line crossing images')
+        parser.add_argument("--rotate", type = int,
+            nargs = 2,
+            default = [0, 0],
+            help = 'Two numbers specifying how many rotation images shall be created and an angle for each rotation')
 
         args = parser.parse_args()
         self.dirs['positive'] = args.positive
@@ -426,6 +441,8 @@ class DatasetGenerator:
 
         self.neg_per_image = args.neg_img
         self.n_resize = args.resize
+        self.no_grid = args.no_grid
+        self.n_rotate = args.rotate
 
 
     def main(self):
@@ -440,7 +457,8 @@ class DatasetGenerator:
         if self.dirs.get('crossings') is not None:
             dir_list.extend([Path(self.dirs['crossings']).joinpath('edge')])
             dir_list.extend([Path(self.dirs['crossings']).joinpath('border')])
-            dir_list.extend([Path(self.dirs['crossings']).joinpath('cross')])
+            if not self.no_grid:
+                dir_list.extend([Path(self.dirs['crossings']).joinpath('cross')])
 
         for d in dir_list:
             pd = Path(d)
