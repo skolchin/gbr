@@ -95,6 +95,7 @@ class BoardItemClassifier:
         self.image_data_gen = ImageDataGenerator(
             rescale=1./255,
             #rotation_range=30,
+            #shear_range=30,
             #width_shift_range=.15,
             #height_shift_range=.15,
             #zoom_range=0.5,
@@ -251,7 +252,6 @@ class BoardItemClassifier:
             for i, e in enumerate(elements[0]):
                 g = tf.expand_dims(e, 0)
                 x = classifier.model.predict_classes(g)
-                print("{}: {}".format(i, x))
 
             for image, labels in zip(elements[0], elements[1]):
                 true_label = int(np.argmax(labels))
@@ -278,25 +278,3 @@ class BoardItemClassifier:
 
         plt.show()
 
-classifier = None
-
-def main():
-    global classifier
-
-    img_dir = str(Path(__file__).absolute().parent.parent.joinpath('cc', 'crossings'))
-    model_dir =  str(Path(__file__).absolute().parent.joinpath('crossing_classifier'))
-    log_dir =  str(Path(__file__).absolute().parent.joinpath('_logs'))
-
-    classifier = BoardItemClassifier(model_dir, img_dir, log_dir = log_dir)
-    if classifier.exists():
-        classifier.load()
-    else:
-        classifier.init_datasets(display_samples=True)
-        classifier.train()
-        classifier.save()
-        classifier.display_history()
-
-    classifier.predict(64)
-
-if __name__ == '__main__':
-    main()
