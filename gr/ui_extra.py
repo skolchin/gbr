@@ -5,7 +5,8 @@
 # Author:      kol
 #
 # Created:     04.07.2019
-# Copyright:   (c) kol 2019
+# Last change: 17.07.2020
+# Copyright:   (c) kol 2019-2020
 # Licence:     MIT
 #-------------------------------------------------------------------------------
 import os
@@ -19,14 +20,14 @@ import sys
 import tkinter as tk
 from tkinter import ttk, font
 
-from .grdef import *
-from .utils import img_to_imgtk, resize3, is_on_w
-from .gr import board_spacing
+from .utils import img_to_imgtk, resize3, is_on_w, board_spacing
 from .binder import NBinder
 
 UI_DIR = 'ui'    # directory containing ImgButton images
 PADX = 5
 PADY = 5
+CV_WIDTH = 1
+CV_HEIGTH = 0
 
 # A label with additional tag
 class NLabel(tk.Label):
@@ -664,7 +665,7 @@ class ImagePanel(tk.Frame):
             self.__resize(size = self.__max_size, scale = scale)
             self.__update_image()
             new_scale = self.__scale
-            self.__binder.trigger(self, "<Resize>", ResizeEvent(self, old_scale, new_scale))
+            self.__binder.trigger(self, "<Resize>", self.ResizeEvent(self, old_scale, new_scale))
 
     @property
     def offset(self):
@@ -800,7 +801,7 @@ class ImagePanel(tk.Frame):
                           f_center = True,
                           pad_color = (r, g, b))
             self.__imgtk = img_to_imgtk(self.__image)
-            print('{} -> {} x {} + {}'.format(orig_shape, self.__image.shape, self.__scale, self.__offset))
+            #print('{} -> {} x {} + {}'.format(orig_shape, self.__image.shape, self.__scale, self.__offset))
 
     def __update_image(self):
         """Internal function to update image"""
@@ -821,7 +822,7 @@ class ImagePanel(tk.Frame):
             self.__resize(size = max_sz)
             self.__update_image()
             new_scale = self.__scale
-            self.__binder.trigger(self, "<Resize>", ResizeEvent(self, old_scale, new_scale))
+            self.__binder.trigger(self, "<Resize>", self.ResizeEvent(self, old_scale, new_scale))
 
 def addImagePanel(master, **kwargs):
     """Creates a panel with caption and buttons. Softly deprecated, provided for backward compatibility.
@@ -889,7 +890,7 @@ class ImageMask(object):
         Parameters:
             panel         ImagePanel reference
             mode          Either 'area' to use to set board area mask or 'grid' to set board grid. Default is 'area'
-            size          Board size for 'grid' mode (default is grdef.DEF_BOARD_SIZE)
+            size          Board size for 'grid' mode (default is 19)
             mask          Initial mask (if None, default mask is generated)
             allow_change  True to allow mask reshaping by user
             show_mask     True to show mask initially
@@ -903,7 +904,7 @@ class ImageMask(object):
         self.__mode = kwargs.pop('mode', 'area').lower()
         if self.__mode not in [self.MODE_AREA, self.MODE_GRID, self.MODE_SPLIT]:
            raise ValueError('Invalid mode', self.__mode)
-        self.__size = kwargs.pop('size', DEF_BOARD_SIZE)
+        self.__size = kwargs.pop('size', 19)
         self.__mask = kwargs.pop('mask', None)
         self.__allow_change = kwargs.pop('allow_change', True)
         f_show = kwargs.pop('show_mask', False)
@@ -1292,7 +1293,7 @@ class ImageMask(object):
 class ImageTransform:
     """4-points image transformation helper class"""
 
-    def __init__(self, panel, inplace = True, callback = None):
+    def __init__(self, panel, **kwargs):
         """Create ImageTransorm instance
 
             Parameters:
@@ -1301,17 +1302,18 @@ class ImageTransform:
                 callback  A callback function to be called upon transform completed or cancelled
                           Function signature: f(transformer, state) where
                             tranformer  ImageTranform object
-                            image       Transformed image or None if transformation cancelled
+                            image       Transformed image or None if transformation was cancelled
         """
         self.__panel = panel
-        self.__inplace = inplace
+        self.__inplace = kwargs.pop('inplace', True)
+        self.__callback = kwargs.pop('callback', None)
+
         self.__transform_state = False
         self.__transform_rect = None
         self.__transform_help = None
         self.__transform_scale = None
         self.__transform_offset = None
         self.__src_image = None
-        self.__callback = callback
         self.__bindings = NBinder()
 
         # Public properties
@@ -1514,6 +1516,7 @@ class ImageTransform:
             self.__clean_up()
 
     def __get_transform_image(self):
+        """Internal function to retrieve transformed image"""
         if self.__transform_rect is None or len(self.__transform_rect) < 4:
             raise ValueError('Transformation rectangle not defined')
 
