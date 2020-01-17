@@ -358,3 +358,50 @@ def dict_value2key(mydict, value):
         except ValueError:
             return None
 
+# Calculate board spacing
+def board_spacing(edges, size):
+    """Calculate board spacing"""
+    space_x = (edges[1][0] - edges[0][0]) / float(size-1)
+    space_y = (edges[1][1] - edges[0][1]) / float(size-1)
+    return space_x, space_y
+
+
+# Origin: imutils.rotate_bound
+# author:    Adrian Rosebrock
+# website:   http://www.pyimagesearch.com
+def rotate(image, angle, fill_val = (0,0,0), keep_image = True):
+    """Rotate given image to specified angle"""
+
+    # grab the dimensions of the image and then determine the
+    # center
+    (h, w) = image.shape[:2]
+    (cX, cY) = (w / 2, h / 2)
+
+    # grab the rotation matrix (applying the negative of the
+    # angle to rotate clockwise), then grab the sine and cosine
+    # (i.e., the rotation components of the matrix)
+    M = cv2.getRotationMatrix2D((cX, cY), -angle, 1.0)
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+
+    if not keep_image:
+        # simple rotation with no care of image clipping
+        nW = w
+        nH = h
+    else:
+        # avoid clipping
+        # compute the new bounding dimensions of the image
+        nW = int((h * sin) + (w * cos))
+        nH = int((h * cos) + (w * sin))
+
+        # adjust the rotation matrix to take into account translation
+        M[0, 2] += (nW / 2) - cX
+        M[1, 2] += (nH / 2) - cY
+
+    # perform the actual rotation and return the image
+    return cv2.warpAffine(image, M, (nW, nH),
+                          borderMode = cv2.BORDER_CONSTANT,
+                          borderValue = fill_val)
+
+
+

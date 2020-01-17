@@ -19,13 +19,6 @@ from .grdef import *
 from .utils import *
 from .cv2_watershed import apply_watershed
 
-# Internal function: calculate board spacing
-def board_spacing(edges, size):
-    """Calculate board spacing"""
-    space_x = (edges[1][0] - edges[0][0]) / float(size-1)
-    space_y = (edges[1][1] - edges[0][1]) / float(size-1)
-    return space_x, space_y
-
 # Internal function: draw a board grid
 def draw_board_grid(img, edges, board_size, space_x, space_y, color = COLOR_BLACK):
     for i in range(board_size):
