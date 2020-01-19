@@ -1340,6 +1340,7 @@ class ImageTransform:
         self.__transform_scale = None
         self.__transform_offset = None
         self.__drag_point = None
+        self.__drag_bindings = False
 
         self.__src_image = None
         self.__bindings = NBinder()
@@ -1400,7 +1401,12 @@ class ImageTransform:
         if tr is None:
             self.__transform_rect = None
         else:
-            self.__transform_rect = np.array(tr)
+            tr = np.array(tr)
+            if len(tr.shape) != 2 or tr.shape[0] < 4:
+                raise ValueError('Transformation rectangle must have length 4 and rank 2')
+            if tr.shape[1] < 5:
+                tr = np.concatenate((tr, np.zeros((4, 5 - tr.shape[1]), dtype=tr.dtype)), axis = 1)
+            self.__transform_rect = tr
 
     @property
     def scaled_rect(self):
@@ -1431,7 +1437,7 @@ class ImageTransform:
                 t.append([
                     int(np.ceil(r[0] * self.__panel.scale[0])) + self.__panel.offset[0],
                     int(np.ceil(r[1] * self.__panel.scale[1])) + self.__panel.offset[1]])
-            self.__transform_rect = np.array(t)
+            self.transform_rect = np.array(t)
             self.__transform_scale = None
             self.__transform_offset = None
 
@@ -1456,7 +1462,7 @@ class ImageTransform:
         # Clean up
         self.__clean_up()
 
-        # Register bindings, display help message
+        # Register bindings for point definition, display help message
         self.__bindings.bind(self.canvas, "<Button-1>", self.__mouse_callback)
         self.__bindings.bind(self.panel.winfo_toplevel(), "<Escape>", self.__key_callback)
 
@@ -1483,14 +1489,22 @@ class ImageTransform:
         if self.__transform_rect is not None:
             for n, r in enumerate(self.__transform_rect):
                 self.__show_point(n, r[0], r[1])
+            if not self.__drag_bindings:
+                self.__bindings.bind(self.canvas, "<B1-Motion>", self.__drag_callback, add = '+')
+                self.__bindings.bind(self.canvas, '<B1-ButtonRelease>', self.__end_drag_callback, add = '+')
+                self.__drag_bindings = True
 
     def hide(self):
         """Hide transformation area (works only if keep is True)"""
         self.__drag_point = None
         if self.__transform_rect is not None:
-            self.canvas.delete(self.transform_tag)
+            self.canvas.delete(self.tag)
             for r in self.__transform_rect:
                 for n in range(2, len(r)): r[n] = 0
+
+            if self.__drag_bindings:
+                self.__bindings.unbind_all()
+                self.__drag_bindings = False
 
     def reset(self):
         """Display source image on a panel. Does nothing if inplace is False"""
@@ -1499,7 +1513,7 @@ class ImageTransform:
             self.panel.image = self.__src_image
 
     @property
-    def transform_tag(self):
+    def tag(self):
         """Returns an unique identifier of the transformation object"""
         return 'transform_' + str(self.__id).zfill(3)
 
@@ -1527,8 +1541,9 @@ class ImageTransform:
             self.__clean_up(clear_points = not self.keep or self.inplace)
             if self.keep and not self.inplace and self.allow_change:
                 self.__drag_point = None
-                self.__bindings.bind(self.canvas, "<B1-Motion>", self.__drag_callback)
-                self.__bindings.bind(self.canvas, '<B1-ButtonRelease>', self.__end_drag_callback)
+                self.__bindings.bind(self.canvas, "<B1-Motion>", self.__drag_callback, add = '+')
+                self.__bindings.bind(self.canvas, '<B1-ButtonRelease>', self.__end_drag_callback, add = '+')
+                self.__drag_bindings = True
 
     def __mouse_callback(self, event):
         """Internal function - mouse click callback"""
@@ -1589,7 +1604,7 @@ class ImageTransform:
             x + 4, y + 4,
             fill=self.dot_color,
             outline=self.dot_color,
-            tags=self.transform_tag)
+            tags=self.tag)
         self.__transform_rect[index, 2] = circle_id
 
         # Connection line
@@ -1603,7 +1618,7 @@ class ImageTransform:
                     x, y, x2, y2,
                     fill=self.connect_color,
                     dash=self.connect_dash,
-                    tags=self.transform_tag)
+                    tags=self.tag)
                 self.__transform_rect[index, 3] = line_id
 
             if index == len(self.__transform_rect)-1:
@@ -1614,7 +1629,7 @@ class ImageTransform:
                     x, y, x2, y2,
                     fill=self.connect_color,
                     dash=self.connect_dash,
-                    tags=self.transform_tag)
+                    tags=self.tag)
                 self.__transform_rect[0, 3] = line_id
 
         # Coordnates
@@ -1623,7 +1638,7 @@ class ImageTransform:
                 x, y + 10,
                 text = "({},{})".format(x, y),
                 fill=self.coord_color,
-                tags=self.transform_tag)
+                tags=self.tag)
             self.__transform_rect[index, 4] = text_id
 
     def __move_point(self, index, nx, ny):
@@ -1670,7 +1685,7 @@ class ImageTransform:
 
         if clear_points and self.__transform_rect is not None:
             # Remove selection points
-            self.canvas.delete(self.transform_tag)
+            self.canvas.delete(self.tag)
             self.__transform_rect = None
 
         # Remove tooltip
@@ -1680,6 +1695,7 @@ class ImageTransform:
 
         # Cancel bindings
         self.__bindings.unbind_all()
+        self.__drag_bindings = False
 
 # Dialog window
 class GrDialog(tk.Toplevel):
