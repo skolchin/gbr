@@ -8,17 +8,17 @@
 # Copyright:   (c) kol 2019
 # Licence:     MIT
 #-------------------------------------------------------------------------------
-from gr.board import GrBoard
-from gr.utils import img_to_imgtk, resize2, format_stone_pos
-from gr.grdef import *
-from gr.ui_extra import *
-
 import numpy as np
 import cv2
 from PIL import Image, ImageTk
 import logging
 import random
 import tkinter as tk
+
+from gr.board import GrBoard
+from gr.utils import img_to_imgtk, resize2, format_stone_pos
+from gr.grdef import *
+from gr.ui_extra import *
 
 # Test dialog
 class GrTestDlg(GrDialog):
@@ -52,8 +52,8 @@ class GrBoardEdit(object):
         ImgButton(self.imgPanel.headerPanel, tag = "edge",
             tooltip = "Transform image", command = self.transform_callback).pack(side = tk.RIGHT)
 
-
         # Image mask
+        self.timer_id = None
         self.imgMask = ImageMask(self.imgPanel,
             allow_change = True,
             show_mask = True,
@@ -64,18 +64,16 @@ class GrBoardEdit(object):
 
         # Image transform
         self.imgTransform = ImageTransform(self.imgPanel,
-            callback = self.end_transform_callback)
-        self.imgTransform.show_coord = True
-
-        # Button group
-        self.bg = ImgButtonGroup(self.imgPanel)
-        self.bg.add_group("g1", ["area", "edge"], BG_DEPENDENT)
-        self.bg.add_group("g2", ["plus", "area"], BG_INDEPENDENT)
+            callback = self.end_transform_callback,
+            inplace = False,
+            show_coord = True,
+            keep = True,
+            connect = True)
 
     def set_area_callback(self, event):
         if event.state:
             self.imgTransform.cancel()
-            self.imgMask.random_mask()
+            self.imgMask.default_mask()
             self.mask_callback(self.imgMask)
             self.imgMask.show()
         else:
@@ -85,23 +83,32 @@ class GrBoardEdit(object):
         self.imgPanel.caption = "{} {}".format(mask.mode, mask.scaled_mask)
 
     def transform_callback(self, event):
-        if not event.state and self.imgTransform.started:
+        if not event.state:
            self.imgTransform.cancel()
         else:
             self.imgMask.hide()
-            self.imgTransform.start()
+            if self.imgTransform.transform_rect is None:
+                self.imgTransform.start()
+            else:
+                self.imgTransform.show()
+                if self.timer_id is not None:
+                    self.imgPanel.after_cancel(self.timer_id)
+                self.timer_id = self.imgPanel.after(5000, lambda: self.imgTransform.hide())
+                event.cancel = True
 
     def end_transform_callback(self, t, img):
         self.imgPanel.buttons['edge'].state = False
         if img is not None:
-           self.imgPanel.caption = "Transf rect {}".format(t.scaled_rect)
+            self.imgPanel.caption = "Transf rect {}".format(t.scaled_rect)
+            cv2.imshow('Transformed', img)
+            if self.timer_id is not None:
+                self.imgPanel.after_cancel(self.timer_id)
+            self.timer_id = self.imgPanel.after(5000, lambda: self.imgTransform.hide())
 
     def transf_reset_callback(self, event):
-        #self.imgPanel.buttons['edge'].state = False
         self.imgMask.hide()
         self.imgTransform.reset()
-        #self.imgPanel.buttons['reset'].disabled = True
-        return False
+        event.cancel = True
 
     def zoom_in_callback(self, event):
         if self.imgPanel.scale[0] > 1.7: return
@@ -130,16 +137,10 @@ def main():
     if img is None:
         raise Exception('File not found')
 
-    # Construct interface
     window = tk.Tk()
     window.title("Edit board")
-
     gui = GrBoardEdit(window, img)
-
-    # Main loop
     window.mainloop()
-
-    # Clean up
     cv2.destroyAllWindows()
 
 

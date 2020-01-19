@@ -726,6 +726,20 @@ class ImagePanel(tk.Frame):
         #return self.__image_shape if max(self.__scale) >= 1.0 else self.__image.shape
         return self.__image.shape
 
+    @property
+    def binder(self):
+        """An event binder"""
+        return self.__binder
+
+    @property
+    def buttons(self):
+        """All image buttons residing on a headPanel"""
+        buttons = {}
+        for w in self.headerPanel.winfo_children():
+            if isinstance(w, ImgButton):
+                buttons[w.tag] = w
+        return buttons
+
     def set_image(self, img):
         """Changes image
 
@@ -759,11 +773,6 @@ class ImagePanel(tk.Frame):
         """
         return (int((p[0] - self.offset[0]) / self.scale[0]),
                 int((p[1] - self.offset[1]) / self.scale[1]))
-
-    @property
-    def binder(self):
-        """An event binder"""
-        return self.__binder
 
     def __set_image(self, image):
         """Internal function to assign image"""
@@ -1291,37 +1300,70 @@ class ImageMask(object):
 
 # Image transformer
 class ImageTransform:
-    """4-points image transformation helper class"""
+    """4-points image transformation helper class.
+    After calling start(), it displays a tooltip and waits till a left button will
+    be clicked 4 times on a image panel. After 4th click, it runs 4-point transformation
+    with clicked coordinates as transformation rectangle. Results are either
+    displayied in the image panel or provided to the caller in callback.
+    """
 
     def __init__(self, panel, **kwargs):
         """Create ImageTransorm instance
 
             Parameters:
-                panel     An ImagePanel object with Image displayed on
-                inplace   If True (default), transformed image will be shown in image panel
-                callback  A callback function to be called upon transform completed or cancelled
-                          Function signature: f(transformer, state) where
-                            tranformer  ImageTranform object
-                            image       Transformed image or None if transformation was cancelled
+                panel       An ImagePanel object with Image displayed on
+                inplace     If True (default), transformed image will be shown in image panel
+                connect     If True, transformation points will be connected by a line.
+                            Line parameters can be set with connect_xxx properties.
+                            Default is False.
+                keep        If True, transformation points and lines will remain displayed
+                            after transformation finished.
+                            To hide them, explicit call to hide() or cancel() is required.
+                            Default is False. If inplace is True, this parameter is ignored.
+                allow_change  If True, transformatio points can be moved with the mouse.
+                            Default is True. If keep is False, this parameter is ignored.
+                            Each move will trigger new transformation
+                show_coord  If True, click coordinates will be displayed
+                callback    A callback function to be called upon transform completed or cancelled.
+                            Function signature:
+                                callback(transformer, image) where:
+                                         tranformer  ImageTranform object
+                                         image       Transformed image or None
+                                                      if transformation was cancelled.
         """
         self.__panel = panel
-        self.__inplace = kwargs.pop('inplace', True)
-        self.__callback = kwargs.pop('callback', None)
 
+        self.__id = random.randrange(0, 100)
         self.__transform_state = False
         self.__transform_rect = None
         self.__transform_help = None
         self.__transform_scale = None
         self.__transform_offset = None
+        self.__drag_point = None
+
         self.__src_image = None
         self.__bindings = NBinder()
 
-        # Public properties
-        self.show_coord = False
+        # Public attributes
+        self.inplace = kwargs.pop('inplace', True)
+        self.callback = kwargs.pop('callback', None)
+        self.connect = kwargs.pop('connect', False)
+        self.keep = kwargs.pop('keep', False)
+        self.allow_change = kwargs.pop('allow_change', True)
+        self.show_coord =  kwargs.pop('show_coord', False)
+
+        self.dot_color = "red"      # Color and fill of a transformation point
+        self.coord_color = "red"    # Color of coordinates text
+        self.connect_color = "red"  # Color of line between transformation points
+        self.connect_dash = (6, 4)  # Connection line dash pattern
 
     @property
     def panel(self):
         return self.__panel
+
+    @property
+    def canvas(self):
+        return self.__panel.canvas
 
     @property
     def started(self):
@@ -1406,26 +1448,6 @@ class ImageTransform:
             max_y = max([x[1] for x in t])
             return [[min_x, min_y], [min_x, max_y], [max_x, min_y], [max_x, max_y]]
 
-    @property
-    def callback(self):
-        """A callback function"""
-        return self.__callback
-
-    @callback.setter
-    def callback(self, callback):
-        """A callback function"""
-        self.__callback = callback
-
-    @property
-    def inplace(self):
-        """Replace image in image panel after transformation"""
-        return self.__inplace
-
-    @inplace.setter
-    def inplace(self, inplace):
-        """Replace image in image panel after transformation"""
-        self.__inplace = inplace
-
     def start(self):
         """Initiates a transform operation"""
         if self.__transform_state:
@@ -1435,103 +1457,220 @@ class ImageTransform:
         self.__clean_up()
 
         # Register bindings, display help message
-        self.__bindings.bind(self.__panel.canvas, "<Button-1>", self.mouse_callback)
-        self.__bindings.bind(self.__panel.winfo_toplevel(), "<Escape>", self.key_callback)
+        self.__bindings.bind(self.canvas, "<Button-1>", self.__mouse_callback)
+        self.__bindings.bind(self.panel.winfo_toplevel(), "<Escape>", self.__key_callback)
 
-        bb_help = self.__panel.canvas.bbox(tk.ALL)
+        bb_help = self.canvas.bbox(tk.ALL)
         cx = int((bb_help[0] + bb_help[2])/2)
         cy = int((bb_help[1] + bb_help[3])/2)
-        self.__transform_help = createToolTip(self.__panel.canvas,
+        self.__transform_help = createToolTip(self.canvas,
             'Click on 4 image corners or press ESC to cancel', (cx, cy))
 
         # Initiate user actions
         self.__transform_state = True
         self.__src_image = self.__panel.src_image
-        self.__panel.canvas.after(100, self.check_transform_state)
+        self.canvas.after(100, self.__check_transform_state)
         return True
 
     def cancel(self):
         """Cancel transformation which was already started"""
         self.__clean_up()
-        if not self.__callback is None:
-            self.__callback(self, None)
+        if not self.callback is None:
+            self.callback(self, None)
+
+    def show(self):
+        """Show transformation area (works only if keep is True)"""
+        if self.__transform_rect is not None:
+            for n, r in enumerate(self.__transform_rect):
+                self.__show_point(n, r[0], r[1])
+
+    def hide(self):
+        """Hide transformation area (works only if keep is True)"""
+        self.__drag_point = None
+        if self.__transform_rect is not None:
+            self.canvas.delete(self.transform_tag)
+            for r in self.__transform_rect:
+                for n in range(2, len(r)): r[n] = 0
 
     def reset(self):
-        """Reset to source image"""
-        if self.__src_image is None: return
-        if self.__transform_state: self.cancel()
-        self.__panel.image = self.__src_image
+        """Display source image on a panel. Does nothing if inplace is False"""
+        if self.__src_image is not None and self.inplace:
+            if self.__transform_state: self.cancel()
+            self.panel.image = self.__src_image
 
-    def mouse_callback(self, event):
-        """Mouse callback"""
-        def show_click(n):
-            circle_id = self.__panel.canvas.create_oval(event.x-4, event.y-4,
-                event.x+4, event.y+4, fill="red", outline = "red")
-            text_id = 0
-            if self.show_coord:
-               text_id = self.__panel.canvas.create_text(event.x, event.y+10,
-                            text = "({},{})".format(event.x, event.y), fill = "red")
-            self.__transform_rect[n,0] = event.x
-            self.__transform_rect[n,1] = event.y
-            self.__transform_rect[n,2] = circle_id
-            self.__transform_rect[n,3] = text_id
+    @property
+    def transform_tag(self):
+        """Returns an unique identifier of the transformation object"""
+        return 'transform_' + str(self.__id).zfill(3)
 
-        if not self.__transform_state: return
-
-        if self.__transform_rect is None:
-           self.__transform_rect = np.zeros((4,4), dtype = np.uint32)
-           show_click(0)
-        else:
-           # Count 4 clicks
-            for n in range(len(self.__transform_rect)):
-                if self.__transform_rect[n][2] == 0:
-                    show_click(n)
-                    self.__transform_state = (n < len(self.__transform_rect)-1)
-                    return
-            self.__transform_state = False
-
-    def key_callback(self, event):
-        """ESC key press callback"""
-        self.cancel()
-
-    def check_transform_state(self):
-        """Timer callback"""
+    def __check_transform_state(self):
+        """Internal function - timer callback"""
         if self.__transform_state:
             # Still running, repeat check
-            self.__panel.canvas.after(100, self.check_transform_state)
+            self.canvas.after(100, self.__check_transform_state)
         else:
             if not self.__transform_rect is None:
                 # Save current scale and offset since they will change with image change
-                self.__transform_scale = self.__panel.scale
-                self.__transform_offset = self.__panel.offset
+                self.__transform_scale = self.panel.scale
+                self.__transform_offset = self.panel.offset
 
                 # Do 4-points transform
                 img = self.__get_transform_image()
-                if self.__inplace:
-                    self.__panel.set_image(img)
-                if not self.__callback is None:
-                    self.__callback(self, img)
+                if self.inplace:
+                    self.panel.set_image(img)
+                if self.callback is not None:
+                    self.callback(self, img)
 
-            # Clean up
-            self.__clean_up()
+            # Clean up if keeping drawn items was not requested
+            # Otherwise keep them on
+            # If changed them is allowed, register mouse dragging events
+            self.__clean_up(clear_points = not self.keep or self.inplace)
+            if self.keep and not self.inplace and self.allow_change:
+                self.__drag_point = None
+                self.__bindings.bind(self.canvas, "<B1-Motion>", self.__drag_callback)
+                self.__bindings.bind(self.canvas, '<B1-ButtonRelease>', self.__end_drag_callback)
+
+    def __mouse_callback(self, event):
+        """Internal function - mouse click callback"""
+        if not self.__transform_state: return
+
+        if self.__transform_rect is None:
+            # Draw 1st point
+            self.__transform_rect = np.zeros((4, 5), dtype = np.int32)
+            self.__show_point(0, event.x, event.y)
+        else:
+            # Find empty position (up to 4)
+            for n, r in enumerate(self.__transform_rect):
+                if r[2] == 0:
+                    # Empty slot, occupy and draw items
+                    self.__show_point(n, event.x, event.y)
+                    self.__transform_state = (n < len(self.__transform_rect)-1)
+                    break
+
+    def __key_callback(self, event):
+        """Internal function - ESC key press callback"""
+        self.cancel()
+
+    def __drag_callback(self, event):
+        """Internal function - mouse dragging callback"""
+        if self.__drag_point is None:
+            # Determine point been dragged
+            # If a point was hidden, it has 0 item IDs - ignore them
+            for n, r in enumerate(self.__transform_rect):
+                if abs(event.x - r[0]) < 8 and abs(event.y - r[1]) < 8 and r[2] > 0:
+                    self.__drag_point = n
+
+        if self.__drag_point is not None:
+            p = (int(self.canvas.canvasx(event.x) - self.panel.offset[0]),
+                 int(self.canvas.canvasy(event.y) - self.panel.offset[1]))
+
+            # Move items drawn on canvas
+            # Note: panel shape is in OpenCV indexing scheme (y first)
+            self.__move_point(self.__drag_point,
+                min(max(p[0], 0), self.panel.scaled_shape[1]),
+                min(max(p[1], 0), self.panel.scaled_shape[0]))
+
+    def __end_drag_callback(self, event):
+        """Internal function - mouse release callback"""
+        if self.__drag_point is not None:
+            self.__drag_point = None
+            if not self.inplace and self.callback is not None:
+                img = self.__get_transform_image()
+                self.callback(self, img)
+
+    def __show_point(self, index, x, y):
+        """Internal function - show a new transformation point and given coordinates"""
+        self.__transform_rect[index, 0] = x
+        self.__transform_rect[index, 1] = y
+
+        # Transformation point
+        circle_id = self.canvas.create_oval(
+            x - 4, y - 4,
+            x + 4, y + 4,
+            fill=self.dot_color,
+            outline=self.dot_color,
+            tags=self.transform_tag)
+        self.__transform_rect[index, 2] = circle_id
+
+        # Connection line
+        if self.connect:
+            if index > 0:
+                # Connect to previous point
+                prev_n = index - 1
+                x2 = self.__transform_rect[prev_n, 0]
+                y2 = self.__transform_rect[prev_n, 1]
+                line_id = self.canvas.create_line(
+                    x, y, x2, y2,
+                    fill=self.connect_color,
+                    dash=self.connect_dash,
+                    tags=self.transform_tag)
+                self.__transform_rect[index, 3] = line_id
+
+            if index == len(self.__transform_rect)-1:
+                # Last point, connect to 1st point
+                x2 = self.__transform_rect[0, 0]
+                y2 = self.__transform_rect[0, 1]
+                line_id = self.canvas.create_line(
+                    x, y, x2, y2,
+                    fill=self.connect_color,
+                    dash=self.connect_dash,
+                    tags=self.transform_tag)
+                self.__transform_rect[0, 3] = line_id
+
+        # Coordnates
+        if self.show_coord:
+            text_id = self.canvas.create_text(
+                x, y + 10,
+                text = "({},{})".format(x, y),
+                fill=self.coord_color,
+                tags=self.transform_tag)
+            self.__transform_rect[index, 4] = text_id
+
+    def __move_point(self, index, nx, ny):
+        """Internal function - move a new transformation point to new coordinates"""
+        x, y, circle_id, line_id, text_id = self.__transform_rect[index]
+
+        # Transformation point
+        if circle_id > 0:
+            self.canvas.coords(circle_id, nx - 4, ny - 4, nx + 4, ny + 4)
+
+        # Connection line
+        if line_id > 0:
+            prev_n = index - 1 if index > 0 else len(self.__transform_rect)-1
+            x2 = self.__transform_rect[prev_n, 0]
+            y2 = self.__transform_rect[prev_n, 1]
+            self.canvas.coords(line_id, nx, ny, x2, y2)
+
+            next_n = index + 1 if index < len(self.__transform_rect)-1 else 0
+            line_id2 = self.__transform_rect[next_n, 3]
+            x2 = self.__transform_rect[next_n, 0]
+            y2 = self.__transform_rect[next_n, 1]
+            self.canvas.coords(line_id2, x2, y2, nx, ny)
+
+        # Coordnates
+        if text_id > 0:
+            self.canvas.coords(text_id, nx, ny + 10)
+            self.canvas.itemconfig(text_id, text="({},{})".format(nx, ny))
+
+        self.__transform_rect[index, 0] = nx
+        self.__transform_rect[index, 1] = ny
 
     def __get_transform_image(self):
-        """Internal function to retrieve transformed image"""
+        """Internal function - retrieve transformed image"""
         if self.__transform_rect is None or len(self.__transform_rect) < 4:
             raise ValueError('Transformation rectangle not defined')
 
         t = np.array([t[:2] for t in self.__transform_rect])
         return four_point_transform(self.image, t)
 
-    def __clean_up(self):
-        """Internal function to clear after transformation cancelling"""
-        # Remove selection points
+    def __clean_up(self, clear_points = True):
+        """Internal function - clear state"""
         self.__transform_state = False
-        if self.__transform_rect is not None:
-            for i in self.__transform_rect:
-                if len(i) > 2:
-                    if i[2] > 0: self.__panel.canvas.delete(i[2])
-                    if i[3] > 0: self.__panel.canvas.delete(i[3])
+        self.__drag_point = None
+
+        if clear_points and self.__transform_rect is not None:
+            # Remove selection points
+            self.canvas.delete(self.transform_tag)
             self.__transform_rect = None
 
         # Remove tooltip
