@@ -42,13 +42,12 @@ class BoardItemClassifier:
         self.model_dir, self.img_dir, self.img_size, self.log_dir = model_dir, img_dir, img_size, log_dir
 
         self.image_data_gen = None
-        self.train_generator = None
-        self.val_generator = None
+        self.train_dataset = None
+        self.val_dataset = None
         self.history = None
         self.predict_generator = None
         self.predict_dataset = None
         self.predictions = None
-
         self.class_names = np.array([item.name for item in Path(self.img_dir).glob('*') if item.is_dir()])
 
     def exists(self):
@@ -63,7 +62,17 @@ class BoardItemClassifier:
     def build(self):
         """Build new model"""
         print("==> Building model")
-        self.model = tf.keras.models.Sequential([
+        self.model = tf.keras.models.Sequential()
+        layers = self.get_model_layers()
+        for l in layers:
+            self.model.add(l)
+
+        self.model.compile(optimizer='adam',
+                           loss='sparse_categorical_crossentropy',
+                           metrics=['sparse_categorical_accuracy'])
+
+    def get_model_layers(self):
+        return [
             tf.keras.layers.Conv2D(16, 3, padding='same', activation='relu',
                 input_shape=(IMG_HEIGHT, IMG_WIDTH, 3),
                 kernel_regularizer=tf.keras.regularizers.l2(0.001)),
@@ -80,10 +89,7 @@ class BoardItemClassifier:
             tf.keras.layers.Flatten(),
             tf.keras.layers.Dense(512, activation='relu'),
             tf.keras.layers.Dense(len(self.class_names), activation='softmax')
-        ])
-        self.model.compile(optimizer='adam',
-                           loss='sparse_categorical_crossentropy',
-                           metrics=['sparse_categorical_accuracy'])
+        ]
 
     def save(self):
         """Save whole model to specified directory"""
@@ -101,7 +107,7 @@ class BoardItemClassifier:
             #zoom_range=0.5,
             validation_split=0.2)
 
-        self.train_generator = self.image_data_gen.flow_from_directory(
+        self.train_dataset = self.image_data_gen.flow_from_directory(
             batch_size=BATCH_SIZE,
             directory=self.img_dir,
             shuffle=True,
@@ -109,7 +115,7 @@ class BoardItemClassifier:
             class_mode='sparse',
             subset='training')
 
-        self.val_generator = self.image_data_gen.flow_from_directory(
+        self.val_dataset = self.image_data_gen.flow_from_directory(
             batch_size=BATCH_SIZE,
             directory=self.img_dir,
             shuffle=True,
@@ -125,20 +131,28 @@ class BoardItemClassifier:
         print("==> Training the model")
         if self.model is None:
             self.build()
-        if self.train_generator is None:
+        if self.train_dataset is None:
             self.init_datasets()
 
         callbacks = []
         if self.log_dir is not None:
             callbacks.extend([tf.keras.callbacks.TensorBoard(self.log_dir)])
 
-        self.history = self.model.fit_generator(
-                  self.train_generator,
-                  epochs=epochs,
-                  steps_per_epoch=self.train_generator.samples // BATCH_SIZE,
-                  validation_data=self.val_generator,
-                  validation_steps=self.val_generator.samples // BATCH_SIZE,
-                  callbacks = callbacks)
+        if self.image_data_gen is not None:
+            # Generator
+            self.history = self.model.fit_generator(
+                      self.train_dataset,
+                      epochs=epochs,
+                      steps_per_epoch=self.train_dataset.samples // BATCH_SIZE,
+                      validation_data=self.val_dataset,
+                      validation_steps=self.val_dataset.samples // BATCH_SIZE,
+                      callbacks = callbacks)
+        else:
+            # Dataset
+            self.history = self.model.fit(
+                      self.train_dataset,
+                      epochs=epochs,
+                      callbacks = callbacks)
 
         if display_history:
             self.display_history()
@@ -163,7 +177,8 @@ class BoardItemClassifier:
         """Upload an image fo given path with specified label - internal"""
         image = tf.image.decode_png(tf.io.read_file(path))
         image = tf.image.convert_image_dtype(image, tf.float32)
-        image = tf.image.resize(image, self.img_size)
+        if self.img_size is not None:
+            image = tf.image.resize(image, self.img_size)
         return image, label
 
     def get_sample_files(self, num_samples = BATCH_SIZE):
@@ -192,10 +207,10 @@ class BoardItemClassifier:
 
     def display_sample_images(self):
         """Display up to 25 images from training dataset"""
-        if self.train_generator is None:
+        if self.train_dataset is None:
             self.init_datasets()
 
-        images, labels = next(self.train_generator)
+        images, labels = next(self.train_dataset)
         plt.figure(figsize=(5,5))
         for n in range(min(25, images.shape[0])):
             ax = plt.subplot(5,5,n+1)
