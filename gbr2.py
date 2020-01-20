@@ -12,7 +12,7 @@
 
 from gr.board import GrBoard
 from gr.grdef import *
-from gr.ui_extra import NLabel, ImagePanel, ImgButton, ImgButtonGroup, StatusPanel
+from gr.ui_extra import NLabel, NButton, ImagePanel, ImgButton, ImgButtonGroup, StatusPanel
 from gr.ui_extra import ImageMask, ImageMarker, ImageTransform, GrDialog
 from gr.binder import NBinder
 from gr.log import GrLogger
