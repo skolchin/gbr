@@ -21,10 +21,13 @@ class BoardParser:
     def __init__(self, root_dir):
         self.root_dir = root_dir
         self.img_dirs = { 'crossing': str(Path(root_dir).joinpath('cc', 'crossings')),
-                          'stone': str(Path(root_dir).joinpath('cc', 'stones'))}
+                          'stone': str(Path(root_dir).joinpath('cc', 'stones')),
+                          'sampling': str(Path(root_dir).joinpath('img'))
+                        }
 
         self.model_dirs = { 'crossing': str(Path(root_dir).joinpath('crossing_classifier')),
-                            'stone': str(Path(root_dir).joinpath('stone_classifier'))}
+                            'stone': str(Path(root_dir).joinpath('stone_classifier')),
+                            'sampling': str(Path(root_dir).joinpath('test'))}
 
         self.log_dir =  str(Path(root_dir).joinpath('tf', '_logs'))
 
@@ -36,7 +39,10 @@ class BoardParser:
 
         self.models = {}
         for k in self.model_dirs:
-            self.models[k] = BoardItemClassifier(self.model_dirs[k], self.img_dirs[k], log_dir = self.log_dir)
+            if k == 'sampling':
+                self.models[k] = SampleBoardItemClassifier(self.model_dirs[k], self.img_dirs[k], log_dir = self.log_dir)
+            else:
+                self.models[k] = BoardItemClassifier(self.model_dirs[k], self.img_dirs[k], log_dir = self.log_dir)
 
     def arg_parse(self):
         model_names = [x for x in self.model_dirs]

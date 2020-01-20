@@ -264,10 +264,6 @@ class BoardItemClassifier:
             num_rows = int(np.ceil(elements[0].shape[0] / DISPLAY_COLS))
             n_elem = 1
 
-            for i, e in enumerate(elements[0]):
-                g = tf.expand_dims(e, 0)
-                x = classifier.model.predict_classes(g)
-
             for image, labels in zip(elements[0], elements[1]):
                 true_label = int(np.argmax(labels))
                 try:
