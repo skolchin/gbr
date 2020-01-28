@@ -22,6 +22,7 @@ from tkinter import ttk, font
 
 from .utils import img_to_imgtk, resize3, is_on_w, board_spacing
 from .binder import NBinder
+from .grdef import *
 
 UI_DIR = 'ui'    # directory containing ImgButton images
 PADX = 5

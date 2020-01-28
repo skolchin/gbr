@@ -24,6 +24,31 @@ from gr.grdef import *
 from gr.board import GrBoard
 from gr.utils import get_image_area, resize, rotate
 
+class DatasetRegistrator:
+    def __init__(self, dir=None, reg_name='description.txt', subdir=''):
+        self.dir, self.reg_name, self.subdir = dir, reg_name, subdir
+        self.f_reg = None
+        if self.dir is not None and self.reg_name is not None:
+            self.open()
+
+    def open(self, dir=None, reg_name='description.txt', subdir=''):
+        if dir is not None:
+            self.dir = dir
+        if reg_name is not None:
+            self.reg_name = reg_name
+        self.f_reg = open(str(Path(self.dir).joinpath(self.subdir, self.reg_name)), 'a')
+
+    def write(self, file_name, img):
+        save_fn = str(Path(self.dir).joinpath(self.subdir, file_name))
+        cv2.imwrite(save_fn, img)
+        self.f_reg.write("{} 1 {} {} {} {} \n".format(
+            file_name, 0, 0, img.shape[1]-1, img.shape[0]-1))
+
+    def close(self):
+        if self.f_reg is not None:
+            self.f_reg.close()
+            self.f_reg = None
+
 class DatasetGenerator:
     def __init__(self):
         # Datasets to generate: positives, negatives, stones, crossings
@@ -42,9 +67,6 @@ class DatasetGenerator:
         # Spacing of area to be extracted with particular method
         self.spacing = {"single": 10, "enclosed": 1, "crossing": 5}
 
-        # Positive dataset is for samples generation
-        self.is_gen = False
-
         # Number of negative areas to be extracted per image
         self.neg_per_image = 0
 
@@ -54,7 +76,7 @@ class DatasetGenerator:
         # Flag to exclude grid line crossings
         self.no_grid = False
 
-        # Rotation vector
+        # Rotation vector (0: how many images to generate, 1: rotation angle)
         self.n_rotate = [0, 0]
 
         # GrBoard currently processed
@@ -71,6 +93,7 @@ class DatasetGenerator:
         self.totals = {'positives': 0}
 
     def overlap(self, a, b):
+        """Check two rectangles overlap"""
         # from: https://stackoverflow.com/questions/25068538/intersection-and-difference-of-two-rectangles
         x1 = max(min(a[0], a[2]), min(b[0], b[2]))
         y1 = max(min(a[1], a[3]), min(b[1], b[3]))
@@ -79,7 +102,8 @@ class DatasetGenerator:
         return x1 < x2 and y1 < y2
 
     def get_bg_color(self, img):
-        # Find background color
+        """Find background color of a board as most often occuring color except
+            shades of black and white"""
         u, c =  np.unique(img.reshape(-1, img.shape[-1]), axis=0, return_counts=True)
         bg_c = u[c.argmax()]
 
@@ -93,37 +117,42 @@ class DatasetGenerator:
         return bg_c
 
     def remove_areas(self, img, areas, bg_c):
+        """Remove areas from image and pad it with background color"""
         for c in areas:
             patch = np.full((c[3]-c[1], c[2]-c[0], img.shape[2]), bg_c, dtype = img.dtype)
             img[c[1]:c[3], c[0]:c[2]] = patch[:]
         return img
 
     def get_image_file_name(self, src_file_name, index, ext = '.png'):
+        """Derive image file from source file name"""
         prefix = Path(src_file_name).stem + "_" + Path(src_file_name).suffix[1:]
         return prefix + "_" + str(index).zfill(3) + ext
 
-    def get_space(self, r, space_str):
-        n = str(space_str).find('%')
+    def get_space(self, space, append_str):
+        """Derive space to add to specfied integer space"""
+        n = str(append_str).find('%')
         if n == -1:
-            return int(space_str)
+            return int(append_str)
         else:
-            f = int(str(space_str)[0:n])
-            return int(r * f / 100.0)
+            append = int(str(append_str)[0:n])
+            return int(space * append / 100.0)
 
-    def save_area(self, file_name, area_img, start_index, dir_obj, prefix, f_reg):
-        stop_index = start_index + 1 if self.n_rotate[0] == 0 \
+    def get_registrator(self, ds_key, file_name='description.txt', subdir=''):
+        """Create a dataset registrator for specified dataset"""
+        return DatasetRegistrator(self.dirs[ds_key], file_name, subdir)
+
+    def save_area(self, ds_key, file_name, area_img, start_index, f_reg, no_rotation=False):
+        """Save given area of image file. If rotation is requested, generates it"""
+        stop_index = start_index + 1 if self.n_rotate[0] == 0 or no_rotation \
                                      else start_index + self.n_rotate[0] + 1
+
+        if self.n_resize > 0:
+            area_img = resize(area_img, self.n_resize, f_upsize = True, pad_color = self.bg_c)
 
         bg_c = [int(x) for x in self.bg_c]
         for index in range(start_index, stop_index):
             fn = self.get_image_file_name(file_name, index)
-            save_fn = str(Path(dir_obj).joinpath(fn))
-
-            cv2.imwrite(save_fn, area_img)
-
-            reg_fn = prefix + fn
-            f_reg.write("{} 1 {} {} {} {} \n".format(reg_fn,
-                0, 0, area_img.shape[1]-1, area_img.shape[0]-1))
+            f_reg.write(fn, area_img)
 
             area_img = rotate(area_img, self.n_rotate[1], bg_c, keep_image=False)
 
@@ -174,32 +203,24 @@ class DatasetGenerator:
 
 
     def extract_positive(self, file_name):
-        pd = Path(self.dirs['positive'])
-        dir_prefix = pd.stem + '/'
-        f_reg = open(str(pd.joinpath("positives.txt")), "a")
-
+        f_reg = self.get_registrator('positive', 'positives.txt')
         index = 0
+
         for stone in self.board.all_stones:
             area = self.extract_stone_area(stone)
             if area is not None:
                 area_img = get_image_area(self.board.image, area)
-                n = self.save_area(file_name, area_img, index, pd,
-                    "{}{}".format(dir_prefix, fn) if self.is_gen else "", f_reg)
-
+                n = self.save_area('positive', file_name, area_img, index, f_reg)
                 index += n
                 self.counts['positive'] += n
 
         f_reg.close()
 
     def extract_negative(self, file_name):
-        pn = Path(self.dirs['negative'])
-        dir_prefix = pn.stem + '/'
-
         # Prepare image with all found stones removed
         neg_img = self.remove_areas(self.board.image.copy(), self.stone_areas, self.bg_c)
         fn = self.get_image_file_name(file_name, 999).replace('999', 'neg')
-        save_fn = str(pn.joinpath(fn))
-        cv2.imwrite(save_fn, neg_img)
+        self.save_image('negative', fn, neg_img)
 
         # Slice prepared image by random pieces generating number of
         # images not less than specified number
@@ -207,51 +228,32 @@ class DatasetGenerator:
         h = int(round(neg_img.shape[CV_HEIGTH] / 4,0))
         nn_max = self.neg_per_image if self.neg_per_image > 0 else self.counts['positive']
 
-        f_reg = open(str(pn.joinpath("negatives.txt")), "a")
+        f_reg = self.get_registrator('negative', 'negatives.txt')
         for index in range(nn_max):
             x = randrange(0, neg_img.shape[CV_WIDTH] - w)
             y = randrange(0, neg_img.shape[CV_HEIGTH] - h)
 
             area = [x, y, x + w, y + h]
             if area[0] < area[2] and area[1] < area[3]:
-                im = get_image_area(neg_img, area)
-
-                fn = self.get_image_file_name(file_name, index)
-                save_fn = str(pn.joinpath(fn))
-                #print("\tNegative {} to {}".format(area, save_fn))
-
-                cv2.imwrite(save_fn, im)
-                f_reg.write("{}\n".format(dir_prefix + fn))
-                self.counts['negative'] += 1
+                area_img = get_image_area(neg_img, area)
+                n = self.save_area('negative', file_name, area_img, index, f_reg)
+                self.counts['negative'] += n
 
         f_reg.close()
 
     def extract_stones(self, file_name):
 
-        def extract_stones_bw(bw, dir):
-            pd = Path(self.dirs['stones']).joinpath(dir)
-            f_reg = open(str(pd.joinpath("description.txt")), "a")
-
+        def extract_stones_bw(bw, subdir):
+            f_reg = self.get_registrator('stones', subdir = subdir)
             index = 0
             stones = [x for x in self.board.all_stones if x[GR_BW] == bw]
+
             for stone in stones:
                 area = self.extract_stone_area(stone)
                 if area is not None:
                     area_img = get_image_area(self.board.image, area)
-
-                    fn = self.get_image_file_name(file_name, index)
-                    save_fn = str(pd.joinpath(fn))
-                    #print("\t{} stones {} to {}".format(dir.title(), area, save_fn))
-
-                    if self.n_resize > 0:
-                        area_img = resize(area_img, self.n_resize, f_upsize = True, pad_color = self.bg_c)
-                    cv2.imwrite(save_fn, area_img)
-
-                    f_reg.write("{} 1 {} {} {} {} \n".format(fn,
-                        0, 0, area_img.shape[1]-1, area_img.shape[0]-1))
-
-                    index += 1
-                    self.counts['stones'] += 1
+                    n = self.save_area('stones', file_name, area_img, index, f_reg)
+                    self.counts['stones'] += n
 
             f_reg.close()
 
@@ -264,12 +266,11 @@ class DatasetGenerator:
         if not self.no_grid:
             self.extract_inboard_crossings(file_name)
 
-    def extract_crossing_range(self, file_name, label, ranges):
-        pd = Path(self.dirs['crossings']).joinpath(label)
-        f_reg = open(str(pd.joinpath("description.txt")), "a")
-
+    def extract_crossing_range(self, file_name, subdir, ranges):
+        f_reg = self.get_registrator('crossings', subdir=subdir)
         cs = self.get_space(4, self.spacing['crossing'])
         index = 0
+
         for r in ranges:
             for y in r[0]:
                 for x in r[1]:
@@ -282,9 +283,8 @@ class DatasetGenerator:
 
                         area_img = get_image_area(self.board.image, area)
 
-                        n = self.save_area(file_name, area_img, index,
-                            pd, "", f_reg)
-
+                        n = self.save_area('crossings', file_name, area_img,
+                                            index, f_reg)
                         index += n
                         self.counts['crossings'] += n
 
@@ -396,23 +396,19 @@ class DatasetGenerator:
                 "single - extract areas of single-staying stones, " + \
                 "enclosed - extract areas of stones enclosed by other stones, " + \
                 "both - extract all stones")
-        parser.add_argument('-g', "--for_gen",
-            action = "store_true",
-            default = False,
-            help = 'If specified, it is assumed that positive images will be used for samples generation')
         parser.add_argument('-s', "--space",
             nargs = '*',
             default = [10, 3, 5],
             help = "Space to add when extracting area for: single stones, " + \
                     "enclosed stones, edges/crossings " + \
                     "(numbers or perecentage of stone size followed by %)")
-        parser.add_argument('-i', "--neg_img", type = int,
+        parser.add_argument('-i', "--neg-img", type = int,
             default = 0,
             help = 'Number of negative images to generate from one image (0 - the same number as positives)')
         parser.add_argument('-r', "--resize", type = int,
             default = 0,
-            help = 'Resize stone images to specified size (0 - no resizing)')
-        parser.add_argument("--no_grid",
+            help = 'Resize images to specified size (0 - no resizing)')
+        parser.add_argument("--no-grid",
             action="store_true",
             default = False,
             help = 'Do not generate grid line crossing images')
@@ -433,7 +429,6 @@ class DatasetGenerator:
 
         self.pattern = args.pattern
         self.method = args.method.lower()
-        self.is_gen = args.for_gen
 
         self.spacing['single'] = args.space[0]
         self.spacing['enclosed'] = args.space[1] if len(args.space) > 1 else 1
@@ -496,7 +491,7 @@ class DatasetGenerator:
                         print("==> Cannot find an image which corresponds to {} param file".format(str(y)))
 
         # Statistics
-        print("Total processed:")
+        print("Files generated:")
         for k, v in self.totals.items():
             print("\t{}: {}".format(k, v))
 

@@ -14,6 +14,7 @@ from gr.board import GrBoard
 from gr.grdef import *
 from gr.ui_extra import NLabel, NButton, ImagePanel, ImgButton, ImgButtonGroup, StatusPanel
 from gr.ui_extra import ImageMask, ImageMarker, ImageTransform, GrDialog
+from gr.ui_extra import treeview_sort_columns
 from gr.binder import NBinder
 from gr.log import GrLogger
 from gr.utils import format_stone_pos, resize, img_to_imgtk, dict_value2key
@@ -754,7 +755,7 @@ class GbrStonesDlg(GrDialog):
             command = self.reset_stones_click_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
         self.bg = ImgButtonGroup(f_top)
-        self.bg.add_group("stone", ["plus_small", "edit_small"], BG_DEPENDENT)
+        self.bg.add_group("stone", ["plus_small", "edit_small"], ImgButtonGroup.BG_DEPENDENT)
 
         sbr = tk.Scrollbar(f_bottom)
         sbr.pack(side=tk.RIGHT, fill=tk.Y)

@@ -175,8 +175,8 @@ class GrBoard:
             filename = str(Path(self._img_file).with_suffix('.sgf'))
 
         game = sgf.Sgf_game(size=self.board_size)
-        bs = self.black_stones.tolist()
-        ws = self.white_stones.tolist()
+        bs = self.black_stones
+        ws = self.white_stones
 
         for n in range(max(len(bs), len(ws))):
             if n < len(bs):

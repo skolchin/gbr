@@ -10,7 +10,6 @@
 #-------------------------------------------------------------------------------
 from pathlib import Path
 from cc.board_parser import BoardParser
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 parser = None
 
@@ -18,7 +17,7 @@ def main():
     global parser
 
     root_dir = str(Path(__file__).absolute().parent.parent)
-    print('Root directory is', root_dir)
+    print('==> Root directory is', root_dir)
 
     parser = BoardParser(root_dir)
     parser.run()

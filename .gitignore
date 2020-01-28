@@ -130,4 +130,6 @@ PyCharm project
 /tf/_logs/*
 /tf/mnist/*
 /tf/*classifier/*
-/cc/crosses/
+/cc/crossings/
+/cc/stones/
+/cc/joined/

@@ -56,12 +56,12 @@ class BoardItemClassifier:
 
     def load(self):
         """Load a model from directory"""
-        print("==> Loading model")
+        print("==> Loading model from", self.model_dir)
         self.model = tf.keras.models.load_model(self.model_dir)
 
     def build(self):
         """Build new model"""
-        print("==> Building model")
+        print("==> Building model", self.model_dir)
         self.model = tf.keras.models.Sequential()
         layers = self.get_model_layers()
         for l in layers:
@@ -93,11 +93,12 @@ class BoardItemClassifier:
 
     def save(self):
         """Save whole model to specified directory"""
+        print("==> Saving model to", self.model_dir)
         self.model.save(self.model_dir)
 
     def init_datasets(self, display_samples = False):
         """Initialize datasets for training"""
-        print("==> Loading images")
+        print("==> Loading images from ", self.img_dir)
         self.image_data_gen = ImageDataGenerator(
             rescale=1./255,
             #rotation_range=30,
@@ -128,7 +129,7 @@ class BoardItemClassifier:
 
     def train(self, epochs = NUM_EPOCHS, display_history = False):
         """Train the model"""
-        print("==> Training the model")
+        print("==> Training model from", self.model_dir)
         if self.model is None:
             self.build()
         if self.train_dataset is None:
@@ -136,7 +137,10 @@ class BoardItemClassifier:
 
         callbacks = []
         if self.log_dir is not None:
-            callbacks.extend([tf.keras.callbacks.TensorBoard(self.log_dir)])
+            callbacks.extend([
+                tf.keras.callbacks.TensorBoard(self.log_dir,
+                                               profile_batch=0,
+                                               write_graph=True)])
 
         if self.image_data_gen is not None:
             # Generator
@@ -162,7 +166,7 @@ class BoardItemClassifier:
         if self.model is None:
             raise Exception("Model is empty, either build or load it")
 
-        print("==> Prediction")
+        print("==> Prediction on model from", self.model_dir)
         file_names, file_labels = self.get_sample_files(num_samples)
         self.predict_dataset = tf.data.Dataset.from_tensor_slices((file_names, file_labels))
         self.predict_dataset = self.predict_dataset.map(self.map_fn, num_parallel_calls=AUTOTUNE)
