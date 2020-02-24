@@ -1100,9 +1100,10 @@ class ImageMask(object):
         if self.__mask is None: self.default_mask()
 
         if self.__mode == self.MODE_AREA:
-            self.__draw_mask_shading()
             self.__draw_mask_rect()
+            self.__draw_mask_shading()
         elif self.__mode == self.MODE_GRID:
+            self.__draw_mask_rect()
             self.__draw_mask_grid()
         elif self.__mode == self.MODE_SPLIT:
             self.__draw_mask_split()
