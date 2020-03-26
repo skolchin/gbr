@@ -954,35 +954,35 @@ class GbrGUI2(tk.Tk):
         self.toolbarPanel.pack(side = tk.TOP, fill = tk.X, expand = False)
 
         ImgButton(self.toolbarPanel,
-            tag = "open", tooltip = "Open image",
+            tag = "open", tooltip = "Open image (Ctrl-O)", key='<Control-Key-o>',
             command = self.open_image_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
         ImgButton(self.toolbarPanel,
-            tag = "edge", tooltip = "Transform image", disabled = True,
+            tag = "edge", tooltip = "Transform image (Ctrl-E)", key='<Control-Key-e>', disabled = True,
             command = self.transform_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
         ImgButton(self.toolbarPanel,
-            tag = "area", tooltip = "Define board area", disabled = True,
+            tag = "area", tooltip = "Define board area (Ctrl-A)", key='<Control-Key-a>', disabled = True,
             command = self.set_area_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
         ImgButton(self.toolbarPanel,
-            tag = "grid", tooltip = "Set board grid", disabled = True,
+            tag = "grid", tooltip = "Set board grid (Ctrl-G)", key='<Control-Key-g>', disabled = True,
             command = self.set_grid_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
         ImgButton(self.toolbarPanel,
-            tag = "detect", tooltip = "Detect stones", disabled = True,
+            tag = "detect", tooltip = "Detect stones (Ctrl-D)", key='<Control-Key-d>', disabled = True,
             command = self.detect_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
         ImgButton(self.toolbarPanel,
-            tag = "stones", tooltip = "List of stones", disabled = True,
+            tag = "stones", tooltip = "List of stones (Ctrl-L)", key='<Control-Key-l>', disabled = True,
             dlg_class = GbrStonesDlg).pack(side = tk.LEFT, padx = 2, pady = 2)
 
         ImgButton(self.toolbarPanel,
-            tag = "params", tooltip = "Detection params", disabled = True,
+            tag = "params", tooltip = "Detection params (Ctrl-P)", key='<Control-Key-p>', disabled = True,
             dlg_class = GbrOptionsDlg).pack(side = tk.LEFT, padx = 2, pady = 2)
 
         ImgButton(self.toolbarPanel,
-            tag = "save", tooltip = "Save as SGF", disabled = True,
+            tag = "save", tooltip = "Save as SGF (Ctrl-S)", key='<Control-Key-s>',disabled = True,
             command = self.save_sgf_callback).pack(side = tk.LEFT, padx = 2, pady = 2)
 
         ImgButton(self.toolbarPanel,
@@ -994,6 +994,8 @@ class GbrGUI2(tk.Tk):
         self.bg.add_group("edges", ["edge", "area", "grid"], ImgButtonGroup.BG_DEPENDENT)
         self.bg.add_group("detected", ["stones", "save"])
         self.bg.add_group("transformed", ["reset"])
+
+        self.winfo_toplevel().bind('<Control-Key-q>', self.quit_callback)
 
     def __init_window(self):
         # Image panel
@@ -1173,6 +1175,9 @@ class GbrGUI2(tk.Tk):
     def grid_mask_callback(self, mask):
         """Grid mask resizing finished"""
         self.board.param_board_edges = mask.scaled_mask
+
+    def quit_callback(self, event):
+        self.destroy()
 
     #
     # Core functions

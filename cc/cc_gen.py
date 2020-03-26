@@ -477,18 +477,21 @@ class DatasetGenerator:
         # Iterate
         for x in glob.iglob(self.pattern):
             if os.path.isfile(x):
-                y = Path(x)
-                if y.suffix != '.gpar':
+                if Path(x).suffix != '.gpar':
                     # Image files processed as is
-                    self.one_file(y)
+                    self.one_file(x)
                 else:
                     # For .gpar files, try to find an image
-                    if y.with_suffix('.png').exists():
-                        self.one_file(y.with_suffix('.png'))
-                    elif y.with_suffix('.jpg').exists():
-                        self.one_file(y.with_suffix('.jpg'))
-                    else:
-                        print("==> Cannot find an image which corresponds to {} param file".format(str(y)))
+                    found = False
+                    for sx in ['.png', '.jpg', '.jpeg']:
+                        f = Path(x).with_suffix(sx)
+                        found = f.exists()
+                        if found:
+                            self.one_file(f)
+                            break
+
+                    if not found:
+                        print("==> Cannot find an image which corresponds to {} param file".format(x))
 
         # Statistics
         print("Files generated:")

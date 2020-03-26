@@ -89,10 +89,11 @@ class ImgButton(tk.Label):
             disabled    True/False
             tooltip     A tooltip text
             command     A callback function. See NBinder.bind()
-            dlg_class   A dialog class descendant of GrDialog. If provided, it is assumed
-                        that button is to be used to show/hide this dialog.
+            dlg_class   A dialog class descendant of GrDialog.
+                        If provided, it is assumed that the button is to be used to show/hide this dialog.
                         Note that if a callback is provided, dialog is created after it respecting results of the call.
                         A dialog should trigger <Close> event to allow button unpress upon close.
+            key         A shortcut key combination in Tkinter format
         """
         # Init
         self.__dlg = None
@@ -110,6 +111,7 @@ class ImgButton(tk.Label):
         tooltip = kwargs.pop('tooltip', None)
         self.__dlg_class = kwargs.pop('dlg_class', None)
         cmd = kwargs.pop('command', None)
+        shortcut = kwargs.pop('key', None)
 
         # Parent init
         tk.Label.__init__(self, *args, **kwargs)
@@ -129,7 +131,10 @@ class ImgButton(tk.Label):
         self.configure(borderwidth = 1, relief = "groove", width = w, height = h)
         self.configure(image = self.__images[self.__state], state = self.__DS_MAP[self.__disabled])
 
-        self.__binder.bind(self, "<Button-1>", self.__mouse_click)
+        # Binding
+        self.__binder.bind(self, '<Button-1>', self.__mouse_click)
+        if shortcut is not None:
+            self.__binder.bind(self.winfo_toplevel(), shortcut, self.__on_shortcut)
 
     @property
     def tag(self):
@@ -211,6 +216,10 @@ class ImgButton(tk.Label):
 
     def __mouse_click(self, event):
         """Mouse click callback"""
+        if not self.__disabled: self.toggle()
+
+    def __on_shortcut(self, event):
+        """Shortcut key pressed"""
         if not self.__disabled: self.toggle()
 
     def __dialog_close_callback(self, event):

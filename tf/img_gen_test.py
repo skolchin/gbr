@@ -114,6 +114,7 @@ image_data_gen = ImageDataGenerator(rescale=1./255,
 ##                                    width_shift_range=.15,
 ##                                    height_shift_range=.15,
 
+
 train_generator = image_data_gen.flow_from_directory(batch_size=BATCH_SIZE,
                                                      directory=IMG_DIR,
                                                      shuffle=True,

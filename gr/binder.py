@@ -85,7 +85,11 @@ class NBinder(object):
         logging.debug("Binder {} unbinding from event key {}".format(self.id, key))
         if key in self.bnd_ref:
             bnd_id, wref, event, cref, _type = self.bnd_ref[key]
-            if _type == "tk": widget.unbind(event, bnd_id)
+            if _type == "tk":
+                try:
+                    wref().unbind(event, bnd_id)
+                except:
+                    pass
             del self.bnd_ref[key]
 
         NBinder.__unbind(self, widget, None, event)
@@ -97,7 +101,11 @@ class NBinder(object):
         for key in self.bnd_ref.keys():
             bnd_id, wref, event, cref, _type = self.bnd_ref[key]
             if wref() is not None and wref() == widget:
-                if _type == "tk": widget.unbind(event, bnd_id)
+                if _type == "tk":
+                    try:
+                        wref().unbind(event, bnd_id)
+                    except:
+                        pass
                 to_remove.extend([key])
         for key in to_remove: del self.bnd_ref[key]
 
@@ -109,7 +117,11 @@ class NBinder(object):
             logging.debug("Binder {} unbinding from key {}".format(self.id, wkey))
             bnd_id, wref, event, cref, _type = self.bnd_ref[wkey]
             if wref() is not None:
-                if _type == "tk": wref().unbind(event, bnd_id)
+                if _type == "tk":
+                    try:
+                        wref().unbind(event, bnd_id)
+                    except:
+                        pass
                 del self.bnd_ref[wkey]
             NBinder.__unbind(self, None, wkey, None)
 
@@ -118,7 +130,11 @@ class NBinder(object):
         logging.debug("Binder {} unbinding all events".format(self.id))
         for key in self.bnd_ref.keys():
             bnd_id, wref, event, cref, _type = self.bnd_ref[key]
-            if wref() is not None and _type == "tk": wref().unbind(event, bnd_id)
+            if wref() is not None and _type == "tk":
+                try:
+                    wref().unbind(event, bnd_id)
+                except:
+                    pass
 
         self.bnd_ref = dict()
         NBinder.__unbind(self, None, None, None)
@@ -162,8 +178,12 @@ class NBinder(object):
             for bnd in reversed(NBinder.__bindings):
                 _owner, _wref, _wkey, _event, _cref, _type = bnd
                 if _wref() == wref() and _event == event and _cref() is not None and _type == 'tk':
-                    _wref().bind(event, _cref())
-                    logging.debug("Global rebinding {}.{} to {}".format(wref(), event, _cref()))
+                    try:
+                        _wref().bind(event, _cref())
+                        logging.debug("Global rebinding {}.{} to {}".format(wref(), event, _cref()))
+                    except:
+                        pass
+
                     break
 
         for i, bnd in enumerate(NBinder.__bindings):
