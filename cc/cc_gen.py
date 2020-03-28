@@ -13,6 +13,7 @@ import sys
 import glob
 import numpy as np
 import cv2
+import json
 from pathlib import Path
 from random import randrange
 from argparse import ArgumentParser
@@ -24,25 +25,38 @@ from gr.grdef import *
 from gr.board import GrBoard
 from gr.utils import get_image_area, resize, rotate
 
+TF_AVAIL=True
+try:
+    import tensorflow as tf
+    from object_detection.utils import dataset_util
+    from tfrecord_lite import tf_record_iterator
+except:
+    TF_AVAIL=False
+
 class DatasetRegistrator:
+    """Supplementary class to handle description file creation"""
+
     def __init__(self, dir=None, reg_name='description.txt', subdir=''):
         self.dir, self.reg_name, self.subdir = dir, reg_name, subdir
         self.f_reg = None
         if self.dir is not None and self.reg_name is not None:
             self.open()
 
-    def open(self, dir=None, reg_name='description.txt', subdir=''):
+    def open(self, dir=None, reg_name='description.txt', subdir='', mode='a'):
         if dir is not None:
             self.dir = dir
         if reg_name is not None:
             self.reg_name = reg_name
-        self.f_reg = open(str(Path(self.dir).joinpath(self.subdir, self.reg_name)), 'a')
+        self.f_reg = open(str(Path(self.dir).joinpath(self.subdir, self.reg_name)), mode)
 
-    def write(self, file_name, img):
+    def register_image(self, file_name, img):
         save_fn = str(Path(self.dir).joinpath(self.subdir, file_name))
         cv2.imwrite(save_fn, img)
         self.f_reg.write("{} 1 {} {} {} {} \n".format(
             file_name, 0, 0, img.shape[1]-1, img.shape[0]-1))
+
+    def register_file(self, file_name):
+        self.f_reg.write(str(file_name) + '\n')
 
     def close(self):
         if self.f_reg is not None:
@@ -51,12 +65,12 @@ class DatasetRegistrator:
 
 class DatasetGenerator:
     def __init__(self):
-        # Datasets to generate: positives, negatives, stones, crossings
-        self.datasets = ["positive", "negatives", "stones", "crossings"]
+        # Datasets to generate
+        self.datasets = ["positive", "negative", "stones", "crossings", 'bboxes']
 
         # Directories where to place datasets
         self.dirs = OrderedDict({"positive": None, "stones": None,
-            "negative": None, "crossings": None})
+            "negative": None, "crossings": None, "bboxes": None})
 
         # Selection pattern
         self.pattern = None
@@ -65,7 +79,7 @@ class DatasetGenerator:
         self.method = "single"
 
         # Spacing of area to be extracted with particular method
-        self.spacing = {"single": 10, "enclosed": 1, "crossing": 5}
+        self.spacing = {"single": 10, "enclosed": 1, "crossing": 5, "bboxes": 1}
 
         # Number of negative areas to be extracted per image
         self.neg_per_image = 0
@@ -79,6 +93,9 @@ class DatasetGenerator:
         # Rotation vector (0: how many images to generate, 1: rotation angle)
         self.n_rotate = [0, 0]
 
+        # BBox def file format (json, tf)
+        bbox_fmt = 'json'
+
         # GrBoard currently processed
         self.board = None
 
@@ -87,6 +104,9 @@ class DatasetGenerator:
 
         # Areas extracted during current run
         self.stone_areas = None
+
+        # TF writer
+        self.tf_writer = None
 
         # Statistic
         self.counts = {'positives': 0}
@@ -152,7 +172,7 @@ class DatasetGenerator:
         bg_c = [int(x) for x in self.bg_c]
         for index in range(start_index, stop_index):
             fn = self.get_image_file_name(file_name, index)
-            f_reg.write(fn, area_img)
+            f_reg.register_image(fn, area_img)
 
             area_img = rotate(area_img, self.n_rotate[1], bg_c, keep_image=False)
 
@@ -200,71 +220,6 @@ class DatasetGenerator:
                     min(y+r+cs, self.board.image.shape[CV_HEIGTH])]
             self.stone_areas.extend([area])
         return area
-
-
-    def extract_positive(self, file_name):
-        f_reg = self.get_registrator('positive', 'positives.txt')
-        index = 0
-
-        for stone in self.board.all_stones:
-            area = self.extract_stone_area(stone)
-            if area is not None:
-                area_img = get_image_area(self.board.image, area)
-                n = self.save_area('positive', file_name, area_img, index, f_reg)
-                index += n
-                self.counts['positive'] += n
-
-        f_reg.close()
-
-    def extract_negative(self, file_name):
-        # Prepare image with all found stones removed
-        neg_img = self.remove_areas(self.board.image.copy(), self.stone_areas, self.bg_c)
-        fn = self.get_image_file_name(file_name, 999).replace('999', 'neg')
-        self.save_image('negative', fn, neg_img)
-
-        # Slice prepared image by random pieces generating number of
-        # images not less than specified number
-        w = int(round(neg_img.shape[CV_WIDTH] / 4,0))
-        h = int(round(neg_img.shape[CV_HEIGTH] / 4,0))
-        nn_max = self.neg_per_image if self.neg_per_image > 0 else self.counts['positive']
-
-        f_reg = self.get_registrator('negative', 'negatives.txt')
-        for index in range(nn_max):
-            x = randrange(0, neg_img.shape[CV_WIDTH] - w)
-            y = randrange(0, neg_img.shape[CV_HEIGTH] - h)
-
-            area = [x, y, x + w, y + h]
-            if area[0] < area[2] and area[1] < area[3]:
-                area_img = get_image_area(neg_img, area)
-                n = self.save_area('negative', file_name, area_img, index, f_reg)
-                self.counts['negative'] += n
-
-        f_reg.close()
-
-    def extract_stones(self, file_name):
-
-        def extract_stones_bw(bw, subdir):
-            f_reg = self.get_registrator('stones', subdir = subdir)
-            index = 0
-            stones = [x for x in self.board.all_stones if x[GR_BW] == bw]
-
-            for stone in stones:
-                area = self.extract_stone_area(stone)
-                if area is not None:
-                    area_img = get_image_area(self.board.image, area)
-                    n = self.save_area('stones', file_name, area_img, index, f_reg)
-                    self.counts['stones'] += n
-
-            f_reg.close()
-
-        extract_stones_bw('B', 'black')
-        extract_stones_bw('W', 'white')
-
-    def extract_crossings(self, file_name):
-        self.extract_edges(file_name)
-        self.extract_border_crossings(file_name)
-        if not self.no_grid:
-            self.extract_inboard_crossings(file_name)
 
     def extract_crossing_range(self, file_name, subdir, ranges):
         f_reg = self.get_registrator('crossings', subdir=subdir)
@@ -355,6 +310,160 @@ class DatasetGenerator:
         self.extract_crossing_range(file_name, 'edge', ranges)
 
 
+    def extract_positive(self, file_name):
+        """Positives (stones) dataset extractor"""
+        f_reg = self.get_registrator('positive', 'positives.txt')
+        index = 0
+
+        for stone in self.board.all_stones:
+            area = self.extract_stone_area(stone)
+            if area is not None:
+                area_img = get_image_area(self.board.image, area)
+                n = self.save_area('positive', file_name, area_img, index, f_reg)
+                index += n
+                self.counts['positive'] += n
+
+        f_reg.close()
+
+    def extract_negative(self, file_name):
+        """Negatives (empty boards) dataset extractor"""
+        # Prepare image with all found stones removed
+        neg_img = self.remove_areas(self.board.image.copy(), self.stone_areas, self.bg_c)
+        fn = self.get_image_file_name(file_name, 999).replace('999', 'neg')
+        self.save_image('negative', fn, neg_img)
+
+        # Slice prepared image by random pieces generating number of
+        # images not less than specified number
+        w = int(round(neg_img.shape[CV_WIDTH] / 4,0))
+        h = int(round(neg_img.shape[CV_HEIGTH] / 4,0))
+        nn_max = self.neg_per_image if self.neg_per_image > 0 else self.counts['positive']
+
+        f_reg = self.get_registrator('negative', 'negatives.txt')
+        for index in range(nn_max):
+            x = randrange(0, neg_img.shape[CV_WIDTH] - w)
+            y = randrange(0, neg_img.shape[CV_HEIGTH] - h)
+
+            area = [x, y, x + w, y + h]
+            if area[0] < area[2] and area[1] < area[3]:
+                area_img = get_image_area(neg_img, area)
+                n = self.save_area('negative', file_name, area_img, index, f_reg)
+                self.counts['negative'] += n
+
+        f_reg.close()
+
+    def extract_stones(self, file_name):
+        """Stones dataset extractor"""
+
+        def extract_stones_bw(bw, subdir):
+            f_reg = self.get_registrator('stones', subdir = subdir)
+            index = 0
+            stones = [x for x in self.board.all_stones if x[GR_BW] == bw]
+
+            for stone in stones:
+                area = self.extract_stone_area(stone)
+                if area is not None:
+                    area_img = get_image_area(self.board.image, area)
+                    n = self.save_area('stones', file_name, area_img, index, f_reg)
+                    self.counts['stones'] += n
+
+            f_reg.close()
+
+        extract_stones_bw('B', 'black')
+        extract_stones_bw('W', 'white')
+
+    def extract_crossings(self, file_name):
+        """Crossings dataset extractor"""
+        self.extract_edges(file_name)
+        self.extract_border_crossings(file_name)
+        if not self.no_grid:
+            self.extract_inboard_crossings(file_name)
+
+    def extract_bboxes(self, file_name):
+        """Extractor which creates whole board description in TF-REC format"""
+
+        # Get registrator
+        f_reg = self.get_registrator('bboxes')
+
+        # Generate label map
+        fn_map = Path(self.dirs['bboxes']).joinpath('go_board.names')
+        if not fn_map.exists():
+            with open(str(fn_map), 'w') as f_map:
+                f_map.write('item {\n' + \
+                            '  id: 1\n' + \
+                            '  name: \'black\'\n' + \
+                            '}\n' + \
+
+                            'item {\n' + \
+                            '  id: 2\n' + \
+                            '  name: \'white\'\n' + \
+                            '}\n')
+
+            f_map.close()
+
+        # Generate features
+        if self.bbox_fmt == 'json':
+            # JSON format
+            height, width = self.board.image.shape[:2]
+            features = {
+                'image/height': height,
+                'image/width': width,
+                'image/filename': str(Path(file_name).parts[-1]),
+                'image/source_id': str(Path(file_name).parts[-1]),
+                'image/encoded': None,
+                'image/format': str(Path(file_name).suffix[1:]),
+                'image/objects': []
+            }
+            for stone in self.board.all_stones:
+                area = self.extract_stone_area(stone)
+                if area is not None:
+                    txt, lbl = ('black', 1) if stone[5] == 'B' else ('white', 2)
+                    features['image/objects'].append({'bbox': area, 'class/text': txt, 'class/label': lbl})
+
+            fn_bbox = self.get_image_file_name(file_name, 1, ext='.json')
+            with open(str(Path(self.dirs['bboxes']).joinpath(fn_bbox)), 'w') as f_bbox:
+                json.dump(features, f_bbox, ensure_ascii=False, indent=4)
+                self.counts['bboxes'] += 1
+                f_bbox.close()
+
+        elif self.bbox_fmt == 'tf':
+            # TF-record format
+            height, width = self.board.image.shape[:2]
+            txts, lbls, xmins, xmaxs, ymins, ymaxs = [], [], [], [], [], []
+            for stone in self.board.all_stones:
+                area = self.extract_stone_area(stone)
+                if area is not None:
+                    txt, lbl = ('black', 1) if stone[5] == 'B' else ('white', 2)
+                    txts.append(str.encode(txt))
+                    lbls.append(lbl)
+                    xmins.append(area[0] / width)
+                    ymins.append(area[1] / height)
+                    xmaxs.append(area[2] / width)
+                    ymaxs.append(area[3] / height)
+
+            fname, fmt = str(Path(file_name).parts[-1]), str(Path(file_name).suffix[1:])
+            features = tf.train.Example(features=tf.train.Features(feature={
+                'image/height': dataset_util.int64_feature(height),
+                'image/width': dataset_util.int64_feature(width),
+                'image/filename': dataset_util.bytes_feature(str.encode(fname)),
+                'image/source_id': dataset_util.bytes_feature(str.encode(fname)),
+                'image/encoded': dataset_util.bytes_feature(b''),
+                'image/format': dataset_util.bytes_feature(str.encode(fmt)),
+                'image/object/bbox/xmin': dataset_util.float_list_feature(xmins),
+                'image/object/bbox/xmax': dataset_util.float_list_feature(xmaxs),
+                'image/object/bbox/ymin': dataset_util.float_list_feature(ymins),
+                'image/object/bbox/ymax': dataset_util.float_list_feature(ymaxs),
+                'image/object/class/text': dataset_util.bytes_list_feature(txts),
+                'image/object/class/label': dataset_util.int64_list_feature(lbls)
+            }))
+            self.tf_writer.write(features.SerializeToString())
+            self.counts['bboxes'] += 1
+
+        else:
+            raise ValueError('Invalid bbox format or TF is not available')
+
+        f_reg.register_file(file_name)
+        f_reg.close()
+
     def one_file(self, file_name):
         # Open board
         print("Processing file " + str(file_name))
@@ -381,47 +490,53 @@ class DatasetGenerator:
     def get_args(self):
         parser = ArgumentParser()
         parser.add_argument('pattern', help = 'Selection pattern')
-        parser.add_argument('-p', "--positive",
+        parser.add_argument('-p', '--positive',
             help = 'Directory to store positives dataset (images with stones)')
-        parser.add_argument('-n', "--negative",
+        parser.add_argument('-n', '--negative',
             help = 'Directory to store negatives dataset (images without stones)')
-        parser.add_argument('-b', "--stones",
+        parser.add_argument('-s', '--stones',
             help = "Directory to store stones dataset (stone images, separately for black and white)")
-        parser.add_argument('-c', "--crossings",
+        parser.add_argument('-c', '--crossings',
             help = "Directory to store line crossings and edges dataset (images of board grid lines crossings, " + \
                     "separately for edges, borders crossings and grid lines crossings)")
-        parser.add_argument('-m', "--method",
+        parser.add_argument('-b', '--bboxes',
+            help = "Directory to store bboxes dataset")
+        parser.add_argument('-m', '--method',
             choices = ["single", "enclosed", "both"], default = "both",
             help = "Stone image extration method, one of: " + \
                 "single - extract areas of single-staying stones, " + \
                 "enclosed - extract areas of stones enclosed by other stones, " + \
                 "both - extract all stones")
-        parser.add_argument('-s', "--space",
+        parser.add_argument('--space',
             nargs = '*',
             default = [10, 3, 5],
             help = "Space to add when extracting area for: single stones, " + \
                     "enclosed stones, edges/crossings " + \
                     "(numbers or perecentage of stone size followed by %)")
-        parser.add_argument('-i', "--neg-img", type = int,
+        parser.add_argument('--neg-img', type = int,
             default = 0,
             help = 'Number of negative images to generate from one image (0 - the same number as positives)')
-        parser.add_argument('-r', "--resize", type = int,
+        parser.add_argument('--resize', type = int,
             default = 0,
             help = 'Resize images to specified size (0 - no resizing)')
-        parser.add_argument("--no-grid",
+        parser.add_argument('--no-grid',
             action="store_true",
             default = False,
             help = 'Do not generate grid line crossing images')
-        parser.add_argument("--rotate", type = int,
+        parser.add_argument('--rotate', type = int,
             nargs = 2,
             default = [0, 0],
             help = 'Two numbers specifying how many rotation images shall be created and an angle for each rotation')
+        parser.add_argument('--bbox-fmt',
+            choices = ["json", "tf"], default = "json",
+            help = "BBoxes definition format, json or tf-record (if Tensorflow is available)")
 
         args = parser.parse_args()
         self.dirs['positive'] = args.positive
         self.dirs['stones'] = args.stones
         self.dirs['negative'] = args.negative
         self.dirs['crossings'] = args.crossings
+        self.dirs['bboxes'] = args.bboxes
 
         self.datasets = [x for x in self.dirs if self.dirs[x] is not None]
         if len(self.datasets) == 0:
@@ -438,7 +553,10 @@ class DatasetGenerator:
         self.n_resize = args.resize
         self.no_grid = args.no_grid
         self.n_rotate = args.rotate
-
+        self.bbox_fmt= args.bbox_fmt
+        if self.bbox_fmt == 'tf' and not TF_AVAIL:
+            print('TF-record bboxes output requested, but TF is not available. Switching to JSON')
+            self.bbox_fmt = 'json'
 
     def main(self):
         self.get_args()
@@ -474,6 +592,11 @@ class DatasetGenerator:
         self.totals = {k: 0 for k in self.datasets}
         self.counts = self.totals.copy()
 
+        # Get a TF writer if neeeded
+        if self.bbox_fmt == 'tf' and self.tf_writer is None:
+            self.tf_writer = \
+                tf.io.TFRecordWriter(str(Path(self.dirs['bboxes']).joinpath('go_board.tfrecord')))
+
         # Iterate
         for x in glob.iglob(self.pattern):
             if os.path.isfile(x):
@@ -498,8 +621,17 @@ class DatasetGenerator:
         for k, v in self.totals.items():
             print("\t{}: {}".format(k, v))
 
+        # Clean up
+        if self.tf_writer is not None:
+            self.tf_writer.close()
 
 if __name__ == '__main__':
     app = DatasetGenerator()
     app.main()
     cv2.destroyAllWindows()
+
+##    it = tf_record_iterator("C:\\Users\\kol\\Documents\\kol\\gbr\\cc\\bboxes\\go_board.tfrecord")
+##    for n, r in enumerate(it):
+##        print('==> ' + str(n))
+##        print(r)
+##        print('')
