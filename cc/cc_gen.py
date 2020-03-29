@@ -15,7 +15,7 @@ import numpy as np
 import cv2
 import json
 from pathlib import Path
-from random import randrange
+from random import randrange, shuffle
 from argparse import ArgumentParser
 from copy import deepcopy
 from collections import OrderedDict
@@ -55,8 +55,12 @@ class DatasetRegistrator:
         self.f_reg.write("{} 1 {} {} {} {} \n".format(
             file_name, 0, 0, img.shape[1]-1, img.shape[0]-1))
 
-    def register_file(self, file_name):
-        self.f_reg.write(str(file_name) + '\n')
+    def register_file(self, file_name, extra_info=None):
+        line = str(file_name)
+        if extra_info is not None:
+            line += ' ' + extra_info
+        line += '\n'
+        self.f_reg.write(line)
 
     def close(self):
         if self.f_reg is not None:
@@ -93,8 +97,12 @@ class DatasetGenerator:
         # Rotation vector (0: how many images to generate, 1: rotation angle)
         self.n_rotate = [0, 0]
 
-        # BBox def file format (json, tf)
-        bbox_fmt = 'json'
+        # BBox dataset format (json, tf)
+        self.bbox_fmt = 'json'
+
+        # BBox dataset split and shuffle flag
+        self.bbox_split = None
+        self.bbox_shuffle = False
 
         # GrBoard currently processed
         self.board = None
@@ -105,10 +113,11 @@ class DatasetGenerator:
         # Areas extracted during current run
         self.stone_areas = None
 
-        # TF writer
-        self.tf_writer = None
+        # TF writers and writer key
+        self.tf_writers = {'all': None, 'train': None, 'val': None}
 
         # Statistic
+        self.file_count = 0
         self.counts = {'positives': 0}
         self.totals = {'positives': 0}
 
@@ -160,6 +169,15 @@ class DatasetGenerator:
     def get_registrator(self, ds_key, file_name='description.txt', subdir=''):
         """Create a dataset registrator for specified dataset"""
         return DatasetRegistrator(self.dirs[ds_key], file_name, subdir)
+
+    def get_tf_writer(self, file_index):
+        if self.tf_writers['all'] is not None:
+            return self.tf_writers['all']
+        else:
+            if file_index <= self.file_count * (1 - self.bbox_split):
+                return self.tf_writers['train']
+            else:
+                return self.tf_writers['val']
 
     def save_area(self, ds_key, file_name, area_img, start_index, f_reg, no_rotation=False):
         """Save given area of image file. If rotation is requested, generates it"""
@@ -310,7 +328,7 @@ class DatasetGenerator:
         self.extract_crossing_range(file_name, 'edge', ranges)
 
 
-    def extract_positive(self, file_name):
+    def extract_positive(self, file_index, file_name):
         """Positives (stones) dataset extractor"""
         f_reg = self.get_registrator('positive', 'positives.txt')
         index = 0
@@ -325,7 +343,7 @@ class DatasetGenerator:
 
         f_reg.close()
 
-    def extract_negative(self, file_name):
+    def extract_negative(self, file_index, file_name):
         """Negatives (empty boards) dataset extractor"""
         # Prepare image with all found stones removed
         neg_img = self.remove_areas(self.board.image.copy(), self.stone_areas, self.bg_c)
@@ -351,7 +369,7 @@ class DatasetGenerator:
 
         f_reg.close()
 
-    def extract_stones(self, file_name):
+    def extract_stones(self, file_index, file_name):
         """Stones dataset extractor"""
 
         def extract_stones_bw(bw, subdir):
@@ -371,14 +389,14 @@ class DatasetGenerator:
         extract_stones_bw('B', 'black')
         extract_stones_bw('W', 'white')
 
-    def extract_crossings(self, file_name):
+    def extract_crossings(self, file_index, file_name):
         """Crossings dataset extractor"""
         self.extract_edges(file_name)
         self.extract_border_crossings(file_name)
         if not self.no_grid:
             self.extract_inboard_crossings(file_name)
 
-    def extract_bboxes(self, file_name):
+    def extract_bboxes(self, file_index, file_name):
         """Extractor which creates whole board description in TF-REC format"""
 
         # Get registrator
@@ -455,7 +473,7 @@ class DatasetGenerator:
                 'image/object/class/text': dataset_util.bytes_list_feature(txts),
                 'image/object/class/label': dataset_util.int64_list_feature(lbls)
             }))
-            self.tf_writer.write(features.SerializeToString())
+            self.get_tf_writer(file_index).write(features.SerializeToString())
             self.counts['bboxes'] += 1
 
         else:
@@ -464,7 +482,7 @@ class DatasetGenerator:
         f_reg.register_file(file_name)
         f_reg.close()
 
-    def one_file(self, file_name):
+    def one_file(self, file_index, file_name):
         # Open board
         print("Processing file " + str(file_name))
         try:
@@ -482,7 +500,7 @@ class DatasetGenerator:
             if extractor_fn is None:
                 raise ValueError('Cannot find a handler to generate dataset ', k)
             else:
-                extractor_fn(file_name)
+                extractor_fn(file_index, file_name)
 
         for k in self.counts: self.totals[k] += self.counts[k]
 
@@ -491,19 +509,19 @@ class DatasetGenerator:
         parser = ArgumentParser()
         parser.add_argument('pattern', help = 'Selection pattern')
         parser.add_argument('-p', '--positive',
-            help = 'Directory to store positives dataset (images with stones)')
+            help = 'Directory to store positives (images with stones) dataset')
         parser.add_argument('-n', '--negative',
-            help = 'Directory to store negatives dataset (images without stones)')
+            help = 'Directory to store negatives (images without stones) dataset')
         parser.add_argument('-s', '--stones',
             help = "Directory to store stones dataset (stone images, separately for black and white)")
         parser.add_argument('-c', '--crossings',
             help = "Directory to store line crossings and edges dataset (images of board grid lines crossings, " + \
                     "separately for edges, borders crossings and grid lines crossings)")
         parser.add_argument('-b', '--bboxes',
-            help = "Directory to store bboxes dataset")
+            help = "Directory to store bboxes dataset (one file describing all boards)")
         parser.add_argument('-m', '--method',
             choices = ["single", "enclosed", "both"], default = "both",
-            help = "Stone image extration method, one of: " + \
+            help = "Stone image extration method (for all datasets except bboxes), one of: " + \
                 "single - extract areas of single-staying stones, " + \
                 "enclosed - extract areas of stones enclosed by other stones, " + \
                 "both - extract all stones")
@@ -523,13 +541,21 @@ class DatasetGenerator:
             action="store_true",
             default = False,
             help = 'Do not generate grid line crossing images')
-        parser.add_argument('--rotate', type = int,
-            nargs = 2,
-            default = [0, 0],
-            help = 'Two numbers specifying how many rotation images shall be created and an angle for each rotation')
+        parser.add_argument('--rotate',
+            type=int,
+            nargs=2,
+            default=[0, 0],
+            help='Two numbers specifying how many rotation images shall be created and an angle for each rotation')
         parser.add_argument('--bbox-fmt',
-            choices = ["json", "tf"], default = "json",
-            help = "BBoxes definition format, json or tf-record (if Tensorflow is available)")
+            choices=['json', 'tf'], default = 'json',
+            help="BBoxes definition format, either JSON or TF-record (if Tensorflow is available)")
+        parser.add_argument('--bbox-split',
+            type=float,
+            help="A float value setting bboxes dataset split to train/test datasets")
+        parser.add_argument('--bbox-shuffle',
+            action='store_true',
+            default=True,
+            help="If True, bboxes dataset is shuffled before splitting")
 
         args = parser.parse_args()
         self.dirs['positive'] = args.positive
@@ -553,6 +579,10 @@ class DatasetGenerator:
         self.n_resize = args.resize
         self.no_grid = args.no_grid
         self.n_rotate = args.rotate
+
+        self.bbox_split = args.bbox_split
+        self.bbox_shuffle = args.bbox_shuffle
+
         self.bbox_fmt= args.bbox_fmt
         if self.bbox_fmt == 'tf' and not TF_AVAIL:
             print('TF-record bboxes output requested, but TF is not available. Switching to JSON')
@@ -588,21 +618,14 @@ class DatasetGenerator:
             head, tail = os.path.split(self.pattern)
             if tail == '': pattern = os.path.join(self.pattern, "*.*")
 
-        # Prepare stats
-        self.totals = {k: 0 for k in self.datasets}
-        self.counts = self.totals.copy()
-
-        # Get a TF writer if neeeded
-        if self.bbox_fmt == 'tf' and self.tf_writer is None:
-            self.tf_writer = \
-                tf.io.TFRecordWriter(str(Path(self.dirs['bboxes']).joinpath('go_board.tfrecord')))
-
-        # Iterate
+        # Load all files
+        file_list = []
+        print('Counting files...')
         for x in glob.iglob(self.pattern):
             if os.path.isfile(x):
                 if Path(x).suffix != '.gpar':
                     # Image files processed as is
-                    self.one_file(x)
+                    file_list.append(str(x))
                 else:
                     # For .gpar files, try to find an image
                     found = False
@@ -610,20 +633,44 @@ class DatasetGenerator:
                         f = Path(x).with_suffix(sx)
                         found = f.exists()
                         if found:
-                            self.one_file(f)
+                            file_list.append(str(f))
                             break
 
                     if not found:
                         print("==> Cannot find an image which corresponds to {} param file".format(x))
 
-        # Statistics
-        print("Files generated:")
+        # Prepare stats
+        self.file_count = len(file_list)
+        self.totals = {k: 0 for k in self.datasets}
+        self.counts = self.totals.copy()
+
+        # Shuffle the list if requested
+        if self.bbox_shuffle:
+            shuffle(file_list)
+
+        # Get TF writers
+        if self.bbox_fmt == 'tf':
+            if self.bbox_split is None:
+                self.tf_writers['all'] = \
+                    tf.io.TFRecordWriter(str(Path(self.dirs['bboxes']).joinpath('go_board.tfrecord')))
+            else:
+                self.tf_writers['train'] = \
+                    tf.io.TFRecordWriter(str(Path(self.dirs['bboxes']).joinpath('go_board_train.tfrecord')))
+                self.tf_writers['val'] = \
+                    tf.io.TFRecordWriter(str(Path(self.dirs['bboxes']).joinpath('go_board_val.tfrecord')))
+
+        # Process files
+        for n, x in enumerate(file_list):
+            self.one_file(n, x)
+
+        # Show statistics
+        print("Dataset items created:")
         for k, v in self.totals.items():
             print("\t{}: {}".format(k, v))
 
         # Clean up
-        if self.tf_writer is not None:
-            self.tf_writer.close()
+        for w in self.tf_writers.values():
+            if w is not None: w.close()
 
 if __name__ == '__main__':
     app = DatasetGenerator()
