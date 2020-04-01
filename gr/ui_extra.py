@@ -485,10 +485,11 @@ class StatusPanel(tk.Frame):
 
     def __get_maxw(self):
         """Internal function"""
+        w = self.winfo_width()
         if self.__max_width == 0:
-            return self.winfo_width()
+            return w
         else:
-            return min(self.__max_width, self.winfo_width())
+            return min(self.__max_width, w) if w > 1 else self.__max_width
 
     def set(self, text):
         """Set status as text. If text is larger than current panel size, it's been
@@ -814,7 +815,7 @@ class ImagePanel(tk.Frame):
             r, g, b = c[0]/256, c[1]/256, c[2]/256
             orig_shape = self.__image.shape
             self.__image, self.__scale, self.__offset = resize3(self.__src_image,
-                          max_size = size,
+                          new_size = size,
                           scale = scale,
                           f_upsize = True,
                           f_center = True,

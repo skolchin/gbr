@@ -245,20 +245,21 @@ class GrBoard:
         img = generate_board(shape = self._img.shape, res = r, f_show_det = f_det)
         return img
 
-    def resize_board(self, max_size = None, scale = None):
+    def resize_board(self, new_size=None, scale=None):
         """Resize board image and stone coordinations to new size or scale.
         See gr.utils.resize3() for parameters info"""
 
         def resize_stones(stones, scale):
             ret_stones = []
-            for st in stones:
-                st[GR_X] = int(st[GR_X] * scale[0])
-                st[GR_Y] = int(st[GR_Y] * scale[1])
-                st[GR_R] = int(st[GR_R] * max(scale[0], scale[1]))
-                ret_stones.append(st)
+            if stones is not None:
+                for st in stones:
+                    st[GR_X] = int(st[GR_X] * scale[0])
+                    st[GR_Y] = int(st[GR_Y] * scale[1])
+                    st[GR_R] = int(st[GR_R] * max(scale[0], scale[1]))
+                    ret_stones.append(st)
             return np.array(ret_stones)
 
-        self._img, scale = resize2(self._img, max_size)
+        self._img, scale = resize2(self._img, new_size)
         if not self._res is None:
             self._res[GR_STONES_B] = resize_stones(self._res[GR_STONES_B], scale)
             self._res[GR_STONES_W] = resize_stones(self._res[GR_STONES_W], scale)
@@ -269,8 +270,8 @@ class GrBoard:
                                         (self._res[GR_EDGES][1][0] * scale[0], \
                                         self._res[GR_EDGES][1][1] * scale[1]))
             self._stones.clear()
-            self._stones.add(self._res[GR_STONES_B])
-            self._stones.add(self._res[GR_STONES_W])
+            self._stones.add(self._res[GR_STONES_B], STONE_BLACK)
+            self._stones.add(self._res[GR_STONES_W], STONE_WHITE)
 
     @property
     def params(self):

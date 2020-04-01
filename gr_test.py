@@ -39,12 +39,14 @@ class GrBoardEdit(object):
         self.imgPanel = addImagePanel(self.imgFrame,
               caption = "Image",
               image = img,
-              max_size = 800,
+              max_size = 600,
               mode = "fit",
               min_size = 300,
               scrollbars = False)
         self.imgPanel.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
 
+        ImgButton(self.imgPanel.headerPanel, tag = "save",
+            tooltip = "Testing", command = self.test_callback).pack(side = tk.RIGHT)
         ImgButton(self.imgPanel.headerPanel, tag = "reset",
             tooltip = "Reset after transformation", command = self.transf_reset_callback).pack(side = tk.RIGHT)
         ImgButton(self.imgPanel.headerPanel, tag = "area",
@@ -57,7 +59,7 @@ class GrBoardEdit(object):
         self.imgMask = ImageMask(self.imgPanel,
             allow_change = True,
             show_mask = True,
-            mode = 'split',
+            mode = 'area',
             size = 21,
             mask_callback = self.mask_callback)
         self.mask_callback(self.imgMask)
@@ -125,12 +127,14 @@ class GrBoardEdit(object):
     def move_callback(self, event):
         print(event.x, event.y)
 
+    def test_callback(self, event):
+        event.cancel = True
+
 
 # Main function
 def main():
 
-    #img = cv2.imread('img\\go_board_1.png')
-    img = cv2.imread("C:\\Users\\kol\\Documents\\kol\\car-damage\\img\\\photo_001.jpg")
+    img = cv2.imread('img\\go_board_1.png')
     #img = cv2.imread('img\\go_board_47.jpg')
     #img = cv2.imread('img\\go_board_15_large.jpg')
     #img = cv2.imread('img\\go_board_8.png')

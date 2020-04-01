@@ -1072,13 +1072,14 @@ class GbrGUI2(tk.Tk):
     def end_transform_callback(self, t, img):
         """Image transformation complete/cancelled"""
         self.bg.buttons['edge'].state = False
-        self.bg.buttons['reset'].disabled = img is not None
+        self.bg.buttons['reset'].disabled = img is None
         if img is not None:
             self.board.image = self.imagePanel.image
             self.board.param_transform_rect = t.scaled_rect
             self.board.param_board_edges = None
             self.board.param_board_size = None
             self.boardGrid.default_mask()
+            self.board.save_params()
 
     def set_area_callback(self, event):
         """Set area button click"""
@@ -1126,6 +1127,7 @@ class GbrGUI2(tk.Tk):
         self.imageMarker.clear()
         self.imageTransform.reset()
         self.board.reset_image()
+        self.board.save_params()
 
         self.imagePanel.set_image(self.board.image)
         self.boardGrid.scaled_mask = self.board.param_board_edges
@@ -1169,8 +1171,10 @@ class GbrGUI2(tk.Tk):
         self.log.show()
 
     def area_mask_callback(self, mask):
-        """Grid mask resizing finished"""
+        """Area boundaries resizing finished"""
         self.board.param_area_mask = mask.scaled_mask
+        #self.board.resize_board((300, 200))
+        #self.imagePanel.set_image(self.board.image)
 
     def grid_mask_callback(self, mask):
         """Grid mask resizing finished"""
@@ -1211,7 +1215,7 @@ class GbrGUI2(tk.Tk):
         if self.log.errors > 0:
             self.statusBar.set("Errors during file loading, click here for the log")
         else:
-            self.statusBar.set_file("File loaded", self.board.image_file)
+            self.statusBar.set_file("File loaded:", self.board.image_file)
             self.bg.buttons['reset'].disabled = not self.board.can_reset_image
             self.bg["has_file"].disabled = False
 
@@ -1288,6 +1292,8 @@ class GbrGUI2(tk.Tk):
 # Main function
 def main():
     window = GbrGUI2()
+    window.update()
+    #window.load_image('img\\go_board_48.jpg')
     window.mainloop()
     cv2.destroyAllWindows()
 
