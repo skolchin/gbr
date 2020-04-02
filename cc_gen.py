@@ -15,7 +15,7 @@ import numpy as np
 import cv2
 import json
 from pathlib import Path
-from random import randrange, shuffle
+from random import randint, randrange, shuffle
 from argparse import ArgumentParser
 from copy import deepcopy
 from collections import OrderedDict
@@ -35,34 +35,35 @@ except:
 
 
 class DatasetWriter:
+    """Basic dataset writer"""
     def __init__(self, root_dir, file_count, split, reg_name):
         self.root_dir, self.file_count = root_dir, file_count
         self.reg_name, self.split = reg_name, split
 
         self.file_index, self.file_name, self.file_image = None, None, None
-        self.image_index = 0
-
-    def cleanup(self):
-        pass
+        self.area_index, self.area_count = None, None
 
     def get_next_fname(self, label=None, ext='.png'):
         """Derive image file from source file name"""
         prefix = Path(self.file_name).stem + "_" + Path(self.file_name).suffix[1:]
 
-        fn = str(prefix) + "_" + str(self.image_index).zfill(3) + ext
+        fn = str(prefix) + "_" + str(self.area_index).zfill(3) + ext
         path = []
 
         if label is not None:
             path.append(label)
         if self.split is not None and self.split > 0:
-            if self.image_index <= self.file_count * (1.0 - self.split):
+            if self.area_count is None:
+                raise ValueError('Area count must be set')
+
+            if self.area_index < self.area_count * (1.0 - self.split):
                 path.append('train')
             else:
                 path.append('val')
 
         path.append(fn)
         fn = Path(self.root_dir).joinpath(*path)
-        self.image_index += 1
+        self.area_index += 1
 
         return fn
 
@@ -73,7 +74,10 @@ class DatasetWriter:
         if label is not None:
             path.append(label)
         if self.split is not None and self.split > 0:
-            if self.image_index <= self.file_count * (1.0 - self.split):
+            if self.area_count is None:
+                raise ValueError('Area count must be set')
+
+            if self.area_index < self.area_count * (1.0 - self.split):
                 path.append('train')
             else:
                 path.append('val')
@@ -83,9 +87,10 @@ class DatasetWriter:
         fn.parent.mkdir(exist_ok=True, parents=True)
         return fn
 
-    def set_image(self, file_index, file_name, file_image):
+    def set_image(self, file_index, file_name, file_image, area_count):
         self.file_index, self.file_name, self.file_image = file_index, file_name, file_image
-        self.image_index = 0
+        self.area_index, self.area_count = 0, area_count
+
         self.write_image_info()
 
     def write_image_info(self):
@@ -100,6 +105,9 @@ class DatasetWriter:
         pass
 
     def finish_image(self):
+        pass
+
+    def close(self):
         pass
 
 class TxtDatasetWriter(DatasetWriter):
@@ -123,25 +131,29 @@ class TxtDatasetWriter(DatasetWriter):
 
 
 class TfDatasetWriter(DatasetWriter):
-    def __init__(self, root_dir, file_count, split=None, reg_name='description.txt'):
+    def __init__(self, root_dir, file_count, split=None, reg_name='description.txt',
+                 base_name='go_board.tfrecord'):
         super(TfDatasetWriter, self).__init__(root_dir, file_count, split, reg_name)
+
         self.tf_writers = {'all': None, 'train': None, 'val': None}
         self.txts, self.lbls, self.xmins, self.xmaxs, self.ymins, self.ymaxs = [], [], [], [], [], []
 
+        # Writer mode, either `single` (whole board image file) or `multi` (multiple image parts)
+        self.mode = 'single'
+
         # Get TF writers
         if self.split is None:
-            self.tf_writers['all'] = \
-                tf.io.TFRecordWriter(str(Path(self.root_dir).joinpath('go_board.tfrecord')))
+            self.tf_writers['all'] = tf.io.TFRecordWriter(str(Path(self.root_dir).joinpath(base_name)))
         else:
-            self.tf_writers['train'] = \
-                tf.io.TFRecordWriter(str(Path(self.root_dir).joinpath('go_board_train.tfrecord')))
-            self.tf_writers['val'] = \
-                tf.io.TFRecordWriter(str(Path(self.root_dir).joinpath('go_board_val.tfrecord')))
+            for k in ['train', 'val']:
+                fn = Path(base_name).stem + '_' + k + Path(base_name).suffix
+                self.tf_writers[k] = tf.io.TFRecordWriter(str(Path(self.root_dir).joinpath(fn)))
 
     def write_image_info(self):
         self.txts, self.lbls, self.xmins, self.xmaxs, self.ymins, self.ymaxs = [], [], [], [], [], []
 
     def write_area(self, area, label):
+        self.mode = 'single'
         height, width = self.file_image.shape[:2]
         self.txts.append(str.encode(label, 'utf-8'))
         self.lbls.append(1 if label == 'black' else 2)
@@ -150,21 +162,47 @@ class TfDatasetWriter(DatasetWriter):
         self.xmaxs.append(area[2] / width)
         self.ymaxs.append(area[3] / height)
 
-    def write_area_image(self, area, area_image, label=None):
-        raise NotImplementedError('Not implemented yet')
+    def write_area_image(self, area, area_image, label):
+        self.mode = 'multi'
+        height, width = area_image.shape[:2]
+        txts = [str.encode(label, 'utf-8')]
+        lbls = [1 if label == 'black' else 2]
+        xmins = [area[0] / width]
+        ymins = [area[1] / height]
+        xmaxs = [area[2] / width]
+        ymaxs = [area[3] / height]
+        fn_area = self.get_next_fname(label)
+
+        self.save_image(
+            self.area_index, fn_area, area_image, self.area_count,
+            [txts, lbls, xmins, xmaxs, ymins, ymaxs]
+        )
 
     def finish_image(self):
+        if self.mode == 'single':
+            self.save_image(
+                self.file_index, self.file_name, self.file_image, self.file_count,
+                [self.txts, self.lbls, self.xmins, self.xmaxs, self.ymins, self.ymaxs]
+            )
+
+    def encode_image(self, image):
         # Encode image as JPEG via temp file
-        fn_tmp = Path(self.root_dir).joinpath('_tmp.jpeg')
-        cv2.imwrite(str(fn_tmp), self.file_image)
+        fn_tmp = Path(self.root_dir).joinpath('_tmp_' + str(randint(1,100)) + '.jpeg')
+        cv2.imwrite(str(fn_tmp), image)
         with open(str(fn_tmp), 'rb') as f_tmp:
             img_raw = f_tmp.read()
             f_tmp.close()
         fn_tmp.unlink()
+        return img_raw
+
+    def save_image(self, image_index, image_file, image, image_count, feature_comps):
+        # Get encoded image
+        img_raw = self.encode_image(image)
 
         # Make up features
-        height, width = self.file_image.shape[:2]
-        fname = str(Path(self.file_name).parts[-1])
+        height, width = image.shape[:2]
+        fname = str(Path(image_file).parts[-1])
+        txts, lbls, xmins, xmaxs, ymins, ymaxs = feature_comps
 
         features = tf.train.Example(features=tf.train.Features(feature={
             'image/width': dataset_util.int64_feature(width),
@@ -173,31 +211,31 @@ class TfDatasetWriter(DatasetWriter):
             'image/source_id': dataset_util.bytes_feature(str.encode(fname, 'utf-8')),
             'image/format': dataset_util.bytes_feature(b'jpg'),
             'image/encoded': dataset_util.bytes_feature(img_raw),
-            'image/object/bbox/xmin': dataset_util.float_list_feature(self.xmins),
-            'image/object/bbox/xmax': dataset_util.float_list_feature(self.xmaxs),
-            'image/object/bbox/ymin': dataset_util.float_list_feature(self.ymins),
-            'image/object/bbox/ymax': dataset_util.float_list_feature(self.ymaxs),
-            'image/object/class/text': dataset_util.bytes_list_feature(self.txts),
-            'image/object/class/label': dataset_util.int64_list_feature(self.lbls)
+            'image/object/bbox/xmin': dataset_util.float_list_feature(xmins),
+            'image/object/bbox/xmax': dataset_util.float_list_feature(xmaxs),
+            'image/object/bbox/ymin': dataset_util.float_list_feature(ymins),
+            'image/object/bbox/ymax': dataset_util.float_list_feature(ymaxs),
+            'image/object/class/text': dataset_util.bytes_list_feature(txts),
+            'image/object/class/label': dataset_util.int64_list_feature(lbls)
         }))
 
         # Save to appropriate TF writer
         tf_writer = self.tf_writers['all']
         if tf_writer is None:
             tf_writer = self.tf_writers['train'] \
-                        if self.file_index <= self.file_count * (1.0 - self.split) \
+                        if image_index < image_count * (1.0 - self.split) \
                         else self.tf_writers['val']
 
         tf_writer.write(features.SerializeToString())
 
         # Register file
-        mode = 'w' if self.file_index == 0 else 'a'
-        fn_reg = self.get_reg_fname()
+        mode = 'w' if image_index == 0 else 'a'
+        fn_reg = str(Path(self.root_dir).joinpath(self.reg_name))
         with open(str(fn_reg), mode) as f_reg:
-            f_reg.write('{}\n'.format(self.file_name))
+            f_reg.write('{}\n'.format(image_file))
             f_reg.close()
 
-    def cleanup(self):
+    def close(self):
         for w in self.tf_writers.values():
             if w is not None: w.close()
 
@@ -233,8 +271,8 @@ class DatasetGenerator:
         # Rotation vector (0: how many images to generate, 1: rotation angle)
         self.n_rotate = [0, 0]
 
-        # Dataset output format (json, tf)
-        self.format = 'json'
+        # Dataset output format (txt, json, xml, tf)
+        self.format = 'txt'
 
         # Dataset split and shuffle flags
         self.split = None
@@ -314,6 +352,12 @@ class DatasetGenerator:
 
         return stop_index - start_index
 
+    def add_count(self, key):
+        if key in self.counts:
+            self.counts[key] += 1
+        else:
+            self.counts[key] = 1
+
     def extract_stone_area(self, stone):
         x, y, a, b, r, bw = stone
         fs = self.get_space(r, self.spacing['single'])
@@ -357,9 +401,10 @@ class DatasetGenerator:
             self.stone_areas.extend([area])
         return area
 
-    def extract_crossing_range(self, file_name, label, ranges):
+    def extract_crossing_range(self, file_index, file_name, label, ranges):
+        # Get all crossings in a list
         cs = self.get_space(4, self.spacing['crossing'])
-
+        crossings = []
         for r in ranges:
             for y in r[0]:
                 for x in r[1]:
@@ -370,11 +415,25 @@ class DatasetGenerator:
                             min(x+cs+2, self.board.image.shape[CV_WIDTH]),
                             min(y+cs+2, self.board.image.shape[CV_HEIGTH])]
 
-                        self.ds_writers['crossings'].write_area(area, label)
-                        self.counts['crossings'] += 1
+                        crossings.append(area)
 
+        # Prepare the writer
+        self.ds_writers['crossings'].set_image(file_index,
+                                               file_name,
+                                               self.board.image,
+                                               len(crossings))
 
-    def extract_border_crossings(self, file_name):
+        # Proceed
+        for area in crossings:
+            area_img = get_image_area(self.board.image, area)
+            self.ds_writers['crossings'].write_area_image(area, area_img, label)
+            self.add_count('crossings\\' + label)
+
+        # Finalize
+        self.ds_writers['crossings'].finish_image()
+
+    def extract_border_crossings(self, file_index, file_name):
+        """External grid crossings dataset extractor. Called from within crossings extractor"""
         edges = self.board.results[GR_EDGES]
         space = self.board.results[GR_SPACING]
 
@@ -400,10 +459,11 @@ class DatasetGenerator:
                 range(int(edges[0][0]+space[0]), int(edges[1][0]-space[0]), int(space[0]))
             )
         ]
-        self.extract_crossing_range(file_name, 'border', ranges)
+        self.extract_crossing_range(file_index, file_name, 'border', ranges)
 
 
-    def extract_inboard_crossings(self, file_name):
+    def extract_inboard_crossings(self, file_index, file_name):
+        """Internal grid crossing dataset extractor. Called from within crossings extractor"""
         edges = self.board.results[GR_EDGES]
         space = self.board.results[GR_SPACING]
 
@@ -413,9 +473,10 @@ class DatasetGenerator:
                 range(int(edges[0][0]+space[0]), int(edges[1][0]-space[0]), int(space[0]))
             )
         ]
-        self.extract_crossing_range(file_name, "cross", ranges)
+        self.extract_crossing_range(file_index, file_name, "cross", ranges)
 
-    def extract_edges(self, file_name):
+    def extract_edges(self, file_index, file_name):
+        """Edges dataset extractor. Called from within crossings extractor"""
         edges = self.board.results[GR_EDGES]
         ranges = [
             (
@@ -435,7 +496,7 @@ class DatasetGenerator:
                 [edges[1][0]]
             ),
         ]
-        self.extract_crossing_range(file_name, 'edge', ranges)
+        self.extract_crossing_range(file_index, file_name, 'edge', ranges)
 
     def extract_positive(self, file_index, file_name):
         """Positives (stones) dataset extractor"""
@@ -480,34 +541,58 @@ class DatasetGenerator:
 
     def extract_stones(self, file_index, file_name):
         """Stones dataset extractor"""
+        # Prepare the writer
+        self.ds_writers['stones'].set_image(file_index,
+                                            file_name,
+                                            self.board.image,
+                                            len(self.board.all_stones))
 
-        def extract_stones_bw(bw, label):
-            stones = [x for x in self.board.all_stones if x[GR_BW] == bw]
 
-            for stone in stones:
-                area = self.extract_stone_area(stone)
-                if area is not None:
-                    self.ds_writers['stones'].write_area(area, label)
-                    self.counts['stones'] += 1
+        # Shuffle stones list if split is requested
+        stones = deepcopy(self.board.all_stones)
+        if self.shuffle and self.split > 0:
+            shuffle(stones)
 
-        extract_stones_bw('B', 'black')
-        extract_stones_bw('W', 'white')
+        # Process stones
+        for stone in stones:
+            label = 'black' if stone[GR_BW] == 'B' else 'white'
+            area = self.extract_stone_area(stone)
+            if area is not None:
+                area_img = get_image_area(self.board.image, area)
+                self.ds_writers['stones'].write_area_image(area, area_img, label)
+                self.add_count('stones\\' + label)
+
+        # Finalize
+        self.ds_writers['stones'].finish_image()
 
     def extract_crossings(self, file_index, file_name):
         """Crossings dataset extractor"""
-        self.extract_edges(file_name)
-        self.extract_border_crossings(file_name)
+        self.extract_edges(file_index, file_name)
+        self.extract_border_crossings(file_index, file_name)
         if not self.no_grid:
-            self.extract_inboard_crossings(file_name)
+            self.extract_inboard_crossings(file_index, file_name)
 
     def extract_bboxes(self, file_index, file_name):
         """Extractor which creates whole board description in TF-record format"""
+
+        # Prepare the writer
+        self.ds_writers['bboxes'].set_image(file_index,
+                                            file_name,
+                                            self.board.image,
+                                            len(self.board.all_stones))
 
         # Generate .names and label map files
         fn_map = Path(self.dirs['bboxes']).joinpath('go_board.names')
         if not fn_map.exists():
             with open(str(fn_map), 'w') as f_map:
                 f_map.write('black\nwhite\n')
+                f_map.close()
+
+        fn_map = Path(self.dirs['bboxes']).joinpath('go_board.pbtxt')
+        if not fn_map.exists():
+            with open(str(fn_map), 'w') as f_map:
+                f_map.write('item {\n\tid: 1\n\tname: \'black\'\n}\n' + \
+                            'item {\n\tid: 2\n\tname: \'white\'\n}\n')
                 f_map.close()
 
         # Resize board
@@ -521,7 +606,9 @@ class DatasetGenerator:
                 label = 'black' if stone[GR_BW] == STONE_BLACK else 'white'
                 self.ds_writers['bboxes'].write_area(area, label)
 
-        self.counts['bboxes'] += 1
+        # Finalize
+        self.ds_writers['bboxes'].finish_image()
+        self.add_count('bboxes')
 
     def one_file(self, file_index, file_name):
         # Open board
@@ -537,17 +624,16 @@ class DatasetGenerator:
         for k in self.counts: self.counts[k] = 0
 
         for k in self.datasets:
-            self.ds_writers[k].set_image(file_index, file_name, self.board.image)
-
             extractor_fn = getattr(self, 'extract_' + k, None)
             if extractor_fn is None:
                 raise ValueError('Cannot find a handler to generate dataset ', k)
-
             extractor_fn(file_index, file_name)
-            self.ds_writers[k].finish_image()
 
-        for k in self.counts: self.totals[k] += self.counts[k]
-
+        for k in self.counts:
+            if k in self.totals:
+                self.totals[k] += self.counts[k]
+            else:
+                self.totals[k] = self.counts[k]
 
     def get_args(self):
         parser = ArgumentParser()
@@ -633,7 +719,7 @@ class DatasetGenerator:
         self.format = args.format
 
         if self.format == 'tf' and not TF_AVAIL:
-            print('TF-record output requested, but Tensorflow is not available. Switching to JSON output')
+            print('TF-record output requested, but Tensorflow is not available. Switching to text output')
             self.format = 'json'
         if self.format == 'txt' and args.bboxes is not None:
             raise ValueError('Cannot generate bboxes dataset in text output format')
@@ -689,13 +775,14 @@ class DatasetGenerator:
                     if not found:
                         print("==> Cannot find an image which corresponds to {} param file".format(x))
 
+        # Shuffle, if requested
         if self.shuffle:
+            print('Shuffling file list')
             shuffle(file_list)
 
         # Prepare stats
         self.file_count = len(file_list)
-        self.totals = {k: 0 for k in self.datasets}
-        self.counts = self.totals.copy()
+        self.totals, self.counts = {}, {}
 
         # Get dataset writers
         if self.format == 'txt':
@@ -715,7 +802,7 @@ class DatasetGenerator:
 
         # Finalize
         for w in self.ds_writers.values():
-            w.cleanup()
+            w.close()
 
         # Show statistics
         print("Dataset items created:")
