@@ -1,18 +1,11 @@
-#-------------------------------------------------------------------------------
-# Name:        Go board recognition project
-# Purpose:     Binder class
-#
-# Author:      kol
-#
-# Created:     06.01.2020
-# Copyright:   (c) kol 2020
-# Licence:     MIT
-#-------------------------------------------------------------------------------
-import os
+# Go board recognition project
+# Binder class
+# (c) kol, 2019-2023
+
 import weakref
 import logging
 
-class NBinder(object):
+class NBinder:
     """ Supplementary class to manage widget bindings.
 
         Tkinter management of event binding doesn't properly manage registration/deregistraion

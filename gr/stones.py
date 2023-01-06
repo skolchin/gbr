@@ -1,17 +1,11 @@
-#-------------------------------------------------------------------------------
-# Name:        Go board recognition project
-# Purpose:     Go stone and stone collection class
-#
-# Author:      kol
-#
-# Created:     23.12.2019
-# Copyright:   (c) kol 2019
-# Licence:     MIT
-#-------------------------------------------------------------------------------
-from .grdef import *
-from .utils import format_stone_pos, stone_pos_from_str
+# Go board recognition project
+# Stone and stone collection classes
+# (c) kol, 2019-2023
 
 import numpy as np
+
+from .grdef import *
+from .utils import format_stone_pos, stone_pos_from_str
 
 # A stone class
 class GrStone(object):

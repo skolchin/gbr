@@ -1,22 +1,14 @@
-#-------------------------------------------------------------------------------
-# Name:        Go board recognition project
-# Purpose:     Misc functions
-#
-# Author:      kol et all
-#              Parts of the code were found obtained from public sources
-#              (specifically, from slashdot.org)
-#
-# Created:     04.07.2019
-# Copyright:   (c) kol 2019
-# Licence:     MIT
-#-------------------------------------------------------------------------------
+# Go board recognition project
+# Misc functions
+# (c) kol, 2019-2023
 
-from .grdef import *
 import cv2
 import numpy as np
-from PIL import Image, ImageTk
 import string as ss
+from PIL import Image, ImageTk
 from random import randint
+
+from .grdef import *
 
 def show(title, img):
     """Show an image and wait for key press"""

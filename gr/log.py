@@ -1,20 +1,12 @@
-#-------------------------------------------------------------------------------
-# Name:        Go board recognition project
-# Purpose:     Log display modal window and GrLog supporting class
-#
-# Author:      kol
-#
-# Created:     03.09.2019
-# Copyright:   (c) kol 2019
-# Licence:     MIT
-#-------------------------------------------------------------------------------
-from .ui_extra import GrDialog
+# Go board recognition project
+# Logging functions and GrLog dialog class
+# (c) kol, 2019-2023
 
 import logging
 import tkinter as tk
 from io import StringIO
-from time import clock
-from functools import reduce
+
+from .ui_extra import GrDialog
 
 class GrLogDlg(GrDialog):
     """Log display dialog"""
@@ -180,17 +172,3 @@ class GrLogger(object):
     def warning(self, *args, **kwargs):
         """Sends a warning message to current logger"""
         self.__logger.warning(*args, **kwargs)
-
-
-    def start(self):
-        """Saves time of some code execution start"""
-        self.t = clock()
-        return self.t
-
-    def stop(self):
-        """Returns execution time"""
-        # Taken from https://stackoverflow.com/questions/1557571/how-do-i-get-time-of-a-python-programs-execution
-        self.t = clock() - self.t
-        return "%d:%02d:%02d.%03d" % \
-            reduce(lambda v,b : divmod(v[0],b) + v[1:], [(self.t*1000,),1000,60,60])
-

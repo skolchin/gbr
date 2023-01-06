@@ -1,13 +1,12 @@
-from copy import deepcopy
+import sys
+sys.path.append('../')
+
 import numpy as np
-import gc
 import psutil
 import os
 import logging
 import tkinter as tk
-
-import sys
-sys.path.append('../')
+from copy import deepcopy
 
 from gr.binder import NBinder
 
