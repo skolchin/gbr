@@ -1,0 +1,5 @@
+numpy==1.22.3
+opencv-python==4.6.0
+sgfmill==1.1.1
+imutils==0.5.4
+Pillow==9.2.0

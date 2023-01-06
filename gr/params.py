@@ -1,15 +1,10 @@
-#-------------------------------------------------------------------------------
-# Name:        Go board recognition project
-# Purpose:     Board recognition parameters defintion and processing classes
-#
-# Author:      kol
-#
-# Created:     10.12.2019
-# Copyright:   (c) kol 2019
-# Licence:     MIT
-#-------------------------------------------------------------------------------
-from .grdef import *
+# Go board recognition project
+# Board recognition parameters and support  classes
+# (c) kol, 2019-2023
+
 import numpy as np
+
+from .grdef import *
 
 # List if parameter groups
 GROUP_BOARD = '.'
@@ -32,16 +27,16 @@ GR_PARAMS = {
     "HL_THETA":     {"v": 90, "min_v": 1, "max_v": 90, "no_copy": True},        # HoughLines theta - cannot be changed
     "HL_THRESHOLD": {"v": 0, "min_v": 0, "max_v": 255, "no_copy": True},        # HoughLines threshold - cannot be changed
     "HL_MINLEN":    {"v": 0, "min_v": 0, "max_v": 30, "no_copy": True},         # HoughLines min len - cannot be changed
-    "HL_RHO2":      {"v": 1, "min_v": 1, "max_v": 5, "no_copy": True},          # HoughLinesP threshold - cannot be changed
+    "HL_RHO2":      {"v": 2, "min_v": 1, "max_v": 5, "no_copy": True},          # HoughLinesP threshold - cannot be changed
     "HC_MINDIST":   {"v": 1, "min_v": 1, "max_v": 5, "no_copy": True},          # HoughCircles min distance - not used
     "HC_MAXRADIUS": {"v": 20, "min_v": 1, "max_v": 40, "no_copy": True},        # HoughCircles max radius - not used
 
     # Board params group
     'BOARD_SIZE': {"v": 19, "min_v": 9, "max_v": 21, "g": GROUP_BOARD,
         "title": "Board size", "n": 1, "no_opt": True},                         # Board size
-    "HL_THETA2": {"v": 6, "min_v": 1, "max_v": 90, "g": GROUP_BOARD,
+    "HL_THETA2": {"v": 1, "min_v": 1, "max_v": 90, "g": GROUP_BOARD,
         "title": "Angle", "n": 2},                                              # HoughLinesP theta
-    "HL_THRESHOLD2": {"v": 40, "min_v": 1, "max_v": 255, "g": GROUP_BOARD,
+    "HL_THRESHOLD2": {"v": 174, "min_v": 1, "max_v": 1000, "g": GROUP_BOARD,
         "title": "Threshold", "n": 3},                                          # HoughLinesP threshold
     'LUM_EQ': {"v": 0, "min_v": 0, "max_v": 1, "g": GROUP_BOARD,
         "title": "Luminosity filter", "n": 4},                                  # CLAHE filter on/off

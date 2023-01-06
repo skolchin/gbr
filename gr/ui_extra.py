@@ -1,22 +1,14 @@
-#-------------------------------------------------------------------------------
-# Name:        Go board recognition project
-# Purpose:     UI classes and functions
-#
-# Author:      kol
-#
-# Created:     04.07.2019
-# Last change: 17.07.2020
-# Copyright:   (c) kol 2019-2020
-# Licence:     MIT
-#-------------------------------------------------------------------------------
-import os
-from PIL import Image, ImageTk
-from pathlib import Path
+# Go board recognition project
+# UI classes and functions
+# (c) kol, 2019-2023
+
 import random
 import numpy as np
+from PIL import Image, ImageTk
+from pathlib import Path
 from imutils.perspective import four_point_transform
 from collections import namedtuple
-import sys
+
 import tkinter as tk
 from tkinter import ttk, font
 
@@ -33,16 +25,21 @@ CV_HEIGTH = 0
 # A label with additional tag
 class NLabel(tk.Label):
     """Label with additional tag"""
-    def __init__(self, master, tag=None, *args, **kwargs):
+    def __init__(self, master, tag = None, *args, **kwargs):
         tk.Label.__init__(self, master, *args, **kwargs)
         self.master, self.tag = master, tag
 
-# A button which can load UI image and keep a reference to image provided
 class NButton(tk.Button):
-    """Button with image"""
-    def __init__(self, master, *args, **kwargs):
-        self.__uimage = kwargs.pop("uimage", None)
-        self.__image = kwargs.get("image")
+    """Button with image. Differs from `ImgButton` as it can use any image.
+
+        Parameters:
+            master      Tk windows/frame
+            image:      A Pillow image
+            uimage:     A name of predefined image
+    """
+    def __init__(self, master, image = None, uimage = None, *args, **kwargs):
+        self.__uimage = uimage
+        self.__image = image
         if self.__uimage is not None and self.__image is None:
             self.__image = ImgButton.get_ui_image(self.__uimage)
             kwargs["image"] = self.__image
@@ -138,12 +135,12 @@ class ImgButton(tk.Label):
 
     @property
     def tag(self):
-        """Button tag"""
+        """A tag"""
         return self.__tag
 
     @property
     def state(self):
-        """Button state"""
+        """A state"""
         return self.__state
 
     @state.setter
@@ -231,7 +228,6 @@ class ImgButton(tk.Label):
             self.__dlg = None
         self.state = False
 
-
     @staticmethod
     def get_ui_image(name):
         """Static method to get an image from UI directory"""
@@ -251,7 +247,6 @@ class ImgButtonGroup:
     # Button group types
     BG_INDEPENDENT = "independent"
     BG_DEPENDENT = "dependent"
-
 
     # Enclosed group class
     class __Group:
@@ -1824,11 +1819,11 @@ class GrDialog(tk.Toplevel):
         """Override to setup after widget initialization done"""
         pass
 
-    def init_frame(self, internalFrame):
+    def init_frame(self, internalFrame: tk.Frame):
         """Override to add controls to internal frame"""
         pass
 
-    def init_buttons(self, buttonFrame):
+    def init_buttons(self, buttonFrame: tk.Frame):
         """Override to add buttons to button frame. Inherited method should be called."""
         if not self.ok_cancel:
             tk.Button(self.buttonFrame, text = "Close",

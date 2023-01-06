@@ -1,14 +1,16 @@
+# Go board recognition project
+# Main UI module
+# (c) kol, 2019-2023
 
-#-------------------------------------------------------------------------------
-# Name:        Go board recognition project
-# Purpose:     New GBR UI
-#
-# Author:      kol
-#
-# Created:     04.07.2019
-# Copyright:   (c) kol 2019-2020
-# Licence:     MIT
-#-------------------------------------------------------------------------------
+import os
+import cv2
+import numpy as np
+from collections import namedtuple
+
+import tkinter as tk
+from tkinter import filedialog
+from tkinter import ttk
+from tkinter import messagebox
 
 from gr.board import GrBoard
 from gr.grdef import *
@@ -18,20 +20,7 @@ from gr.ui_extra import treeview_sort_columns
 from gr.binder import NBinder
 from gr.log import GrLogger
 from gr.utils import format_stone_pos, resize, img_to_imgtk, dict_value2key
-from gr.grq import BoardOptimizer
 from gr.gr import convert_xy
-
-import numpy as np
-import cv2
-import os
-from threading import Thread, Lock
-from collections import namedtuple
-
-import tkinter as tk
-from tkinter import filedialog
-from tkinter import ttk
-from tkinter import messagebox
-
 
 # Debug info dialog class
 class GbrDebugDlg(GrDialog):
@@ -172,15 +161,8 @@ class GbrOptionsDlg(GrDialog):
 
         self.max_iter = 100
 
-        self.lock = Lock()
-        self.qc_thread = None
-        self.qc = None
-        self.qc_log = None
-        self.optimize_cancel = False
-
     def init_frame(self, internalFrame):
         self.tkVars = self.add_switches(internalFrame)
-        self.add_optimization()
 
     def init_buttons(self, buttonFrame):
         f_top = tk.Frame(buttonFrame)
@@ -205,7 +187,7 @@ class GbrOptionsDlg(GrDialog):
         self.resetButton.pack(side = tk.LEFT, padx = 5, pady = 5)
 
         self.log_button = tk.Button(f_bottom, text = "Log",
-            state = tk.DISABLED if self.root.log.errors == 0 is None else tk.NORMAL,
+            state = tk.DISABLED if not self.root.log.errors else tk.NORMAL,
             command = self.log_click_callback)
         self.log_button.pack(side = tk.LEFT, padx = 5, pady = 5)
 
@@ -220,15 +202,12 @@ class GbrOptionsDlg(GrDialog):
         self.bind("<Return>", self.return_callback)
 
     def update_controls(self):
-        if self.qc_thread is not None:
-            # Optimization thread is running, don't update state
-            return
         if self.dbg_button is not None:
             self.dbg_button.configure(
                 state = tk.DISABLED if self.root.board.results is None else tk.NORMAL)
         if self.log_button is not None:
             self.log_button.configure(
-                state = tk.DISABLED if self.root.log.errors == 0 is None else tk.NORMAL)
+                state = tk.DISABLED if not self.root.log.errors else tk.NORMAL)
 
     def close(self):
         """Graceful way to close the dialog"""
@@ -237,8 +216,6 @@ class GbrOptionsDlg(GrDialog):
             self.debug_dlg = None
         if self.detectVar.get() > 0:
             self.root.imageMarker.clear()
-        if not self.qc_thread is None:
-            self.optimize_cancel = True
         GrDialog.close(self)
 
     def auto_detect_callback(self):
@@ -272,10 +249,7 @@ class GbrOptionsDlg(GrDialog):
 
     def log_click_callback(self):
         """Log button click callback"""
-        if self.nb.index(self.nb.select()) == 3 and self.qc_log is not None:
-            self.qc_log.show()
-        else:
-            self.root.log.show()
+        self.root.log.show()
 
     def debug_click_callback(self):
         """Debug button click callback"""
@@ -303,72 +277,6 @@ class GbrOptionsDlg(GrDialog):
     def return_callback(self, event):
         self.detect_click_callback()
 
-    def optimize_click_callback(self):
-        """Optimize button click"""
-
-        # Use lock to prevent simultaneous access to the same variables
-        with self.lock:
-            if not self.qc_thread is None and self.qc_thread.is_alive():
-                # Seems that optimization is already running, try to cancel
-                self.progressLabel.set("Cancelling")
-                self.optimize_cancel = True
-            else:
-                # Initialize optimizer
-                self.qc = BoardOptimizer(board = GrBoard(), debug = False)
-                self.qc.board.image = self.root.board.image
-                self.qc.board.params = self.root.board.params
-                self.last_params = self.root.board.params.todict()
-                self.resetButton.configure(state = tk.NORMAL)
-                self.qc_log = None
-
-                # Launch a separate thread and return
-                self.qc_thread = Thread(target = self.optimizer_function)
-                self.qc_thread.start()
-
-    def optimizer_function(self):
-        """Optimization function (runs in separate thread)"""
-        if self.qc is None:
-            return
-
-        # Prepare
-        with self.lock:
-            self.set_controls_state(tk.DISABLED)
-            self.optimize_cancel = False
-            self.optimizeButton.configure(text = "Cancel")
-            self.progressLabel.set("Running detection")
-            self.progressVar.set(0)
-
-        # Run
-        success = self.qc.optimize(groups = [1, 2],
-            max_pass = self.max_iter,
-            callback = self.optimize_callback)
-
-        # Clean up
-        with self.lock:
-            if not self.optimize_cancel and success:
-                self.root.board.params = self.qc.board.params
-                self.update_switches()
-
-            self.optimizeButton.configure(text = "Auto-detect")
-            self.progressLabel.set("Completed {}".format("successfully"
-                if success else "unsuccessfully"))
-            self.set_controls_state(tk.ACTIVE)
-            self.qc_log = self.qc.log
-            self.qc_thread = None
-            self.qc = None
-
-    def optimize_callback(self, params):
-        """Optimize callback"""
-        with self.lock:
-            if self.optimize_cancel:
-                self.progressVar.set(0)
-                return True
-            else:
-                npass = params['npass']
-                self.progressLabel.set("Running detection: pass {} of {}".format(npass, self.max_iter))
-                self.progressVar.set(npass)
-            return False
-
     def reset_click_callback(self):
         """Reset params button click"""
         if self.last_params is not None:
@@ -381,7 +289,6 @@ class GbrOptionsDlg(GrDialog):
             if self.detectVar.get() > 0:
                 self.detect_stones(highlight = True)
                 self.update_controls()
-
 
     def add_switches(self, parent, max_in_row = 6):
         """Add Scale widgets for changing board parameters"""
@@ -451,41 +358,6 @@ class GbrOptionsDlg(GrDialog):
         for k in self.root.board.params:
             if k in self.tkVars:
                 self.tkVars[k].set(self.root.board.params[k])
-
-    def add_optimization(self):
-        # Add "optimization" tab to notebook
-        nbFrame = tk.Frame(self.nb, width = 400)
-        self.nb.add(nbFrame, text = "Optimization")
-
-        frame = tk.Frame(nbFrame, bd = 20, relief = tk.FLAT)
-        frame.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
-        label = tk.Label(frame,
-            text = "Press the button below to initiate automatic selection of\n" +
-                    "stone recognition parameters\n\nMake sure that " +
-                    "board area and grid are defined and\n" +
-                    "proper board size set or detected" )
-        label.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
-
-        frame = tk.Frame(nbFrame, bd = 5)
-        frame.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
-        self.optimizeButton = tk.Button(frame, text = "Auto-detect",
-            takefocus = False,
-            command = self.optimize_click_callback)
-        self.optimizeButton.pack(anchor = tk.CENTER)
-
-        frame = tk.Frame(nbFrame, bd = 5)
-        frame.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
-
-        self.progressLabel = tk.StringVar("")
-        label = tk.Label(frame, textvariable = self.progressLabel)
-        label.pack(side = tk.TOP, fill = tk.BOTH, expand = True, pady = 5)
-
-        self.progressVar = tk.IntVar(0)
-        progress = ttk.Progressbar(frame,
-            orient = "horizontal", maximum = self.max_iter,
-            mode = "determinate", length = 300,
-            variable = self.progressVar)
-        progress.pack(anchor = tk.CENTER, pady = 5)
 
     def detect_stones(self, highlight):
         """Detect stones with parameters currenly set"""
@@ -1053,7 +925,7 @@ class GbrGUI2(tk.Tk):
     #
     # Callbacks
     #
-    def open_image_callback(self, event):
+    def open_image_callback(self, event: tk.Event):
         """Open button click"""
         fn = filedialog.askopenfilename(title = "Select file",
            filetypes = (("PNG files","*.png"),("JPEG files","*.jpg"),("All files","*.*")))
@@ -1061,7 +933,7 @@ class GbrGUI2(tk.Tk):
             self.load_image(fn)
         event.cancel = True
 
-    def transform_callback(self, event):
+    def transform_callback(self, event: tk.Event):
         """Transform button click"""
         if not event.state and self.imageTransform.started:
            self.imageTransform.cancel()
@@ -1293,7 +1165,6 @@ class GbrGUI2(tk.Tk):
 def main():
     window = GbrGUI2()
     window.update()
-    #window.load_image('img\\go_board_48.jpg')
     window.mainloop()
     cv2.destroyAllWindows()
 

@@ -1,13 +1,6 @@
-#-------------------------------------------------------------------------------
-# Name:        Go board recognition project
-# Purpose:     Go board processing functions
-#
-# Author:      kol
-#
-# Created:     04.07.2019
-# Copyright:   (c) kol 2019
-# Licence:     MIT
-#-------------------------------------------------------------------------------
+# Go board recognition project
+# Board processing functions
+# (c) kol, 2019-2023
 
 import cv2
 import numpy as np
@@ -82,10 +75,9 @@ def find_stones(src_img, params, res, f_bw):
     def _apply_thresh(img, params, f_bw):
         n_thresh = params['STONES_THRESHOLD_' + f_bw]
         n_maxval = params['STONES_MAXVAL_' + f_bw]
-        method = cv2.THRESH_BINARY
-        if f_bw == 'W': method = cv2.THRESH_BINARY_INV
+        method = cv2.THRESH_BINARY if f_bw == 'B' else cv2.THRESH_BINARY_INV
 
-        ret, thresh = cv2.threshold(img, n_thresh, n_maxval, method)
+        _, thresh = cv2.threshold(img, n_thresh, n_maxval, method)
         res['IMG_THRESH_' + f_bw] = thresh
         return thresh
 
@@ -97,8 +89,8 @@ def find_stones(src_img, params, res, f_bw):
            logging.info("Filter skipped")
            return img
         else:
-           kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(100,100))
-           kernel = cv2.resize(kernel, (n_mask,n_mask))
+           kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(n_mask, n_mask))
+        #    kernel = cv2.resize(kernel, (n_mask,n_mask))
            return cv2.dilate(img, kernel,
                                   iterations=n_iter,
                                   borderType = cv2.BORDER_CONSTANT,
@@ -292,7 +284,7 @@ def find_board(img, params, res):
         return np.array(ret)
 
     def unique_lines(a, delta = 10):
-        """Return lines with are far from each other by more than a given distance"""
+        """Return lines which are far from each other by more than a given distance"""
         if a is None: return None
 
         v = accumulate(a, lambda x,y: x if abs(y[0][0] - x[0][0]) < delta else y)

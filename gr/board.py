@@ -1,21 +1,14 @@
-#-------------------------------------------------------------------------------
-# Name:        Go board recognition project
-# Purpose:     Go board class
-#
-# Author:      kol
-#
-# Created:     04.07.2019
-# Copyright:   (c) kol 2019
-# Licence:     MIT
-#-------------------------------------------------------------------------------
-import sys
-from pathlib import Path
+# Go board recognition project
+# GrBoard class
+# (c) kol, 2019-2023
+
+import cv2
 import json
 import logging
 import numpy as np
+from pathlib import Path
 from imutils.perspective import four_point_transform
 from sgfmill import sgf
-import cv2
 
 from .grdef import *
 from .gr import process_img, detect_board, generate_board
@@ -120,7 +113,7 @@ class GrBoard:
         try:
             cv2.imwrite(str(filename), im)
         except:
-            logging.error(sys.exc_info()[1])
+            logging.exception('Error', exc_info=1)
             raise
 
         self._img_file = filename

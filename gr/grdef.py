@@ -1,13 +1,6 @@
-#-------------------------------------------------------------------------------
-# Name:        Go board recognition project
-# Purpose:     Global definitions and constants
-#
-# Author:      kol
-#
-# Created:     04.07.2019
-# Copyright:   (c) kol 2019
-# Licence:     MIT
-#-------------------------------------------------------------------------------
+# Go board recognition project
+# Global definitions and constants
+# (c) kol, 2019-2023
 
 # Constants
 COLOR_WHITE = (255, 255, 255)     # white

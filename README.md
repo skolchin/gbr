@@ -41,8 +41,6 @@ Recognised boards can be saved to an SGF file. The program creates standard SGF 
 
 Please note that this is not an AI system, but a "good old" algorythmic program. I couldn't manage to build an AI due to lack of time and compexity of the task, so it relies on computer vision algorithms to do the job. In particular, this means that correct board recognition is highly dependent on correct parameters set by end user, so even small changes could improve or reduce results.
 
-Currently, I'm working on automatic parameter selection using [Scikit-optimize](https://scikit-optimize.github.io/) library. This is really great lib, which simplifies multi-dimensional hyperparameter optimization very much, but, still, this is kind of experimental feature now.
-
 Examples of source images (left) and results of their processing (right):
 
 ![1](../master/demo/screen_1.png)
@@ -61,18 +59,13 @@ More images are available at [img](../master/img) directory. All of them are eit
 
 ## Requirements
 
-Python 3.5 or later. Packages:
+Python 3.5 or later. Required packages:
 
 * [numpy](https://numpy.org/)
 * [opencv2](https://opencv.org/)
 * [imutils](https://github.com/jrosebr1/imutils)
 * [Pillow](https://python-pillow.org/)
 * [sgfmill](https://mjw.woodcraft.me.uk/sgfmill/)
-* [Tkinter](http://effbot.org/tkinterbook/)
-* [Scikit-optimize](https://scikit-optimize.github.io/)
-* logging
-* json
-* pathlib
 
 ## Installation and running
 
@@ -82,13 +75,19 @@ Python 3.5 or later. Packages:
 git clone https://github.com/skolchin/gbr.git
 ```
 
-This will downlowd all code and database of images (img/ folder) along with parameters I have set.
+This will download all code and database of images (img/ folder) along with parameters I have set.
 
-2. Install packages. Please note that ```imutils``` and ```sgfmill``` packages are not included into Anakonda database, so they could be installed by pip only.
+2. Install packages:
 
+```console
+pip install -r requirements.txt
+```
 
-3. Run ```python gbr2.py```.
+3. Run:
 
+```console
+python gbr2.py
+```
 
 
 ## TODO
