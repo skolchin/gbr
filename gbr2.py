@@ -170,7 +170,7 @@ class GbrOptionsDlg(GrDialog):
         f_top.pack(side = tk.TOP, fill = tk.BOTH)
         f_bottom.pack(side = tk.BOTTOM, fill = tk.BOTH)
 
-        self.detectVar = tk.IntVar(0)
+        self.detectVar = tk.IntVar()
         tk.Checkbutton(f_top, text = "Detect on parameter changes", variable = self.detectVar,
             command = self.auto_detect_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
@@ -655,7 +655,7 @@ class GbrStonesDlg(GrDialog):
         f_top.pack(side = tk.TOP, fill = tk.BOTH)
         f_bottom.pack(side = tk.BOTTOM, fill = tk.BOTH)
 
-        self.allVar = tk.IntVar(0)
+        self.allVar = tk.IntVar()
         tk.Checkbutton(f_top, text = "Select all", variable = self.allVar,
             command = self.select_all_callback).pack(side = tk.LEFT, padx = 5, pady = 5)
 
